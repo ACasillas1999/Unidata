@@ -2,112 +2,110 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use App\Models\Branch;
 use App\Models\MatrizHomologacion;
+use App\Services\BranchConnectionManager;
+use Illuminate\Console\Command;
 
 class SyncMatrizHomologacion extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'unidata:sync-matriz';
+    protected $signature   = 'unidata:sync-matriz';
+    protected $description = 'Sincroniza todas las sucursales activas hacia la Matriz Maestra de Homologación.';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Sincroniza todas las bases de datos de sucursales hacia la Matriz Maestra de Homologación de forma transversal (Upsert)';
-
-    // Las mismas conexiones definidas en HomologacionController
-    const BRANCHES = [
-        'DEASA' => ['conn' => 'deasa', 'col' => 'en_deasa'],
-        'AIESA' => ['conn' => 'aiesa', 'col' => 'en_aiesa'],
-        'CEDIS' => ['conn' => 'cedis', 'col' => 'en_cedis'],
-        'DIMEGSA' => ['conn' => 'dimegsa', 'col' => 'en_dimegsa'],
-        'FESA' => ['conn' => 'fesa', 'col' => 'en_fesa'],
-        'GABSA' => ['conn' => 'gabsa', 'col' => 'en_gabsa'],
-        'ILU' => ['conn' => 'ilu', 'col' => 'en_ilu'],
-        'QUERÉTARO' => ['conn' => 'queretaro', 'col' => 'en_queretaro'],
-        'SEGSA' => ['conn' => 'segsa', 'col' => 'en_segsa'],
-        'TAPATÍA' => ['conn' => 'tapatia', 'col' => 'en_tapatia'],
-        'VALLARTA' => ['conn' => 'vallarta', 'col' => 'en_vallarta'],
-        'WASHINGTON' => ['conn' => 'washington', 'col' => 'en_washington'],
-    ];
-
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    /** Ruta del archivo de estado compartido con el controller */
+    public static function statusFile(): string
     {
-        $this->info("Iniciando Sincronización de Matriz de Homologación...");
-        
-        // Opcional: Trucar la tabla si queremos un reinicio completo (o simplemente usar upsert para evitar esto)
-        // Por seguridad, usaremos upsert y resetearemos todas las variables booleanas a 0 primero
-        $this->info("Paso 1: Limpiando banderas de conexión anteriores...");
-        MatrizHomologacion::query()->update([
-            'en_deasa' => false,
-            'en_aiesa' => false,
-            'en_cedis' => false,
-            'en_dimegsa' => false,
-            'en_fesa' => false,
-            'en_gabsa' => false,
-            'en_ilu' => false,
-            'en_queretaro' => false,
-            'en_segsa' => false,
-            'en_tapatia' => false,
-            'en_vallarta' => false,
-            'en_washington' => false,
-        ]);
+        return storage_path('app/sync_status.json');
+    }
 
-        foreach (self::BRANCHES as $branchName => $info) {
-            $connName = strtolower($info['conn']);
-            $colName = $info['col'];
+    private function writeStatus(string $status, string $message, int $step = 0, int $total = 0): void
+    {
+        file_put_contents(self::statusFile(), json_encode([
+            'status'     => $status,        // running | done | error
+            'message'    => $message,
+            'step'       => $step,
+            'total'      => $total,
+            'updated_at' => time(),
+        ], JSON_UNESCAPED_UNICODE));
+    }
 
-            $this->info("-> Conectando a [{$branchName}]...");
+    public function handle(BranchConnectionManager $manager)
+    {
+        // Solo sucursales activas
+        $branches = Branch::query()->active()->orderBy('name')->get();
+
+        if ($branches->isEmpty()) {
+            $this->writeStatus('done', 'No hay sucursales activas configuradas.', 0, 0);
+            $this->warn('No hay sucursales activas. Nada que sincronizar.');
+            return;
+        }
+
+        $total = $branches->count();
+        $step  = 0;
+
+        $this->writeStatus('running', 'Iniciando sincronización...', 0, $total);
+        $this->info("Iniciando sincronización ({$total} sucursales activas)...");
+
+        // Resetear columnas de todas las sucursales activas
+        $colsToReset = $branches->map(fn ($b) => 'en_' . strtolower($b->code))->toArray();
+        // Solo resetear columnas que existen en el modelo
+        $validCols = array_intersect($colsToReset, MatrizHomologacion::make()->getFillable());
+
+        if (!empty($validCols)) {
+            MatrizHomologacion::query()->update(array_fill_keys($validCols, false));
+        }
+
+        foreach ($branches as $branch) {
+            // Revisar si el usuario canceló la sincronización
+            if (file_exists(self::statusFile())) {
+                $statusData = json_decode(file_get_contents(self::statusFile()), true) ?? [];
+                if (($statusData['status'] ?? '') === 'cancelled') {
+                    $this->warn('Sincronización cancelada por el usuario (abortado).');
+                    return; // Detiene el proceso limpiamente
+                }
+            }
+
+            $step++;
+            $colName = 'en_' . strtolower($branch->code);
+
+            // Verificar que la columna existe en el modelo antes de intentar escribirla
+            if (!in_array($colName, MatrizHomologacion::make()->getFillable())) {
+                $this->warn("   [SKIP] {$branch->name}: columna \"{$colName}\" no existe en la matriz. Omitiendo.");
+                continue;
+            }
+
+            $this->writeStatus('running', "Sincronizando {$branch->name} ({$step}/{$total})...", $step, $total);
+            $this->info("-> Conectando a [{$branch->name} / {$branch->code}]...");
 
             try {
-                $query = DB::connection($connName)->table('articulo')
-                    ->select('Clave_Articulo', 'Descripcion', 'Habilitado');
+                $connection    = $manager->connect($branch);
+                $totalProcessed = 0;
 
-                // Ahora para todas las sucursales traemos el catálogo completo
-                // ya no filtramos por activos, para tener la radiografía completa.
-
-                $query->orderBy('Clave_Articulo')
-                    ->chunk(2000, function ($articles) use ($colName, &$totalProcessed, $branchName) {
+                $connection
+                    ->table('articulo')
+                    ->select('Clave_Articulo', 'Descripcion', 'Habilitado')
+                    ->orderBy('Clave_Articulo')
+                    ->chunk(2000, function ($articles) use ($colName, &$totalProcessed) {
                         $upsertData = [];
-
                         foreach ($articles as $art) {
                             $upsertData[] = [
-                                'clave' => $art->Clave_Articulo,
+                                'clave'       => $art->Clave_Articulo,
                                 'descripcion' => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
-                                $colName => $art->Habilitado ? 1 : 0
+                                $colName      => $art->Habilitado ? 1 : 0,
                             ];
                         }
-
-                        // upsert(valores, claves_unicas, columnas_a_actualizar_si_existe)
-                        // Si ya existe, actualizamos SOLAMENTE su bandera ($colName), conservando la descripción original.
-                        // Si NO existe, se inserta la clave, la descripción que trae, y su bandera.
-                        MatrizHomologacion::upsert(
-                            $upsertData,
-                            ['clave'],
-                            [$colName]
-                        );
-
+                        MatrizHomologacion::upsert($upsertData, ['clave'], [$colName]);
                         $totalProcessed += count($articles);
-                        $this->output->write("\r   Procesados: {$totalProcessed} registros...");
                     });
 
-                $this->info("\n   [OK] {$branchName} finalizado. Total agregados/actualizados: {$totalProcessed}");
+                $this->info("   [OK] {$branch->name}: {$totalProcessed} registros.");
 
-            } catch (\Exception $e) {
-                $this->error("\n   [ERROR] Falló al procesar {$branchName}: " . $e->getMessage());
+            } catch (\Throwable $e) {
+                $this->error("   [ERROR] {$branch->name}: " . $e->getMessage());
             }
         }
 
-        $this->info("¡Sincronización Transversal Finalizada con Éxito!");
+        $this->writeStatus('done', '¡Sincronización completada exitosamente!', $total, $total);
+        $this->info('¡Sincronización Finalizada con Éxito!');
     }
 }

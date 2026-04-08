@@ -103,7 +103,7 @@
         </div>
     </div>
 
-    <div class="table-wrap" id="table-wrap">
+    <div class="table-wrap" id="table-wrap" style="overflow-x: auto; overflow-y: auto; max-height: 420px;">
         @if($branches->isEmpty())
             <div class="conn-empty-state" id="empty-state">
                 <div class="empty-module-icon empty-module-icon--violet" style="width:56px;height:56px">
@@ -118,7 +118,7 @@
             </div>
         @endif
         <table class="data-table" id="conn-table" @if($branches->isEmpty()) style="display:none" @endif>
-            <thead>
+            <thead style="position: sticky; top: 0; z-index: 5;">
                 <tr>
                     <th>#</th>
                     <th>Nombre</th>
@@ -170,12 +170,12 @@
 
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:10px">
-                <div class="page-header-icon page-header-icon--violet" style="width:36px;height:36px">
+                <div class="page-header-icon page-header-icon--violet" style="width:36px;height:36px" id="modal-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </div>
                 <div>
                     <h2 class="modal-title" id="modal-title">Nueva conexión</h2>
-                    <p class="modal-subtitle">Configura la base de datos de la sucursal</p>
+                    <p class="modal-subtitle" id="modal-subtitle">Configura la base de datos de la sucursal</p>
                 </div>
             </div>
             <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">&times;</button>
@@ -286,26 +286,60 @@
 <script>
 const CSRF       = '{{ csrf_token() }}';
 const storeUrl   = '{{ route("conexiones.store") }}';
+const updateUrl  = (id) => `/conexiones/${id}`;
 const testUrl    = (id) => `/conexiones/${id}/test`;
 const deleteUrl  = (id) => `/conexiones/${id}`;
 const testAllUrl = '{{ route("conexiones.test-all") }}';
+let   editingId  = null; // null = crear, number = editar
 
 /* ── Modal ─────────────────────────────────────────────────── */
 function openModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent    = 'Nueva conexión';
+    document.getElementById('modal-subtitle').textContent = 'Configura la base de datos de la sucursal';
+    document.getElementById('modal-submit').innerHTML     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Guardar conexión`;
+    document.getElementById('modal-icon').innerHTML       = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     document.getElementById('modal-backdrop').classList.add('active');
     document.getElementById('modal-error').style.display = 'none';
     document.getElementById('conn-form').reset();
     document.getElementById('f-port').value = '3306';
+    document.getElementById('f-password').placeholder = '••••••••';
+    document.getElementById('f-password').required = true;
+    setTimeout(() => document.getElementById('f-name').focus(), 80);
+}
+
+function editBranch(id, name, code, host, port, database, user, status) {
+    editingId = id;
+    document.getElementById('modal-title').textContent    = 'Editar conexión';
+    document.getElementById('modal-subtitle').textContent = `Modificando los datos de "${name}"`;
+    document.getElementById('modal-submit').innerHTML     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Actualizar conexión`;
+    document.getElementById('modal-icon').innerHTML       = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    document.getElementById('modal-error').style.display = 'none';
+    document.getElementById('f-name').value     = name;
+    document.getElementById('f-code').value     = code;
+    document.getElementById('f-host').value     = host;
+    document.getElementById('f-port').value     = port;
+    document.getElementById('f-database').value = database;
+    document.getElementById('f-user').value     = user;
+    document.getElementById('f-password').value = '';
+    document.getElementById('f-password').placeholder = 'Dejar vacío para no cambiar';
+    document.getElementById('f-password').required = false;
+    document.querySelector(`input[name="status"][value="${status}"]`).checked = true;
+    document.getElementById('modal-backdrop').classList.add('active');
     setTimeout(() => document.getElementById('f-name').focus(), 80);
 }
 
 function closeModal(e) {
     if (e && e.target !== document.getElementById('modal-backdrop')) return;
     document.getElementById('modal-backdrop').classList.remove('active');
+    editingId = null;
 }
 
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('modal-backdrop').classList.remove('active');
+    if (e.key === 'Escape') {
+        document.getElementById('modal-backdrop').classList.remove('active');
+        editingId = null;
+    }
 });
 
 function togglePwd() {
@@ -319,23 +353,30 @@ async function submitForm(e) {
     const btn    = document.getElementById('modal-submit');
     const errBox = document.getElementById('modal-error');
     const errTxt = document.getElementById('modal-error-text');
+    const isEdit = editingId !== null;
 
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner"></span> Guardando…`;
+    btn.innerHTML = `<span class="spinner"></span> ${isEdit ? 'Actualizando…' : 'Guardando…'}`;
     errBox.style.display = 'none';
 
-    const body = new FormData(document.getElementById('conn-form'));
+    const formData = new FormData(document.getElementById('conn-form'));
+
+    // Para PUT convertimos a JSON ya que FormData no funciona bien con PUT en Laravel
+    const body = {};
+    formData.forEach((v, k) => { body[k] = v; });
 
     try {
-        const res  = await fetch(storeUrl, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
-            body,
+        const url    = isEdit ? updateUrl(editingId) : storeUrl;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res  = await fetch(url, {
+            method,
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
         });
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-            // Validation errors come as {errors: {field: [msgs]}} with 422
             if (data.errors) {
                 const msgs = Object.values(data.errors).flat().join('<br>');
                 errTxt.innerHTML = msgs;
@@ -347,17 +388,43 @@ async function submitForm(e) {
         }
 
         closeModal();
-        appendRow(data.branch);
-        logEntry(data.branch.name, { ok: true, message: data.message });
-        updateStats(1, data.branch.status === 'active' ? 1 : 0, 0, 0);
+
+        if (isEdit) {
+            updateRow(data.branch);
+            logEntry(data.branch.name, { ok: true, message: data.message });
+        } else {
+            appendRow(data.branch);
+            logEntry(data.branch.name, { ok: true, message: data.message });
+            updateStats(1, data.branch.status === 'active' ? 1 : 0, 0, 0);
+        }
 
     } catch (err) {
         errTxt.innerHTML = err.message;
         errBox.style.display = 'flex';
     } finally {
         btn.disabled = false;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Guardar conexión`;
+        const svgSave = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+        btn.innerHTML = svgSave + (isEdit ? ' Actualizar conexión' : ' Guardar conexión');
     }
+}
+
+/* ── Build row actions HTML ─────────────────────────────────── */
+function rowActionsHtml(b) {
+    const disabled = b.status === 'inactive' ? 'disabled title="Sucursal inactiva"' : '';
+    return `
+        <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn-test" id="btn-${b.id}" onclick="testConnection(${b.id})" ${disabled}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Probar
+            </button>
+            <button class="btn-edit" onclick="editBranch(${b.id},'${esc(b.name)}','${esc(b.code)}','${esc(b.db_host)}',${b.db_port ?? 3306},'${esc(b.db_database)}','${esc(b.db_user)}','${b.status}')" title="Editar conexión">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-delete" onclick="deleteBranch(${b.id}, '${esc(b.name)}')" title="Eliminar conexión">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+        </div>
+    `;
 }
 
 /* ── Append new row ─────────────────────────────────────────── */
@@ -371,6 +438,14 @@ function appendRow(b) {
 
     const tr = document.createElement('tr');
     tr.id    = `row-${b.id}`;
+    
+    let statusPillHtml = '';
+    if (b.status === 'inactive') {
+        statusPillHtml = `<span id="status-${b.id}" class="conn-status-pill conn-status--inactive"><span class="conn-status-dot"></span>Inactiva</span>`;
+    } else {
+        statusPillHtml = `<span id="status-${b.id}" class="conn-status-pill conn-status--pending"><span class="conn-status-dot"></span>Pendiente</span>`;
+    }
+
     tr.innerHTML = `
         <td class="td--muted">${b.id}</td>
         <td class="td--bold">${esc(b.name)}</td>
@@ -379,22 +454,38 @@ function appendRow(b) {
         <td class="td--mono td--muted">${b.db_port ?? 3306}</td>
         <td class="td--mono">${esc(b.db_database)}</td>
         <td class="td--mono td--muted">${esc(b.db_user)}</td>
-        <td><span id="status-${b.id}" class="conn-status-pill conn-status--pending"><span class="conn-status-dot"></span>Pendiente</span></td>
+        <td>${statusPillHtml}</td>
         <td id="checked-${b.id}" class="td--muted td--small">—</td>
         <td id="latency-${b.id}" class="td--mono td--muted">—</td>
-        <td>
-            <div style="display:flex;gap:6px;align-items:center">
-                <button class="btn-test" id="btn-${b.id}" onclick="testConnection(${b.id})">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    Probar
-                </button>
-                <button class="btn-delete" onclick="deleteBranch(${b.id}, '${esc(b.name)}')" title="Eliminar">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-            </div>
-        </td>
+        <td>${rowActionsHtml(b)}</td>
     `;
     tbody.appendChild(tr);
+}
+
+/* ── Update existing row in place ───────────────────────────── */
+function updateRow(b) {
+    const tr = document.getElementById(`row-${b.id}`);
+    if (!tr) return;
+    const cells = tr.querySelectorAll('td');
+    // 0:id 1:name 2:code 3:host 4:port 5:db 6:user 7:status 8:checked 9:latency 10:actions
+    cells[1].textContent = b.name;
+    cells[2].innerHTML   = `<span class="conn-code-badge">${esc(b.code)}</span>`;
+    cells[3].textContent = b.db_host;
+    cells[4].textContent = b.db_port ?? 3306;
+    cells[5].textContent = b.db_database;
+    cells[6].textContent = b.db_user;
+    cells[10].innerHTML  = rowActionsHtml(b);
+    
+    const statusEl = document.getElementById(`status-${b.id}`);
+    if (statusEl) {
+        if (b.status === 'inactive') {
+            statusEl.className = 'conn-status-pill conn-status--inactive';
+            statusEl.innerHTML = '<span class="conn-status-dot"></span>Inactiva';
+        } else {
+            statusEl.className = 'conn-status-pill conn-status--pending';
+            statusEl.innerHTML = '<span class="conn-status-dot"></span>Pendiente';
+        }
+    }
 }
 
 /* ── Test connection ────────────────────────────────────────── */

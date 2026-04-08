@@ -70,6 +70,51 @@ class ConexionesController extends Controller
     }
 
     /**
+     * Actualiza una sucursal/conexión existente.
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        try {
+            $branch = Branch::findOrFail($id);
+        } catch (Throwable) {
+            return response()->json(['ok' => false, 'message' => 'Sucursal no encontrada.'], 404);
+        }
+
+        $data = $request->validate([
+            'name'        => 'required|string|max:255',
+            'code'        => "required|string|max:20|unique:branches,code,{$id}",
+            'db_host'     => 'required|string|max:255',
+            'db_port'     => 'nullable|integer|min:1|max:65535',
+            'db_user'     => 'required|string|max:100',
+            'db_password' => 'nullable|string|max:255',
+            'db_database' => 'required|string|max:100',
+            'status'      => 'nullable|in:active,inactive',
+        ]);
+
+        // Si la contraseña viene vacía, no la actualizamos
+        if (empty($data['db_password'])) {
+            unset($data['db_password']);
+        }
+
+        $data['status']  = $data['status'] ?? 'active';
+        $data['db_port'] = $data['db_port'] ?? 3306;
+
+        // Si se marca inactiva, limpiar el estado de conexión para no mostrar datos engañosos
+        if ($data['status'] === 'inactive') {
+            $data['connection_status']    = 'pending';
+            $data['last_connection_check'] = null;
+        }
+
+        $branch->update($data);
+
+        return response()->json([
+            'ok'     => true,
+            'branch' => $branch->fresh()->makeVisible(['db_host','db_port','db_user','db_database','status','connection_status','id','code','name']),
+            'message' => "Conexión \"{$branch->name}\" actualizada correctamente.",
+        ]);
+    }
+
+    /**
      * Elimina una sucursal.
      */
     public function destroy(int $id): JsonResponse

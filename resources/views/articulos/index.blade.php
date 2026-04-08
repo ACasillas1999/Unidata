@@ -23,6 +23,7 @@
 <div class="card">
     <div class="card-body" style="padding:16px 20px">
         <form method="GET" action="{{ route('articulos.index') }}" id="art-form" class="homo-filter-bar">
+            <input type="hidden" name="per_page" id="per_page_input" value="{{ request('per_page', 50) }}">
             
             {{-- Búsqueda --}}
             <div class="search-input-wrap" style="flex:1;min-width:200px">
@@ -51,6 +52,10 @@
             <div style="display:flex;gap:8px;flex-shrink:0">
                 <button type="submit" class="btn btn--primary btn--sm">Buscar</button>
                 <a href="{{ route('articulos.index') }}" class="btn btn--ghost btn--sm">Limpiar</a>
+                <a href="{{ route('articulos.export', request()->all()) }}" class="btn btn--primary btn--sm shadow-premium" style="background:var(--emerald); border-color:var(--emerald); color:white;" target="_blank">
+                    <svg style="margin-right:4px;" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Excel
+                </a>
             </div>
         </form>
     </div>
@@ -80,7 +85,20 @@
                 @endif
             </p>
         </div>
-        <span class="badge badge--slate">{{ method_exists($articles, 'total') ? $articles->total() : count($articles->items()) }} registros</span>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+                <label for="page-selector-art" style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mostrar:</label>
+                <select id="page-selector-art" 
+                        onchange="document.getElementById('per_page_input').value=this.value; document.getElementById('art-form').submit();" 
+                        style="background: transparent; border: none; color: var(--violet-light); font-size: 11px; font-weight: 800; cursor: pointer; outline: none; -webkit-appearance: none; padding-right: 12px; background-image: url('data:image/svg+xml;utf8,<svg fill=%22%238b5cf6%22 height=%2214%22 viewBox=%220 0 24 24%22 width=%2214%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/></svg>'); background-repeat: no-repeat; background-position-x: 100%; background-position-y: center;">
+                    <option value="50" style="background:var(--bg-root);color:white;" @if($per_page == 50) selected @endif>50</option>
+                    <option value="100" style="background:var(--bg-root);color:white;" @if($per_page == 100) selected @endif>100</option>
+                    <option value="250" style="background:var(--bg-root);color:white;" @if($per_page == 250) selected @endif>250</option>
+                    <option value="500" style="background:var(--bg-root);color:white;" @if($per_page == 500) selected @endif>500</option>
+                </select>
+            </div>
+            <span class="badge badge--slate">{{ method_exists($articles, 'total') ? $articles->total() : count($articles->items()) }} registros</span>
+        </div>
     </div>
 
     <div class="table-wrap" style="max-height: 60vh; overflow-y: auto; border-bottom: 1px solid #1e293b;">
