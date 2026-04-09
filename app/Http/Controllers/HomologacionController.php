@@ -255,6 +255,14 @@ class HomologacionController extends Controller
         set_time_limit(0);
         ini_set('memory_limit', '512M');
 
+        // IMPORTANTE: Liberar la sesión escrita inmediatamente.
+        // Por defecto, PHP bloquea el archivo de sesión actual hasta que la petición termina.
+        // Al generar Excels inmensos, la petición puede durar minutos, "congelando" 
+        // por completo cualquier otra pestaña o usuario que comparta esta misma sesión.
+        if (session()->isStarted()) {
+            session()->save();
+        }
+
         $search    = trim((string) $request->string('q'));
         $filterCol = $request->string('filtro')->toString();
         $filterVal = $request->string('estado')->toString();
@@ -372,6 +380,63 @@ class HomologacionController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Start background export (async)
+     */
+    public function exportBgStart(Request $request)
+    {
+        $jobId = uniqid('job_');
+        $exportsDir = storage_path('app/exports');
+        
+        if (!\Illuminate\Support\Facades\File::exists($exportsDir)) {
+            \Illuminate\Support\Facades\File::makeDirectory($exportsDir, 0755, true);
+        }
+
+        $filters = $request->all();
+        $jobData = [
+            'status' => 'processing',
+            'progress' => 0,
+            'total' => 0,
+            'processed' => 0,
+            'file_url' => null,
+            'filters' => $filters,
+            'error' => null
+        ];
+
+        file_put_contents($exportsDir . '/' . $jobId . '.json', json_encode($jobData, JSON_UNESCAPED_UNICODE));
+
+        // Start background cmd
+        $php = PHP_BINARY;
+        $artisan = base_path('artisan');
+        $log = storage_path('logs/export_bg.log');
+
+        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:export-bg homologacion ' . escapeshellarg($jobId) . ' >> "' . $log . '" 2>&1';
+        pclose(popen($cmd, 'r'));
+
+        return response()->json([
+            'status' => 'started',
+            'job_id' => $jobId
+        ]);
+    }
+
+    /**
+     * Check background export status
+     */
+    public function exportBgStatus($job_id)
+    {
+        $file = storage_path('app/exports/' . $job_id . '.json');
+        if (!file_exists($file)) {
+            return response()->json(['status' => 'error', 'message' => 'Trabajo no encontrado']);
+        }
+        
+        $data = json_decode(file_get_contents($file), true);
+        if (!empty($data['file_url'])) {
+            $data['file_url'] = asset('exports/' . basename($data['file_url']));
+        }
+        
+        return response()->json($data);
     }
 }
 

@@ -81,20 +81,68 @@ class SyncMatrizHomologacion extends Command
                 $connection    = $manager->connect($branch);
                 $totalProcessed = 0;
 
+                $updateColumns = [
+                    $colName,
+                    'descripcion',
+                    'unidad_medida',
+                    'linea',
+                    'clasificacion',
+                    'mn_usd',
+                    'precio_lista',
+                    'des_precio_venta',
+                    'precio_venta',
+                    'desc_precio_espec',
+                    'precio_especial',
+                    'desc_precio4',
+                    'precio4',
+                    'articulo_kit',
+                    'margen_minimo',
+                    'articulo_serie',
+                    'color',
+                    'protocolo',
+                    'idsat',
+                    'costo_venta',
+                    'porcetaje_descuento'
+                ];
+
                 $connection
                     ->table('articulo')
-                    ->select('Clave_Articulo', 'Descripcion', 'Habilitado')
+                    ->select(
+                        'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion',
+                        'MN_USD', 'Precio_Lista', 'Desc_Precio_Venta', 'Precio_Venta', 'Desc_Precio_Espec',
+                        'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Articulo_Kit', 'Margen_Minimo',
+                        'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT', 'CostoVenta', 'PorcentajeDescuento'
+                    )
                     ->orderBy('Clave_Articulo')
-                    ->chunk(2000, function ($articles) use ($colName, &$totalProcessed) {
+                    ->chunk(2000, function ($articles) use ($colName, $updateColumns, &$totalProcessed) {
                         $upsertData = [];
                         foreach ($articles as $art) {
                             $upsertData[] = [
-                                'clave'       => $art->Clave_Articulo,
-                                'descripcion' => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
-                                $colName      => $art->Habilitado ? 1 : 0,
+                                'clave'               => $art->Clave_Articulo,
+                                'descripcion'         => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
+                                'unidad_medida'       => $art->Unidad_Medida ?? null,
+                                'linea'               => $art->Linea ?? null,
+                                'clasificacion'       => $art->Clasificacion ?? ($art->Clasificación ?? null),
+                                'mn_usd'              => $art->MN_USD ?? null,
+                                'precio_lista'        => $art->Precio_Lista ?? null,
+                                'des_precio_venta'    => $art->Desc_Precio_Venta ?? null,
+                                'precio_venta'        => $art->Precio_Venta ?? null,
+                                'desc_precio_espec'   => $art->Desc_Precio_Espec ?? null,
+                                'precio_especial'     => $art->Precio_Especial ?? null,
+                                'desc_precio4'        => $art->Desc_Precio4 ?? null,
+                                'precio4'             => $art->Precio4 ?? null,
+                                'articulo_kit'        => $art->Articulo_Kit ?? null,
+                                'margen_minimo'       => $art->Margen_Minimo ?? null,
+                                'articulo_serie'      => $art->Articulo_Serie ?? null,
+                                'color'               => $art->Color ?? null,
+                                'protocolo'           => $art->Protocolo ?? null,
+                                'idsat'               => $art->IDSAT ?? null,
+                                'costo_venta'         => $art->CostoVenta ?? null,
+                                'porcetaje_descuento' => $art->PorcentajeDescuento ?? null,
+                                $colName              => $art->Habilitado ? 1 : 0,
                             ];
                         }
-                        MatrizHomologacion::upsert($upsertData, ['clave'], [$colName]);
+                        MatrizHomologacion::upsert($upsertData, ['clave'], $updateColumns);
                         $totalProcessed += count($articles);
                     });
 

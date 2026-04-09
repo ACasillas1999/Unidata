@@ -97,6 +97,10 @@
             <div style="display:flex; align-items:center; gap:8px;">
                 <button type="submit" class="btn btn--primary btn--sm shadow-premium" style="background:var(--grad-premium); border-color:transparent; color:white; padding:7px 16px; font-size:12px;">Buscar</button>
                 <a href="{{ route('homologacion.index') }}" class="btn btn--ghost btn--sm" style="font-size:12px;">Limpiar</a>
+                <button type="button" onclick="startExportExcelBg()" class="btn btn--primary btn--sm shadow-premium" style="background:var(--emerald); border-color:var(--emerald); color:white; font-size:12px; display:flex; align-items:center;">
+                    <svg style="margin-right:4px;" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Excel
+                </button>
                 <button type="button" class="btn btn--ghost btn--sm shadow-premium" onclick="togglePanelCombinado()" style="border: 1px solid var(--border); display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); padding:7px 12px; font-size:12px;">
                     <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                     Filtros
@@ -619,6 +623,45 @@ function cancelSync() {
         }
     });
 }
+</script>
+
+
+
+<script>
+// ── Exportación Asíncrona (Excel) ──
+function startExportExcelBg() {
+    const form = document.getElementById('cobertura-form');
+    const formData = new FormData(form);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+    // Disparar toast informativo
+    Swal.mixin({
+      toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, background: '#1e293b', color: '#f8fafc'
+    }).fire({
+        icon: 'success',
+        title: 'Exportación iniciada',
+        text: 'Puedes revisar el progreso en el Centro de Descargas (arriba a la derecha)'
+    });
+
+    fetch('{{ route("homologacion.export.bg") }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'started') {
+            // Check if GDC exists and trigger open optionally, or just let badge do it
+            const gdcBtn = document.getElementById('gdc-toggle-btn');
+            if(gdcBtn && !document.getElementById('gdc-panel').style.display.includes('block')) {
+                 gdcBtn.click();
+            }
+        }
+    })
+    .catch(() => {});
+}
+
+
 </script>
 
 <script>

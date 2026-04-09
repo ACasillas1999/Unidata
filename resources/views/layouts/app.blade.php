@@ -77,7 +77,7 @@
                     <ul class="sidebar-menu">
                         <li>
                             <a href="{{ route('articulos.index') }}"
-                               class="sidebar-link {{ request()->routeIs('articulos.*') ? 'active' : '' }}"
+                               class="sidebar-link {{ request()->routeIs('articulos.index') ? 'active' : '' }}"
                                id="nav-articulos">
                                 <span class="sidebar-link-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -86,7 +86,24 @@
                                     </svg>
                                 </span>
                                 <span class="sidebar-link-label">Artículos</span>
-                                @if(request()->routeIs('articulos.*'))
+                                @if(request()->routeIs('articulos.index'))
+                                    <span class="sidebar-link-dot"></span>
+                                @endif
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('articulos.subir') }}"
+                               class="sidebar-link {{ request()->routeIs('articulos.subir') ? 'active' : '' }}"
+                               id="nav-subir-articulos">
+                                <span class="sidebar-link-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                </span>
+                                <span class="sidebar-link-label">Subir Artículos</span>
+                                @if(request()->routeIs('articulos.subir'))
                                     <span class="sidebar-link-dot"></span>
                                 @endif
                             </a>
@@ -230,7 +247,27 @@
                         <span class="topbar-breadcrumb-current">@yield('breadcrumb', 'Inicio')</span>
                     </nav>
                 </div>
-                <div class="topbar-right">
+                <div class="topbar-right" style="display:flex; align-items:center; gap:16px;">
+                    
+                    {{-- ── GLOBAL DOWNLOADS CENTER (GDC) ── --}}
+                    <div style="position:relative;">
+                        <button id="gdc-toggle-btn" class="topbar-menu-btn" style="border:none; background:transparent; color:var(--text-secondary); cursor:pointer; padding:8px; border-radius:8px; display:flex; align-items:center; position:relative; transition:background 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.05)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span id="gdc-badge" style="display:none; position:absolute; top:2px; right:2px; width:9px; height:9px; background:var(--emerald); border-radius:50%; border:2px solid var(--bg-root);"></span>
+                        </button>
+                        
+                        <div id="gdc-panel" class="shadow-premium" style="display:none; position:absolute; top:46px; right:0; width:340px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; z-index:1000; overflow:hidden;">
+                            <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02);">
+                                <span style="font-size:13px; font-weight:800; color:white;">Centro de Descargas</span>
+                            </div>
+                            <div id="gdc-list" style="max-height:400px; overflow-y:auto; padding:12px;">
+                                <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px;">Cargando...</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="topbar-badge">
                         <span class="topbar-badge-dot"></span>
                         Conectado
@@ -271,6 +308,21 @@
             overlay?.addEventListener('click', () => {
                 sidebar.classList.remove('mobile-open');
                 overlay.classList.remove('active');
+            });
+
+            // Accordion Logic
+            document.querySelectorAll('.sidebar-dropdown-toggle').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const dropdown = btn.closest('.sidebar-dropdown');
+                    const isOpen = dropdown.classList.contains('open');
+                    
+                    // Close other dropdowns (optional, but cleaner)
+                    document.querySelectorAll('.sidebar-dropdown').forEach(d => {
+                        if (d !== dropdown) d.classList.remove('open');
+                    });
+
+                    dropdown.classList.toggle('open');
+                });
             });
         })();
     </script>
@@ -478,6 +530,108 @@
         // Iniciar polling (cada 6 segundos para no sobrecargar)
         poll();
         setInterval(poll, 6000);
+    })();
+    </script>
+
+    {{-- ═══════════════════════════════════════════════════════
+         GLOBAL DOWNLOADS CENTER SCRIPT
+    ════════════════════════════════════════════════════════════ --}}
+    <script>
+    (function GlobalDownloadsCenter() {
+        const toggleBtn = document.getElementById('gdc-toggle-btn');
+        const panel     = document.getElementById('gdc-panel');
+        const list      = document.getElementById('gdc-list');
+        const badge     = document.getElementById('gdc-badge');
+        
+        let isPanelOpen = false;
+
+        toggleBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isPanelOpen = !isPanelOpen;
+            panel.style.display = isPanelOpen ? 'block' : 'none';
+            if (isPanelOpen) fetchGDCData();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (isPanelOpen && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+                isPanelOpen = false;
+                panel.style.display = 'none';
+            }
+        });
+
+        window.removeGdcItem = function(id) {
+            const el = document.getElementById('gdc-item-'+id);
+            if(el) el.style.opacity = '0.5';
+            
+            fetch('/descargas/' + id, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }
+            }).then(() => fetchGDCData());
+        };
+
+        function fetchGDCData() {
+            fetch('/descargas', { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+            .then(r => r.json())
+            .then(data => {
+                if (!Array.isArray(data)) return;
+                
+                let html = '';
+                let isAnyProcessing = false;
+
+                if (data.length === 0) {
+                    html = '<div style="padding:30px 20px; text-align:center; color:var(--text-muted);"><svg style="opacity:0.2; margin-bottom:8px;" viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><p style="font-size:12px; margin:0;">No hay historial de descargas recientess.</p></div>';
+                }
+
+                data.forEach(job => {
+                    if (job.status === 'processing') isAnyProcessing = true;
+
+                    html += `<div id="gdc-item-${job.id}" style="padding:12px; border-radius:8px; margin-bottom:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); position:relative; transition:opacity 0.2s;">`;
+                    
+                    // Header row
+                    html += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+                                <span style="font-size:12px; font-weight:700; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:20px; display:flex; align-items:center; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" style="color:var(--violet-light);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    ${job.name}
+                                </span>
+                                <button onclick="removeGdcItem('${job.id}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; position:absolute; top:12px; right:8px; padding:0;" title="Eliminar fila y archivo del servidor">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                             </div>`;
+
+                    if (job.status === 'done') {
+                        html += `<div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:11px; color:var(--text-muted);">${job.size_mb} MB · Finalizada</span>
+                                    <a href="${job.file_url}" style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:4px 10px; border-radius:6px; text-decoration:none; font-weight:800; border:1px solid rgba(16,185,129,0.2);">Descargar</a>
+                                 </div>`;
+                    } else if (job.status === 'processing') {
+                        const totalDisp = job.total > 0 ? job.total.toLocaleString() : '...';
+                        html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="font-size:11px; color:var(--text-muted);">Procesando ${job.processed.toLocaleString()} / ${totalDisp}</span>
+                                    <span style="font-size:11px; font-weight:800; color:var(--emerald);">${job.progress}%</span>
+                                 </div>
+                                 <div style="height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden;">
+                                    <div style="height:100%; width:${job.progress}%; background:var(--emerald); transition:width 0.4s ease;"></div>
+                                 </div>`;
+                    } else {
+                        html += `<span style="font-size:11px; color:var(--rose);">Error: ${job.error || 'Cancelado'}</span>`;
+                    }
+
+                    html += `</div>`;
+                });
+
+                list.innerHTML = html;
+                badge.style.display = isAnyProcessing ? 'block' : 'none';
+            })
+            .catch(() => {});
+        }
+
+        // Start background polling: faster if open, slower if closed
+        setInterval(() => {
+            fetchGDCData();
+        }, 3000); // We keep it at 3s so the green notification badge in the navbar updates in real time globally!
+
+        // Initial fetch
+        setTimeout(fetchGDCData, 500); 
     })();
     </script>
 </body>

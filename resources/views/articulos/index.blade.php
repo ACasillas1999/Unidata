@@ -105,16 +105,54 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 15%">Clave</th>
-                    <th style="width: 60%">Descripción</th>
-                    <th style="width: 25%">Estatus</th>
+                    <th style="min-width: 120px;">Clave_Articulo</th>
+                    <th style="min-width: 250px;">Descripcion</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">Unidad_Medida</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">Linea</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">Clasificacion</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">MN_USD</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio_Lista</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio_Venta</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Desc_Precio_Venta</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio_Especial</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Desc_Precio_Espec</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio4</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Desc_Precio4</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">CostoVenta</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">PorcentajeDescuento</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">Articulo_Kit</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">Articulo_Serie</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Margen_Minimo</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">Color</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">Protocolo</th>
+                    <th style="white-space: nowrap; padding: 0 15px;">IDSAT</th>
+                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">Habilitado</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($articles as $row)
                     <tr>
-                        <td class="td--code">{{ $row->Clave_Articulo }}</td>
-                        <td class="td--desc">{{ $row->Descripcion }}</td>
+                        <td class="td--code" style="white-space: nowrap;">{{ $row->Clave_Articulo }}</td>
+                        <td class="td--desc" style="min-width: 250px;">{{ $row->Descripcion }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Unidad_Medida ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Linea ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Clasificacion ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->MN_USD ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio_Lista) ? number_format((float)$row->Precio_Lista, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio_Venta) ? number_format((float)$row->Precio_Venta, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Desc_Precio_Venta) ? number_format((float)$row->Desc_Precio_Venta, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio_Especial) ? number_format((float)$row->Precio_Especial, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Desc_Precio_Espec) ? number_format((float)$row->Desc_Precio_Espec, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio4) ? number_format((float)$row->Precio4, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Desc_Precio4) ? number_format((float)$row->Desc_Precio4, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace; color: var(--amber);">{{ isset($row->CostoVenta) ? number_format((float)$row->CostoVenta, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: center; font-family: monospace; color: var(--emerald);">{{ isset($row->PorcentajeDescuento) ? number_format((float)$row->PorcentajeDescuento, 2).'%' : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: center;">{{ $row->Articulo_Kit ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: center;">{{ $row->Articulo_Serie ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace; color: var(--violet-light);">{{ isset($row->Margen_Minimo) ? number_format((float)$row->Margen_Minimo, 2) : '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Color ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Protocolo ?? '' }}</td>
+                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->IDSAT ?? '' }}</td>
                         <td>
                             @if(isset($row->Habilitado) && $row->Habilitado)
                                 <span class="homo-pill homo-pill--ok">
@@ -131,7 +169,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="td--empty" style="padding:40px; text-align:center;">
+                        <td colspan="22" class="td--empty" style="padding:40px; text-align:center;">
                             No se encontraron artículos en esta base de datos
                         </td>
                     </tr>

@@ -6,6 +6,7 @@ use App\Http\Controllers\ConexionesController;
 use App\Http\Controllers\HomologacionController;
 use App\Http\Controllers\ProveedoresController;
 use App\Http\Controllers\EstadisticasController;
+use App\Http\Controllers\DownloadsController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect raíz a artículos
@@ -17,6 +18,8 @@ Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('est
 
 // Módulo: Artículos
 Route::get('/articulos', [ArticulosController::class, 'index'])->name('articulos.index');
+Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
+Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');
 Route::get('/articulos/export', [ArticulosController::class, 'export'])->name('articulos.export');
 
 // Módulo: Homologación
@@ -25,7 +28,12 @@ Route::post('/homologacion/sync', [HomologacionController::class, 'sync'])->name
 Route::post('/homologacion/sync/cancel', [HomologacionController::class, 'cancelSync'])->name('homologacion.sync.cancel');
 Route::get('/homologacion/sync/status', [HomologacionController::class, 'syncStatus'])->name('homologacion.sync.status');
 Route::get('/homologacion/export', [HomologacionController::class, 'export'])->name('homologacion.export');
+Route::post('/homologacion/export/bg', [HomologacionController::class, 'exportBgStart'])->name('homologacion.export.bg');
+Route::get('/homologacion/export/status/{job_id}', [HomologacionController::class, 'exportBgStatus'])->name('homologacion.export.status');
 
+// Módulo: Descargas Globales
+Route::get('/descargas', [DownloadsController::class, 'index'])->name('descargas.index');
+Route::delete('/descargas/{id}', [DownloadsController::class, 'destroy'])->name('descargas.destroy');
 // Módulo: Clientes
 Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
 

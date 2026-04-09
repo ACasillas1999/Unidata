@@ -363,6 +363,94 @@ html, body {
 }
 .sidebar.collapsed .sidebar-link-dot { opacity: 0; }
 
+/* Dropdown Menu Styles */
+.sidebar-dropdown {
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-dropdown-toggle {
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    padding: 9px 8px; /* Coincide con .sidebar-link estándar */
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-dropdown-arrow {
+    margin-left: auto;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+.sidebar-dropdown-arrow svg { width: 14px; height: 14px; }
+.sidebar-dropdown.open .sidebar-dropdown-arrow { transform: rotate(180deg); opacity: 1; color: var(--amber); }
+
+/* Submenu */
+.sidebar-dropdown-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.15); /* Fondo más oscuro para distinguir profundidad */
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.sidebar-dropdown.open .sidebar-dropdown-menu { 
+    display: flex;
+    animation: dropdownFadeIn 0.3s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.sidebar.collapsed .sidebar-dropdown-menu { display: none !important; }
+
+.sidebar-dropdown-link {
+    display: flex;
+    align-items: center;
+    padding: 9px 12px 9px 42px; /* Más padding izquierdo para indentación */
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all var(--transition);
+    position: relative;
+}
+.sidebar-dropdown-link:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-primary);
+}
+.sidebar-dropdown-link.active {
+    color: var(--amber-light);
+    font-weight: 700;
+    background: rgba(245,158,11,0.06);
+}
+
+.sidebar-dropdown-link.active::after {
+    content: '';
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    background: var(--amber);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--amber);
+}
+
 /* Tooltip on collapsed */
 .sidebar.collapsed .sidebar-link:hover::after {
     content: attr(data-tooltip);
