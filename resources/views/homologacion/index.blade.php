@@ -219,7 +219,7 @@
                 @elseif($search)
                     · "<span style="color: var(--violet-light);">{{ $search }}</span>" · {{ number_format($articles->total()) }}
                 @else
-                    · {{ number_format($stats['universo'] ?? 0) }} artículos
+                    · {{ number_format($stats['universo'] ?? 0) }} artículos registrados
                 @endif
             </span>
         </div>
@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
 
         <h2 style="font-size:20px; font-weight:800; color:white; margin:0 0 6px; letter-spacing:-0.01em;">Sincronizando Datos</h2>
-        <p id="sync-step-label" style="font-size:13px; color:#94a3b8; margin:0 0 28px;">Conectando con las 12 sucursales...</p>
+        <p id="sync-step-label" style="font-size:13px; color:#94a3b8; margin:0 0 28px;">Conectando con las {{ count($branches) }} sucursales...</p>
 
         {{-- Pasos del proceso --}}
         <div style="display:flex; flex-direction:column; gap:10px; text-align:left; margin-bottom:28px;">
@@ -537,7 +537,7 @@ function startSync() {
         .then(r => r.json())
         .then(data => {
             const step  = parseInt(data.step  ?? 0);
-            const total = parseInt(data.total ?? 12);
+            const total = parseInt(data.total ?? {{ count($branches) }});
             const pct   = total > 0 ? Math.round((step / total) * 95) : 5;
 
             bar.style.width  = pct + '%';

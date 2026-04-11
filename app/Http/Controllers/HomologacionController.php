@@ -11,21 +11,28 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class HomologacionController extends Controller
 {
-    /** Sucursales y sus columnas en la nueva base de datos local */
-    private const BRANCHES = [
-        'DEASA'      => ['conn' => 'deasa',      'col' => 'en_deasa'],
-        'AIESA'      => ['conn' => 'aiesa',      'col' => 'en_aiesa'],
-        'CEDIS'      => ['conn' => 'cedis',      'col' => 'en_cedis'],
-        'DIMEGSA'    => ['conn' => 'dimegsa',    'col' => 'en_dimegsa'],
-        'FESA'       => ['conn' => 'fesa',       'col' => 'en_fesa'],
-        'GABSA'      => ['conn' => 'gabsa',      'col' => 'en_gabsa'],
-        'ILU'        => ['conn' => 'ilu',        'col' => 'en_ilu'],
-        'QUERÉTARO'  => ['conn' => 'queretaro',  'col' => 'en_queretaro'],
-        'SEGSA'      => ['conn' => 'segsa',      'col' => 'en_segsa'],
-        'TAPATÍA'    => ['conn' => 'tapatia',    'col' => 'en_tapatia'],
-        'VALLARTA'   => ['conn' => 'vallarta',   'col' => 'en_vallarta'],
-        'WASHINGTON' => ['conn' => 'washington', 'col' => 'en_washington'],
-    ];
+    /**
+     * Obtiene el listado de sucursales activas y sus columnas correspondientes en la matriz.
+     */
+    private function getDynamicBranches(): array
+    {
+        $activeBranches = \App\Models\Branch::query()->active()->orderBy('name')->get();
+        $physicalCols = MatrizHomologacion::getPhysicalBranchColumns();
+        
+        $branches = [];
+        foreach ($activeBranches as $branch) {
+            $colName = MatrizHomologacion::resolveColumnName($branch->code);
+            // Solo incluimos la sucursal si tiene columna física en la matriz para evitar errores SQL
+            if (in_array($colName, $physicalCols)) {
+                $branches[strtoupper($branch->name)] = [
+                    'conn' => $branch->code,
+                    'col'  => $colName
+                ];
+            }
+        }
+
+        return $branches;
+    }
 
     public function index(Request $request): View
     {
@@ -39,7 +46,8 @@ class HomologacionController extends Controller
         $stats       = [];
 
         try {
-            $allCols = array_column(array_values(self::BRANCHES), 'col');
+            $branches = $this->getDynamicBranches();
+            $allCols  = array_column(array_values($branches), 'col');
 
             $query = MatrizHomologacion::query();
 
@@ -127,11 +135,11 @@ class HomologacionController extends Controller
             $resultTotal = $query->toBase()->getCountForPagination();
 
             // ── Transformación al formato que espera la vista ─────────────
-            $paginator->getCollection()->transform(function ($item) {
+            $paginator->getCollection()->transform(function ($item) use ($branches) {
                 $out = new \stdClass();
                 $out->Codigo_Deasa      = $item->clave;
                 $out->Descripcion_Deasa = $item->descripcion;
-                foreach (self::BRANCHES as $b) {
+                foreach ($branches as $b) {
                     $raw = $item->getRawOriginal($b['col']);
                     if ($raw === 1 || $raw === '1') {
                         $out->{$b['col']} = 'ACTIVO';
@@ -167,7 +175,7 @@ class HomologacionController extends Controller
             'cobertura'  => $cobertura,
             'tienEn'     => array_values($tienEn),
             'faltaEn'    => array_values($faltaEn),
-            'branches'   => self::BRANCHES,
+            'branches'   => $branches,
             'stats'      => $stats,
             'per_page'   => $perPage ?? 50,
         ]);
@@ -192,9 +200,9 @@ class HomologacionController extends Controller
         // Escribir estado inicial
         file_put_contents($statusFile, json_encode([
             'status'     => 'running',
-            'message'    => 'Iniciando sincronizaci\u00f3n...',
+            'message'    => 'Iniciando sincronización...',
             'step'       => 0,
-            'total'      => 12,
+            'total'      => count($this->getDynamicBranches()),
             'updated_at' => time(),
         ], JSON_UNESCAPED_UNICODE));
 
@@ -217,9 +225,10 @@ class HomologacionController extends Controller
     public function syncStatus()
     {
         $statusFile = SyncMatrizHomologacion::statusFile();
+        $totalBranches = count($this->getDynamicBranches());
 
         if (!file_exists($statusFile)) {
-            return response()->json(['status' => 'idle', 'message' => 'Sin sincronizaci\u00f3n reciente.', 'step' => 0, 'total' => 12]);
+            return response()->json(['status' => 'idle', 'message' => 'Sin sincronización reciente.', 'step' => 0, 'total' => $totalBranches]);
         }
 
         return response()->json(
@@ -277,11 +286,12 @@ class HomologacionController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
-        // Obtenemos solo los nombres de las columnas para la consulta
+        // Obtenemos sucursales dinámicas
+        $branchesMap = $this->getDynamicBranches();
         $branchCols = [];
         $branchNames = [];
         $allCols = [];
-        foreach (self::BRANCHES as $name => $info) {
+        foreach ($branchesMap as $name => $info) {
             $branchNames[] = $name;
             $branchCols[]  = $info['col'];
             $allCols[]     = $info['col'];

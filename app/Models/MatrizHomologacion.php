@@ -11,54 +11,39 @@ class MatrizHomologacion extends Model
 
     protected $table = 'matriz_homologacions';
 
-    protected $fillable = [
-        'clave',
-        'descripcion',
-        'unidad_medida',
-        'linea',
-        'clasificacion',
-        'mn_usd',
-        'precio_lista',
-        'des_precio_venta',
-        'precio_venta',
-        'desc_precio_espec',
-        'precio_especial',
-        'desc_precio4',
-        'precio4',
-        'articulo_kit',
-        'margen_minimo',
-        'articulo_serie',
-        'color',
-        'protocolo',
-        'idsat',
-        'costo_venta',
-        'porcetaje_descuento',
-        'en_deasa',
-        'en_aiesa',
-        'en_cedis',
-        'en_dimegsa',
-        'en_fesa',
-        'en_gabsa',
-        'en_ilu',
-        'en_queretaro',
-        'en_segsa',
-        'en_tapatia',
-        'en_vallarta',
-        'en_washington',
-    ];
+    public static function resolveColumnName(string $code): string
+    {
+        $map = [
+            'codi'        => 'en_washington',
+            'iluminacion' => 'en_ilu',
+        ];
 
-    protected $casts = [
-        'en_deasa' => 'boolean',
-        'en_aiesa' => 'boolean',
-        'en_cedis' => 'boolean',
-        'en_dimegsa' => 'boolean',
-        'en_fesa' => 'boolean',
-        'en_gabsa' => 'boolean',
-        'en_ilu' => 'boolean',
-        'en_queretaro' => 'boolean',
-        'en_segsa' => 'boolean',
-        'en_tapatia' => 'boolean',
-        'en_vallarta' => 'boolean',
-        'en_washington' => 'boolean',
-    ];
+        return $map[strtolower($code)] ?? ('en_' . strtolower($code));
+    }
+
+    /**
+     * Hace que todas las columnas en_* sean fillable dinámicamente.
+     */
+    public function getFillable()
+    {
+        $baseFillable = [
+            'clave', 'descripcion', 'unidad_medida', 'linea', 'clasificacion',
+            'mn_usd', 'precio_lista', 'des_precio_venta', 'precio_venta', 'desc_precio_espec',
+            'precio_especial', 'desc_precio4', 'precio4', 'articulo_kit', 'margen_minimo',
+            'articulo_serie', 'color', 'protocolo', 'idsat', 'costo_venta', 'porcetaje_descuento',
+        ];
+
+        return array_merge($baseFillable, self::getPhysicalBranchColumns());
+    }
+
+    /**
+     * Retorna todas las columnas 'en_*' que realmente existen en la tabla física.
+     */
+    public static function getPhysicalBranchColumns(): array
+    {
+        return array_filter(
+            \Illuminate\Support\Facades\Schema::getColumnListing('matriz_homologacions'),
+            fn($col) => str_starts_with($col, 'en_')
+        );
+    }
 }

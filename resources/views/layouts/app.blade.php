@@ -124,6 +124,23 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{{ route('db_master.index') }}"
+                               class="sidebar-link {{ request()->routeIs('db_master.*') ? 'active' : '' }}"
+                               id="nav-db-master">
+                                <span class="sidebar-link-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                                    </svg>
+                                </span>
+                                <span class="sidebar-link-label">DB Master</span>
+                                @if(request()->routeIs('db_master.*'))
+                                    <span class="sidebar-link-dot"></span>
+                                @endif
+                            </a>
+                        </li>
+                        <li>
                             <a href="{{ route('estadisticas.index') }}"
                                class="sidebar-link {{ request()->routeIs('estadisticas.*') ? 'active' : '' }}"
                                id="nav-estadisticas">

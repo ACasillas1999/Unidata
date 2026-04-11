@@ -22,11 +22,15 @@
 
 <div class="content-grid">
     <div class="card">
-        <div class="card-header card-header--row">
+        <div class="card-header card-header--row" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h3 class="card-title">1. Configuración de Carga</h3>
                 <p class="card-subtitle">Sube tu archivo y selecciona las preferencias</p>
             </div>
+            <a href="{{ route('articulos.historial') }}" class="btn btn--secondary shadow-premium" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Ver Historial de Subidas
+            </a>
         </div>
         <div class="card-body">
             <div id="upload-container" class="glass" style="padding: 60px 40px; text-align: center; border: 2px dashed var(--border); border-radius: var(--radius-xl); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(255,255,255,0.01); position: relative; overflow: hidden;">
@@ -137,7 +141,13 @@
                     <p class="card-subtitle">Verifica que las columnas coincidan antes de procesar</p>
                 </div>
             </div>
-            <button onclick="document.getElementById('preview-container').style.display = 'none'" class="btn btn--ghost" style="padding: 6px 12px; font-size: 11px;">Ocultar</button>
+            <div style="display: flex; gap: 8px;">
+                <button id="select-changed-btn" class="btn btn--primary" style="padding: 6px 14px; font-size: 11px; background: var(--amber); border: none; display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    Seleccionar solo campos con cambios
+                </button>
+                <button onclick="document.getElementById('preview-container').style.display = 'none'" class="btn btn--ghost" style="padding: 6px 12px; font-size: 11px;">Ocultar</button>
+            </div>
         </div>
         <div class="card-body" style="flex: 1; overflow: auto; padding: 0;">
             <div class="table-wrap">
@@ -247,9 +257,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const processBtn = document.getElementById('process-btn');
     const selectAllBranches = document.getElementById('select-all-branches');
     const branchCheckboxes = document.querySelectorAll('.branch-checkbox');
+    const selectChangedBtn = document.getElementById('select-changed-btn');
 
     let currentData = null;
     let selectedFile = null;
+    let lastChangedCols = [];
 
     // Handle File Selection
     dropZone.addEventListener('click', () => fileInput.click());
@@ -312,44 +324,113 @@ document.addEventListener('DOMContentLoaded', () => {
         branchCheckboxes.forEach(cb => cb.checked = selectAllBranches.checked);
     });
 
-    // Preview Logic
-    previewBtn.addEventListener('click', () => {
-        if (!currentData || currentData.length === 0) return;
+    // Preview Logic (Backend-powered)
+    previewBtn.addEventListener('click', async () => {
+        const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
+        if (!selectedFile) {
+            Swal.fire('Atención', 'Sube un archivo primero.', 'warning');
+            return;
+        }
 
-        const headerRow = document.getElementById('preview-header-row');
-        const body = document.getElementById('preview-body');
-        const previewContainer = document.getElementById('preview-container');
-
-        headerRow.innerHTML = '';
-        body.innerHTML = '';
-
-        const headers = Object.keys(currentData[0]);
-        headers.forEach(h => {
-            const th = document.createElement('th');
-            th.textContent = h;
-            th.style.padding = '8px 12px';
-            th.style.textAlign = 'left';
-            th.style.background = 'var(--bg-dark)';
-            th.style.fontSize = '11px';
-            th.style.color = 'var(--text-muted)';
-            th.style.textTransform = 'uppercase';
-            headerRow.appendChild(th);
+        Swal.fire({
+            title: 'Generando comparativa...',
+            text: 'Estamos comparando tu CSV con la Base Maestra',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
         });
 
-        currentData.slice(0, 20).forEach(row => {
-            const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid var(--border-light)';
-            headers.forEach(h => {
-                const td = document.createElement('td');
-                td.textContent = row[h];
-                td.style.padding = '8px 12px';
-                tr.appendChild(td);
+        const formData = new FormData();
+        formData.append('csv_file', selectedFile);
+        columns.forEach(c => formData.append('columns[]', c));
+
+        try {
+            const response = await fetch('{{ route("articulos.subir.preview") }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: formData
             });
-            body.appendChild(tr);
+
+            const data = await response.json();
+            Swal.close();
+
+            if (!data.success) {
+                Swal.fire('Error', data.message, 'error');
+                return;
+            }
+
+            lastChangedCols = data.changed_cols || [];
+            selectChangedBtn.style.display = (lastChangedCols.length > 0) ? 'flex' : 'none';
+
+            const headerRow = document.getElementById('preview-header-row');
+            const body = document.getElementById('preview-body');
+            const previewContainer = document.getElementById('preview-container');
+
+            headerRow.innerHTML = '<th style="padding:10px; font-size:11px;">CLAVE</th><th style="padding:10px; font-size:11px;">CAMBIOS DETECTADOS (VALOR VIEJO ➜ NUEVO)</th>';
+            body.innerHTML = '';
+
+            if (data.diffs.length === 0) {
+                body.innerHTML = '<tr><td colspan="2" style="padding:20px; text-align:center; color:var(--emerald);">✓ Todos los artículos coinciden con la Base Maestra. No hay cambios necesarios.</td></tr>';
+            } else {
+                data.diffs.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border-light)';
+                    
+                    let diffHtml = '';
+                    if (item.status === 'new') {
+                        diffHtml = '<span style="color:var(--sky); font-weight:bold;">[NUEVO ARTÍCULO]</span>';
+                    } else {
+                        Object.keys(item.diff).forEach(field => {
+                            const d = item.diff[field];
+                            diffHtml += `<div style="margin-bottom:4px;">
+                                <strong style="color:var(--text-muted); font-size:10px;">${field.toUpperCase()}:</strong> 
+                                <span style="text-decoration:line-through; color:var(--rose); opacity:0.7;">${d.old ?? 'NULL'}</span> 
+                                <span style="color:var(--emerald); font-weight:bold;">➜ ${d.new}</span>
+                            </div>`;
+                        });
+                    }
+
+                    tr.innerHTML = `
+                        <td style="padding:12px; font-family:monospace; vertical-align:top;">
+                            <div style="font-weight:bold; color:var(--amber);">${item.clave}</div>
+                            <div style="font-size:10px; color:var(--text-muted);">${item.description || ''}</div>
+                        </td>
+                        <td style="padding:12px;">${diffHtml}</td>
+                    `;
+                    body.appendChild(tr);
+                });
+            }
+
+            previewContainer.style.display = 'flex';
+            previewContainer.scrollIntoView({ behavior: 'smooth' });
+
+        } catch (error) {
+            Swal.fire('Error', 'Fallo al conectar con el servidor para la vista previa.', 'error');
+        }
+    });
+
+    // Lógica para el botón mágico de selección
+    selectChangedBtn.addEventListener('click', () => {
+        if (!lastChangedCols.length) return;
+
+        const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
+        columnCheckboxes.forEach(cb => {
+            cb.checked = lastChangedCols.includes(cb.value);
         });
 
-        previewContainer.style.display = 'flex';
-        previewContainer.scrollIntoView({ behavior: 'smooth' });
+        Swal.fire({
+            icon: 'info',
+            title: 'Columnas Seleccionadas',
+            text: `Se han marcado automáticamente las ${lastChangedCols.length} columnas que presentan cambios en el CSV.`,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            background: '#1a1d27',
+            color: '#fff'
+        });
+        
+        // Desplazarse de nuevo a la configuración para ver los cambios
+        configOptions.scrollIntoView({ behavior: 'smooth' });
     });
 
     // Process Update
@@ -369,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const result = await Swal.fire({
             title: '¿Confirmar actualización masiva?',
-            text: `Se actualizarán ${currentData.length} artículos en ${branches.length} sucursales. Esta acción no se puede deshacer.`,
+            text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV. Esta acción no se puede deshacer.`,
             icon: 'warning',
             showCancelButton: true,
             background: '#1a1d27',

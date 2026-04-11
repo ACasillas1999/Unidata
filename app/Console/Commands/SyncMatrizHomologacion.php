@@ -29,6 +29,12 @@ class SyncMatrizHomologacion extends Command
         ], JSON_UNESCAPED_UNICODE));
     }
 
+    /** Resolves the branch code to the correct matrix column name */
+    private function resolveColumnName(string $code): string
+    {
+        return MatrizHomologacion::resolveColumnName($code);
+    }
+
     public function handle(BranchConnectionManager $manager)
     {
         // Solo sucursales activas
@@ -46,13 +52,15 @@ class SyncMatrizHomologacion extends Command
         $this->writeStatus('running', 'Iniciando sincronización...', 0, $total);
         $this->info("Iniciando sincronización ({$total} sucursales activas)...");
 
-        // Resetear columnas de todas las sucursales activas
-        $colsToReset = $branches->map(fn ($b) => 'en_' . strtolower($b->code))->toArray();
-        // Solo resetear columnas que existen en el modelo
-        $validCols = array_intersect($colsToReset, MatrizHomologacion::make()->getFillable());
+        // Resetear columnas de todas las sucursales activas que existen físicamente
+        $physicalCols = MatrizHomologacion::getPhysicalBranchColumns();
+        $colsToReset = $branches->map(fn ($b) => $this->resolveColumnName($b->code))->toArray();
+        
+        // Solo resetear columnas que existen tanto en el modelo como físicamente
+        $validCols = array_intersect($colsToReset, $physicalCols);
 
         if (!empty($validCols)) {
-            MatrizHomologacion::query()->update(array_fill_keys($validCols, false));
+            MatrizHomologacion::query()->update(array_fill_keys($validCols, null));
         }
 
         foreach ($branches as $branch) {
@@ -66,7 +74,7 @@ class SyncMatrizHomologacion extends Command
             }
 
             $step++;
-            $colName = 'en_' . strtolower($branch->code);
+            $colName = $this->resolveColumnName($branch->code);
 
             // Verificar que la columna existe en el modelo antes de intentar escribirla
             if (!in_array($colName, MatrizHomologacion::make()->getFillable())) {
@@ -150,6 +158,18 @@ class SyncMatrizHomologacion extends Command
 
             } catch (\Throwable $e) {
                 $this->error("   [ERROR] {$branch->name}: " . $e->getMessage());
+            }
+        }
+        
+        // Eliminar artículos que no están en ninguna sucursal (todas las columnas son NULL)
+        if (!empty($validCols)) {
+            $queryDelete = MatrizHomologacion::query();
+            foreach ($validCols as $col) {
+                $queryDelete->whereNull($col);
+            }
+            $deleted = $queryDelete->delete();
+            if ($deleted > 0) {
+                $this->info("   [CLEANUP] Se eliminaron {$deleted} registros que ya no existen en ninguna sucursal.");
             }
         }
 

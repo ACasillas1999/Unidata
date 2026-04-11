@@ -7,6 +7,7 @@ use App\Http\Controllers\HomologacionController;
 use App\Http\Controllers\ProveedoresController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\DownloadsController;
+use App\Http\Controllers\DBMasterController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect raíz a artículos
@@ -21,6 +22,11 @@ Route::get('/articulos', [ArticulosController::class, 'index'])->name('articulos
 Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
 Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');
 Route::get('/articulos/export', [ArticulosController::class, 'export'])->name('articulos.export');
+Route::post('/articulos/subir/preview', [ArticulosController::class, 'previewSubida'])->name('articulos.subir.preview');
+Route::get('/articulos/historial', [ArticulosController::class, 'historialSubidas'])->name('articulos.historial');
+Route::get('/articulos/historial/{id}/detalles', [ArticulosController::class, 'historialDetalles'])->name('articulos.historial.detalles');
+Route::get('/articulos/historial/{id}/descargar', [ArticulosController::class, 'descargarCsv'])->name('articulos.historial.descargar');
+Route::post('/articulos/revertir/{id}', [ArticulosController::class, 'revertirSubida'])->name('articulos.revertir');
 
 // Módulo: Homologación
 Route::get('/homologacion', [HomologacionController::class, 'index'])->name('homologacion.index');
@@ -30,6 +36,12 @@ Route::get('/homologacion/sync/status', [HomologacionController::class, 'syncSta
 Route::get('/homologacion/export', [HomologacionController::class, 'export'])->name('homologacion.export');
 Route::post('/homologacion/export/bg', [HomologacionController::class, 'exportBgStart'])->name('homologacion.export.bg');
 Route::get('/homologacion/export/status/{job_id}', [HomologacionController::class, 'exportBgStatus'])->name('homologacion.export.status');
+
+// Módulo: DB Master
+Route::get('/db-master', [DBMasterController::class, 'index'])->name('db_master.index');
+Route::get('/db-master/export', [DBMasterController::class, 'export'])->name('db_master.export');
+Route::post('/db-master/sync', [DBMasterController::class, 'sync'])->name('db_master.sync');
+Route::get('/db-master/history', [DBMasterController::class, 'history'])->name('db_master.history');
 
 // Módulo: Descargas Globales
 Route::get('/descargas', [DownloadsController::class, 'index'])->name('descargas.index');
