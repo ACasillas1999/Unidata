@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Conexiones')
-@section('breadcrumb', 'Conexiones')
+@section('breadcrumb', 'Configuración / Conexiones')
 
 @section('content')
 

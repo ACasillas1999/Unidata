@@ -35,6 +35,17 @@ class SyncMatrizHomologacion extends Command
         return MatrizHomologacion::resolveColumnName($code);
     }
 
+    /** Sanitizes date values like '0000-00-00' or '1901-01-01' to null */
+    private function sanitizeDate($date): ?string
+    {
+        if (!$date) return null;
+        $d = (string) $date;
+        if ($d === '0000-00-00' || $d === '0000-00-00 00:00:00' || $d === '1901-01-01') {
+            return null;
+        }
+        return $d;
+    }
+
     public function handle(BranchConnectionManager $manager)
     {
         // Solo sucursales activas
@@ -90,36 +101,35 @@ class SyncMatrizHomologacion extends Command
                 $totalProcessed = 0;
 
                 $updateColumns = [
-                    $colName,
-                    'descripcion',
-                    'unidad_medida',
-                    'linea',
-                    'clasificacion',
-                    'mn_usd',
-                    'precio_lista',
-                    'des_precio_venta',
-                    'precio_venta',
-                    'desc_precio_espec',
-                    'precio_especial',
-                    'desc_precio4',
-                    'precio4',
-                    'articulo_kit',
-                    'margen_minimo',
-                    'articulo_serie',
-                    'color',
-                    'protocolo',
-                    'idsat',
-                    'costo_venta',
-                    'porcetaje_descuento'
+                    $colName, 'descripcion', 'unidad_medida', 'linea', 'clasificacion', 'area',
+                    'mn_usd', 'precio_lista', 'des_precio_venta', 'precio_venta', 'desc_precio_espec',
+                    'precio_especial', 'desc_precio4', 'precio4', 'desc_precio_minimo', 'precio_minimo',
+                    'precio_tope', 'costo_venta', 'porcetaje_descuento', 'desc_proveedor',
+                    'articulo_kit', 'margen_minimo', 'articulo_serie', 'color', 'protocolo', 'idsat',
+                    'clave_proveedor_1', 'costo_act_prov_1', 'clave_prov_2', 'costo_act_prov_2', 
+                    'clave_prov_3', 'costo_act_prov_3', 'fecha_costo_act_p',
+                    'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'existencia_teorica', 'existencia_fisica',
+                    'costo_promedio', 'costo_promedio_ant', 'costo_ult_compra', 'fecha_ult_compra', 
+                    'costo_compra_ant', 'fecha_compra_ant', 'fecha_alta',
+                    'en_promocion', 'critico', 'control_pedimentos', 'id_impuesto_sat', 'iva', 'id_tipo_factor',
+                    'sustituto', 'sustituto1', 'sustituto2', 'articulo_conversion', 'conversion', 'peso', 'ubicacion', 'std_pack'
                 ];
 
                 $connection
                     ->table('articulo')
                     ->select(
-                        'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion',
+                        'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion', 'Area',
                         'MN_USD', 'Precio_Lista', 'Desc_Precio_Venta', 'Precio_Venta', 'Desc_Precio_Espec',
-                        'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Articulo_Kit', 'Margen_Minimo',
-                        'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT', 'CostoVenta', 'PorcentajeDescuento'
+                        'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Desc_Precio_Minimo', 'Precio_Minimo',
+                        'PrecioTope', 'CostoVenta', 'PorcentajeDescuento', 'Desc_Proveedor',
+                        'Articulo_Kit', 'Margen_Minimo', 'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT',
+                        'Clave_Proveedor_1', 'Costo_Act_Prov_1', 'Clave_Prov_2', 'Costo_Act_Prov_2', 
+                        'Clave_Prov_3', 'Costo_Act_Prov_3', 'Fecha_Costo_Act_P',
+                        'Inventario_Maximo', 'Inventario_Minimo', 'Punto_Reorden', 'Existencia_Teorica', 'Existencia_Fisica',
+                        'Costo_Promedio', 'Costo_Promedio_Ant', 'Costo_Ult_Compra', 'Fecha_Ult_Compra', 
+                        'Costo_Compra_Ant', 'Fecha_Compra_Ant', 'Fecha_Alta',
+                        'En_Promocion', 'Critico', 'ControlPedimentos', 'IDImpuestoSAT', 'IVA', 'IDTipoFactor',
+                        'Sustituto', 'Sustituto1', 'Sustituto2', 'ArticuloConversion', 'Conversion', 'Peso', 'Ubicacion', 'StdPack'
                     )
                     ->orderBy('Clave_Articulo')
                     ->chunk(2000, function ($articles) use ($colName, $updateColumns, &$totalProcessed) {
@@ -130,7 +140,8 @@ class SyncMatrizHomologacion extends Command
                                 'descripcion'         => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
                                 'unidad_medida'       => $art->Unidad_Medida ?? null,
                                 'linea'               => $art->Linea ?? null,
-                                'clasificacion'       => $art->Clasificacion ?? ($art->Clasificación ?? null),
+                                'clasificacion'       => $art->Clasificacion ?? null,
+                                'area'                => $art->Area ?? null,
                                 'mn_usd'              => $art->MN_USD ?? null,
                                 'precio_lista'        => $art->Precio_Lista ?? null,
                                 'des_precio_venta'    => $art->Desc_Precio_Venta ?? null,
@@ -139,14 +150,52 @@ class SyncMatrizHomologacion extends Command
                                 'precio_especial'     => $art->Precio_Especial ?? null,
                                 'desc_precio4'        => $art->Desc_Precio4 ?? null,
                                 'precio4'             => $art->Precio4 ?? null,
-                                'articulo_kit'        => $art->Articulo_Kit ?? null,
+                                'desc_precio_minimo'  => $art->Desc_Precio_Minimo ?? null,
+                                'precio_minimo'       => $art->Precio_Minimo ?? null,
+                                'precio_tope'         => $art->PrecioTope ?? null,
+                                'costo_venta'         => $art->CostoVenta ?? null,
+                                'porcetaje_descuento' => $art->PorcentajeDescuento ?? null,
+                                'desc_proveedor'      => $art->Desc_Proveedor ?? null,
+                                'articulo_kit'        => $art->Articulo_Kit ?? 0,
                                 'margen_minimo'       => $art->Margen_Minimo ?? null,
-                                'articulo_serie'      => $art->Articulo_Serie ?? null,
+                                'articulo_serie'      => $art->Articulo_Serie ?? 0,
                                 'color'               => $art->Color ?? null,
                                 'protocolo'           => $art->Protocolo ?? null,
                                 'idsat'               => $art->IDSAT ?? null,
-                                'costo_venta'         => $art->CostoVenta ?? null,
-                                'porcetaje_descuento' => $art->PorcentajeDescuento ?? null,
+                                'clave_proveedor_1'   => $art->Clave_Proveedor_1 ?? null,
+                                'costo_act_prov_1'    => $art->Costo_Act_Prov_1 ?? null,
+                                'clave_prov_2'        => $art->Clave_Prov_2 ?? null,
+                                'costo_act_prov_2'    => $art->Costo_Act_Prov_2 ?? null,
+                                'clave_prov_3'        => $art->Clave_Prov_3 ?? null,
+                                'costo_act_prov_3'    => $art->Costo_Act_Prov_3 ?? null,
+                                'fecha_costo_act_p'   => $this->sanitizeDate($art->Fecha_Costo_Act_P),
+                                'inventario_maximo'   => $art->Inventario_Maximo ?? null,
+                                'inventario_minimo'   => $art->Inventario_Minimo ?? null,
+                                'punto_reorden'       => $art->Punto_Reorden ?? null,
+                                'existencia_teorica'  => $art->Existencia_Teorica ?? null,
+                                'existencia_fisica'   => $art->Existencia_Fisica ?? null,
+                                'costo_promedio'      => $art->Costo_Promedio ?? null,
+                                'costo_promedio_ant'  => $art->Costo_Promedio_Ant ?? null,
+                                'costo_ult_compra'    => $art->Costo_Ult_Compra ?? null,
+                                'fecha_ult_compra'    => $this->sanitizeDate($art->Fecha_Ult_Compra),
+                                'costo_compra_ant'    => $art->Costo_Compra_Ant ?? null,
+                                'fecha_compra_ant'    => $this->sanitizeDate($art->Fecha_Compra_Ant),
+                                'fecha_alta'          => $this->sanitizeDate($art->Fecha_Alta),
+                                'en_promocion'        => $art->En_Promocion ?? 0,
+                                'critico'             => $art->Critico ?? 0,
+                                'control_pedimentos'  => $art->ControlPedimentos ?? 0,
+                                'id_impuesto_sat'     => $art->IDImpuestoSAT ?? null,
+                                'iva'                 => $art->IVA ?? 16.00,
+                                'id_tipo_factor'      => $art->IDTipoFactor ?? null,
+                                'sustituto'           => $art->Sustituto ?? null,
+                                'sustituto1'          => $art->Sustituto1 ?? null,
+                                'sustituto2'          => $art->Sustituto2 ?? null,
+                                'articulo_conversion' => $art->ArticuloConversion ?? null,
+                                'conversion'          => $art->Conversion ?? null,
+                                'peso'                => $art->Peso ?? null,
+                                'ubicacion'           => $art->Ubicacion ?? null,
+                                'std_pack'            => $art->StdPack ?? null,
+                                'habilitado'          => $art->Habilitado ? 1 : 0,
                                 $colName              => $art->Habilitado ? 1 : 0,
                             ];
                         }

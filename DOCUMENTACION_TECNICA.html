@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación Técnica - Unidata</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2063cf;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+            --card-bg: #f8fafc;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fff;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Instrument Sans', sans-serif;
+            color: #0f172a;
+            margin-top: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            border-bottom: 4px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+            margin-bottom: 1.2rem;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        p { margin-bottom: 1.2rem; }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 1.5rem;
+        }
+
+        ul {
+            padding-left: 20px;
+            margin-bottom: 1.5rem;
+        }
+
+        li { margin-bottom: 0.5rem; }
+
+        .diagram {
+            background: #fdfdfd;
+            border: 1px dashed #cbd5e1;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            font-style: italic;
+            color: var(--text-muted);
+            margin: 2rem 0;
+        }
+
+        .footer {
+            margin-top: 4rem;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+            h1 { page-break-before: always; }
+            h1:first-child { page-break-before: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Documentación Técnica - Proyecto Unidata</h1>
+    </header>
+
+    <section>
+        <h2>1. Descripción General</h2>
+        <p><strong>Unidata</strong> es un portal centralizado de gestión y sincronización de catálogos (especialmente artículos) entre múltiples sucursales distribuidas.</p>
+        <p>El sistema actúa como un "hub" que permite consolidar la información de una Base de Datos Maestra (<code>db_master</code>) y replicar/validar el estado de los artículos en diversas bases de datos locales (sucursales).</p>
+    </section>
+
+    <section>
+        <h2>2. Arquitectura del Sistema</h2>
+        <p>El proyecto está construido sobre <strong>Laravel 11</strong> y utiliza una arquitectura de bases de datos distribuidas.</p>
+        <div class="card">
+            <ul>
+                <li><strong>Portal Central</strong>: Orquestador principal que gestiona las conexiones y la interfaz de usuario.</li>
+                <li><strong>Base de Datos Maestra (Master)</strong>: Contiene la verdad única sobre los productos.</li>
+                <li><strong>Bases de Datos de Sucursales</strong>: Instancias externas a las que el sistema se conecta dinámicamente.</li>
+            </ul>
+        </div>
+
+        <h3>Flujo de Sincronización</h3>
+        <div class="diagram">
+            [Diagrama de Arquitectura de Sincronización - Visualizado en versión PDF]
+            <br>
+            <small>Portal -> Master DB -> Cruce de Datos -> Matriz de Sucursales</small>
+        </div>
+    </section>
+
+    <section>
+        <h2>3. Modelo de Datos (Entidades Clave)</h2>
+        
+        <div class="card">
+            <h3><code>Branch</code> (Sucursales)</h3>
+            <p>Almacena las credenciales de conexión para cada sucursal.</p>
+            <p><strong>Campos</strong>: <code>code, name, db_host, db_user, db_password, db_database, status</code>.</p>
+        </div>
+
+        <div class="card">
+            <h3><code>DbMasterArticle</code> (Artículos Maestros)</h3>
+            <p>Fuente de verdad del catálogo universal.</p>
+            <p><strong>Campos</strong>: <code>clave, descripcion, unidad_medida, precio_lista, costo_venta</code>.</p>
+        </div>
+
+        <div class="card">
+            <h3><code>MatrizHomologacion</code> (Matriz de Estado)</h3>
+            <p>Consolida en una sola tabla el estado de presencia de un artículo en todas las sucursales conectadas.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>4. Módulos Principales</h2>
+        <ul>
+            <li><strong>Gestión de Artículos</strong>: Carga masiva de CSV con pre-validación y logs de auditoría.</li>
+            <li><strong>Motor de Sincronización</strong>: Procesamiento en segundo plano optimizado para entornos XAMPP/Windows.</li>
+            <li><strong>Global Downloads (GDC)</strong>: Generación asíncrona de reportes pesados.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>5. Stack Tecnológico</h2>
+        <div class="card">
+            <ul>
+                <li><strong>Backend</strong>: PHP 8.2+ / Laravel 11.</li>
+                <li><strong>Frontend</strong>: Interfaz moderna con CSS Variables nativo.</li>
+                <li><strong>Infraestructura</strong>: Multi-conexión dinámica a MariaDB/MySQL.</li>
+            </ul>
+        </div>
+    </section>
+
+    <div class="footer">
+        Generado automáticamente por Antigravity - Sistema Unidata Portal Central.
+    </div>
+
+    <div class="no-print" style="position:fixed; bottom:20px; right:20px;">
+        <button onclick="window.print()" style="background:var(--primary); color:white; border:none; padding:12px 24px; border-radius:30px; cursor:pointer; font-weight:bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            🖨️ Guardar como PDF
+        </button>
+    </div>
+
+</body>
+</html>

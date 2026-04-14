@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
+
 use App\Models\MatrizHomologacion;
 use App\Models\DbMasterArticle;
 use App\Models\DbMasterSyncHistory;
@@ -59,36 +61,14 @@ class DBMasterController extends Controller
 
             // Formateo para la vista
             $paginator->getCollection()->transform(function ($item) use ($branches) {
-                // Mapeamos los campos tal cual en la DB
-                $out = new \stdClass();
-                $out->id                  = $item->id;
-                $out->clave               = $item->clave;
-                $out->descripcion         = $item->descripcion;
-                $out->unidad_medida       = $item->unidad_medida;
-                $out->linea               = $item->linea;
-                $out->clasificacion       = $item->clasificacion;
-                $out->mn_usd              = $item->mn_usd;
-                $out->precio_lista        = $item->precio_lista;
-                $out->des_precio_venta    = $item->des_precio_venta;
-                $out->precio_venta        = $item->precio_venta;
-                $out->desc_precio_espec   = $item->desc_precio_espec;
-                $out->precio_especial     = $item->precio_especial;
-                $out->desc_precio4        = $item->desc_precio4;
-                $out->precio4             = $item->precio4;
-                $out->articulo_kit        = $item->articulo_kit;
-                $out->margen_minimo       = $item->margen_minimo;
-                $out->articulo_serie      = $item->articulo_serie;
-                $out->color               = $item->color;
-                $out->protocolo           = $item->protocolo;
-                $out->idsat               = $item->idsat;
-                $out->costo_venta         = $item->costo_venta;
-                $out->porcetaje_descuento = $item->porcetaje_descuento;
+                // Convertir modelo a stdClass con TODOS los campos
+                $out = (object) $item->toArray();
 
                 // Compatibilidad con aliases previos en la vista
                 $out->Codigo_Deasa      = $item->clave;
                 $out->Descripcion_Deasa = $item->descripcion;
                 
-                // En esta tabla todos están al 100% de cobertura
+                // En esta tabla todos est�n al 100% de cobertura
                 foreach ($branches as $info) {
                     $out->{$info['col']} = 'ACTIVO';
                 }
@@ -131,11 +111,18 @@ class DBMasterController extends Controller
             }
 
             $sourceArticles = $query->get([
-                'clave', 'descripcion', 'unidad_medida', 'linea', 'clasificacion',
+                'clave', 'descripcion', 'unidad_medida', 'linea', 'clasificacion', 'area',
                 'mn_usd', 'precio_lista', 'des_precio_venta', 'precio_venta',
                 'desc_precio_espec', 'precio_especial', 'desc_precio4', 'precio4',
+                'desc_precio_minimo', 'precio_minimo', 'precio_tope', 'desc_proveedor',
                 'articulo_kit', 'margen_minimo', 'articulo_serie', 'color',
-                'protocolo', 'idsat', 'costo_venta', 'porcetaje_descuento'
+                'protocolo', 'idsat', 'costo_venta', 'porcetaje_descuento',
+                'clave_proveedor_1', 'costo_act_prov_1', 'clave_prov_2', 'costo_act_prov_2', 'clave_prov_3', 'costo_act_prov_3', 'fecha_costo_act_p',
+                'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'existencia_teorica', 'existencia_fisica',
+                'costo_promedio', 'costo_promedio_ant', 'costo_ult_compra', 'fecha_ult_compra', 'costo_compra_ant', 'fecha_compra_ant', 'fecha_alta',
+                'en_promocion', 'critico', 'control_pedimentos', 'id_impuesto_sat', 'iva', 'id_tipo_factor',
+                'sustituto', 'sustituto1', 'sustituto2', 'articulo_conversion', 'conversion', 'peso', 'ubicacion', 'std_pack',
+                'habilitado'
             ]);
 
             // 2. Limpiar la tabla de destino en la base db_master
@@ -231,6 +218,12 @@ class DBMasterController extends Controller
                 'Color'               => 'color',
                 'Protocolo'           => 'protocolo',
                 'IDSAT'               => 'idsat',
+                'IDImpuestoSAT'       => 'id_impuesto_sat',
+                'Area'                => 'area',
+                'IVA'                 => 'iva',
+                'Ubicacion'           => 'ubicacion',
+                'Sustituto'           => 'sustituto',
+                'Fecha_Alta'          => 'fecha_alta',
                 'Habilitado'          => 'habilitado',
             ];
 
@@ -258,5 +251,138 @@ class DBMasterController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Actualiza un artículo manualmente y replica cambios en sucursales
+     */
+    public function updateManual(Request $request, $id)
+    {
+        $item = DbMasterArticle::findOrFail($id);
+        
+        $data = $request->validate([
+            'descripcion'         => 'required|string|max:200',
+            'unidad_medida'       => 'required|string|max:4',
+            'linea'               => 'required|string|max:4',
+            'clasificacion'       => 'required|string|max:6',
+            'area'                => 'required|integer',
+            'mn_usd'              => 'required|boolean',
+            'precio_lista'        => 'nullable|numeric',
+            'precio_venta'        => 'nullable|numeric',
+            'des_precio_venta'    => 'nullable|numeric',
+            'precio_especial'     => 'nullable|numeric',
+            'desc_precio_espec'   => 'nullable|numeric',
+            'precio4'             => 'nullable|numeric',
+            'desc_precio4'        => 'nullable|numeric',
+            'costo_venta'         => 'nullable|numeric',
+            'porcetaje_descuento' => 'nullable|numeric',
+            'articulo_kit'        => 'nullable|boolean',
+            'articulo_serie'      => 'nullable|boolean',
+            'margen_minimo'       => 'nullable|numeric',
+            'color'               => 'nullable|boolean',
+            'protocolo'           => 'nullable|boolean',
+            'idsat'               => 'nullable|string|max:25',
+            'id_impuesto_sat'     => 'nullable|string|max:3',
+            'iva'                 => 'nullable|numeric',
+            'habilitado'          => 'nullable|boolean',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Detectar cambios para auditoría
+            $auditEntries = [];
+            foreach ($data as $field => $newVal) {
+                $oldVal = $item->{$field};
+                // Comparación flexible para decimales/strings
+                if ((string)$oldVal !== (string)$newVal) {
+                    $auditEntries[] = [
+                        'clave'          => $item->clave,
+                        'columna'        => strtoupper($field),
+                        'valor_anterior' => (string)$oldVal,
+                        'valor_nuevo'    => (string)$newVal,
+                        'sucursal'       => 'MAESTRO'
+                    ];
+                }
+            }
+
+            if (empty($auditEntries)) {
+                return response()->json(['status' => 'info', 'message' => 'No se detectaron cambios.']);
+            }
+
+            // 2. Log de historial centralizado
+            $historialId = DB::table('csv_historial')->insertGetId([
+                'archivo_nombre'      => 'EDICIÓN MANUAL',
+                'archivo_path'        => null,
+                'articulos_afectados' => 1,
+                'sucursales_json'     => json_encode(['TODAS']),
+                'fecha'               => now()
+            ]);
+
+            foreach ($auditEntries as &$entry) {
+                $entry['historial_id'] = $historialId;
+                $entry['sucursal'] = 'MAESTRO';
+            }
+            DB::table('csv_historial_detalles')->insert($auditEntries);
+
+            // 3. Actualizar Maestro
+            $item->update($data);
+
+            // 4. Replicar a Sucursales (PascalCase Mapping)
+            $branches = \App\Models\Branch::active()->get();
+            $errors = [];
+            
+            $branchFieldMap = [
+                'descripcion'         => 'Descripcion',
+                'unidad_medida'       => 'Unidad_Medida',
+                'linea'               => 'Linea',
+                'clasificacion'       => 'Clasificacion',
+                'mn_usd'              => 'MN_USD',
+                'precio_lista'        => 'Precio_Lista',
+                'precio_venta'        => 'Precio_Venta',
+                'des_precio_venta'    => 'Desc_Precio_Venta',
+                'precio_especial'     => 'Precio_Especial',
+                'desc_precio_espec'   => 'Desc_Precio_Espec',
+                'precio4'             => 'Precio4',
+                'desc_precio4'        => 'Desc_Precio4',
+                'costo_venta'         => 'CostoVenta',
+                'porcetaje_descuento' => 'PorcentajeDescuento',
+                'articulo_kit'        => 'Articulo_Kit',
+                'articulo_serie'      => 'Articulo_Serie',
+                'margen_minimo'       => 'Margen_Minimo',
+                'color'               => 'Color',
+                'protocolo'           => 'Protocolo',
+                'idsat'               => 'IDSAT',
+            ];
+
+            $updateDataBranch = [];
+            foreach ($data as $field => $val) {
+                if (isset($branchFieldMap[$field])) {
+                    $updateDataBranch[$branchFieldMap[$field]] = $val;
+                }
+            }
+
+            $connectionManager = app(\App\Services\BranchConnectionManager::class);
+            foreach ($branches as $branch) {
+                try {
+                    $conn = $connectionManager->connect($branch->code);
+                    $conn->table('articulo')->where('Clave_Articulo', $item->clave)->update($updateDataBranch);
+                } catch (\Throwable $e) {
+                    $errors[] = "Error en {$branch->name}: " . $e->getMessage();
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Artículo actualizado y replicado correctamente.',
+                'errors'  => $errors
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
     }
 }

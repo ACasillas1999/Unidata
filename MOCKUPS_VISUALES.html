@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mockups Visuales - Unidata</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2063cf;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+            --card-bg: #f8fafc;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fff;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Instrument Sans', sans-serif;
+            color: #0f172a;
+            margin-top: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            border-bottom: 4px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin-top: 3rem;
+        }
+
+        .mockup-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .mockup-image {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            border: 1px solid var(--border);
+        }
+
+        .description {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        ul { padding-left: 20px; }
+        li { margin-bottom: 0.5rem; }
+
+        .footer {
+            margin-top: 4rem;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+            .mockup-container { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Mockups Visuales - Unidata</h1>
+
+    <section>
+        <h2>1. Dashboard de Sincronización</h2>
+        <div class="mockup-container">
+            <img src="public/docs/images/dashboard_mockup.png" alt="Dashboard Unidata" class="mockup-image">
+        </div>
+        <div class="description">
+            <p><strong>Vista Principal</strong>: Centraliza el estado de todas las sucursales conectadas.</p>
+            <ul>
+                <li><strong>Estado en Tiempo Real</strong>: Indicadores visuales de conexión para cada base de datos.</li>
+                <li><strong>Notificaciones de Sync</strong>: Interfaz moderna para el monitoreo de tareas en segundo plano.</li>
+                <li><strong>Sidebar Colapsable</strong>: Navegación eficiente entre los diferentes módulos técnicos.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h2>2. Módulo de Carga y Mapeo</h2>
+        <div class="description">
+            <p><strong>Carga masiva</strong>: Interfaz diseñada para la gestión de miles de artículos.</p>
+            <ul>
+                <li>Carga fluida de archivos CSV/Excel.</li>
+                <li>Mapeo inteligente de columnas a campos de base de datos.</li>
+                <li>Sistema de "Revertir" para seguridad de datos masivos.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h2>3. Paleta de Colores y Tipografía</h2>
+        <div style="display:flex; gap:20px; margin-top:20px;">
+            <div style="flex:1; background:#2063cf; color:white; padding:20px; border-radius:12px; text-align:center;">
+                <strong>#2063cf</strong><br>Primario
+            </div>
+            <div style="flex:1; background:#1e293b; color:white; padding:20px; border-radius:12px; text-align:center;">
+                <strong>#1e293b</strong><br>Sidebar
+            </div>
+            <div style="flex:1; background:#10b981; color:white; padding:20px; border-radius:12px; text-align:center;">
+                <strong>#10b981</strong><br>Éxito
+            </div>
+        </div>
+    </section>
+
+    <div class="footer">
+        Propuesta Visual - Sistema Unidata Portal Central.
+    </div>
+
+    <div class="no-print" style="position:fixed; bottom:20px; right:20px;">
+        <button onclick="window.print()" style="background:var(--primary); color:white; border:none; padding:12px 24px; border-radius:30px; cursor:pointer; font-weight:bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            🖨️ Guardar como PDF
+        </button>
+    </div>
+
+</body>
+</html>

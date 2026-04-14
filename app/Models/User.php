@@ -20,9 +20,34 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
+        'role',
         'password',
     ];
+
+    /**
+     * Get the role model associated with the user.
+     */
+    public function roleModel()
+    {
+        return $this->belongsTo(Role::class, 'role', 'name');
+    }
+
+    /**
+     * Check if the user's role has a specific permission.
+     */
+    public function hasPermission(string $key): bool
+    {
+        // Forzar recarga o usar caché normal (asumimos $this->roleModel cargado)
+        $role = $this->roleModel;
+        if (!$role) {
+            return false;
+        }
+
+        // Si existe un super admin embebido o similar, podrías retornar true.
+        return $role->hasPermission($key);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

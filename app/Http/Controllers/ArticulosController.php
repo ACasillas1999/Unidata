@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Throwable;
@@ -93,6 +94,13 @@ class ArticulosController extends Controller
             $normalize('Estatus')         => 'habilitado',
             $normalize('Estatus Global')  => 'habilitado',
             $normalize('Habilitado')      => 'habilitado',
+            $normalize('Area')            => 'area',
+            $normalize('IVA')             => 'iva',
+            $normalize('Ubicacion')       => 'ubicacion',
+            $normalize('Sustituto')       => 'sustituto',
+            $normalize('Sustituto1')      => 'sustituto1',
+            $normalize('Sustituto2')      => 'sustituto2',
+            $normalize('ID_Impuesto_SAT') => 'id_impuesto_sat',
         ];
 
         $branchFieldMap = [
@@ -101,6 +109,7 @@ class ArticulosController extends Controller
             'unidad_medida'       => 'Unidad_Medida',
             'linea'               => 'Linea',
             'clasificacion'       => 'Clasificacion',
+            'area'                => 'Area',
             'mn_usd'              => 'MN_USD',
             'precio_lista'        => 'Precio_Lista',
             'precio_venta'        => 'Precio_Venta',
@@ -109,8 +118,12 @@ class ArticulosController extends Controller
             'desc_precio_espec'   => 'Desc_Precio_Espec',
             'precio4'             => 'Precio4',
             'desc_precio4'        => 'Desc_Precio4',
+            'precio_minimo'       => 'Precio_Minimo',
+            'desc_precio_minimo'  => 'Desc_Precio_Minimo',
+            'precio_tope'         => 'PrecioTope',
             'costo_venta'         => 'CostoVenta',
             'porcetaje_descuento' => 'PorcentajeDescuento',
+            'desc_proveedor'      => 'Desc_Proveedor',
             'articulo_kit'        => 'Articulo_Kit',
             'articulo_serie'      => 'Articulo_Serie',
             'margen_minimo'       => 'Margen_Minimo',
@@ -118,6 +131,40 @@ class ArticulosController extends Controller
             'protocolo'           => 'Protocolo',
             'idsat'               => 'IDSAT',
             'habilitado'          => 'Habilitado',
+            // Nuevos campos
+            'clave_proveedor_1'   => 'Clave_Proveedor_1',
+            'costo_act_prov_1'    => 'Costo_Act_Prov_1',
+            'clave_prov_2'        => 'Clave_Prov_2',
+            'costo_act_prov_2'    => 'Costo_Act_Prov_2',
+            'clave_prov_3'        => 'Clave_Prov_3',
+            'costo_act_prov_3'    => 'Costo_Act_Prov_3',
+            'fecha_costo_act_p'   => 'Fecha_Costo_Act_P',
+            'inventario_maximo'   => 'Inventario_Maximo',
+            'inventario_minimo'   => 'Inventario_Minimo',
+            'punto_reorden'       => 'Punto_Reorden',
+            'existencia_teorica'  => 'Existencia_Teorica',
+            'existencia_fisica'   => 'Existencia_Fisica',
+            'costo_promedio'      => 'Costo_Promedio',
+            'costo_promedio_ant'  => 'Costo_Promedio_Ant',
+            'costo_ult_compra'    => 'Costo_Ult_Compra',
+            'fecha_ult_compra'    => 'Fecha_Ult_Compra',
+            'costo_compra_ant'    => 'Costo_Compra_Ant',
+            'fecha_compra_ant'    => 'Fecha_Compra_Ant',
+            'fecha_alta'          => 'Fecha_Alta',
+            'en_promocion'        => 'En_Promocion',
+            'critico'             => 'Critico',
+            'control_pedimentos'  => 'ControlPedimentos',
+            'id_impuesto_sat'     => 'IDImpuestoSAT',
+            'iva'                 => 'IVA',
+            'id_tipo_factor'      => 'IDTipoFactor',
+            'sustituto'           => 'Sustituto',
+            'sustituto1'          => 'Sustituto1',
+            'sustituto2'          => 'Sustituto2',
+            'articulo_conversion' => 'ArticuloConversion',
+            'conversion'          => 'Conversion',
+            'peso'                => 'Peso',
+            'ubicacion'           => 'Ubicacion',
+            'std_pack'            => 'StdPack',
         ];
 
         return [$normalize, $standardMapping, $branchFieldMap];
@@ -149,10 +196,18 @@ class ArticulosController extends Controller
             $query = $connection
                 ->table('articulo')
                 ->select(
-                    'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion',
+                    'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion', 'Area',
                     'MN_USD', 'Precio_Lista', 'Desc_Precio_Venta', 'Precio_Venta', 'Desc_Precio_Espec',
-                    'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Articulo_Kit', 'Margen_Minimo',
-                    'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT', 'CostoVenta', 'PorcentajeDescuento'
+                    'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Desc_Precio_Minimo', 'Precio_Minimo',
+                    'PrecioTope', 'CostoVenta', 'PorcentajeDescuento', 'Desc_Proveedor',
+                    'Articulo_Kit', 'Margen_Minimo', 'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT',
+                    'Clave_Proveedor_1', 'Costo_Act_Prov_1', 'Clave_Prov_2', 'Costo_Act_Prov_2', 
+                    'Clave_Prov_3', 'Costo_Act_Prov_3', 'Fecha_Costo_Act_P',
+                    'Inventario_Maximo', 'Inventario_Minimo', 'Punto_Reorden', 'Existencia_Teorica', 'Existencia_Fisica',
+                    'Costo_Promedio', 'Costo_Promedio_Ant', 'Costo_Ult_Compra', 'Fecha_Ult_Compra', 
+                    'Costo_Compra_Ant', 'Fecha_Compra_Ant', 'Fecha_Alta',
+                    'En_Promocion', 'Critico', 'ControlPedimentos', 'IDImpuestoSAT', 'IVA', 'IDTipoFactor',
+                    'Sustituto', 'Sustituto1', 'Sustituto2', 'ArticuloConversion', 'Conversion', 'Peso', 'Ubicacion', 'StdPack'
                 );
 
             if ($search !== '') {
@@ -244,6 +299,12 @@ class ArticulosController extends Controller
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Color</th>');
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Protocolo</th>');
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">IDSAT</th>');
+            fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">ID_Impuesto_SAT</th>');
+            fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Area</th>');
+            fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">IVA</th>');
+            fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Ubicacion</th>');
+            fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Sustituto</th>');
+            fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Fecha_Alta</th>');
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Habilitado</th>');
             fwrite($out, '</tr></thead><tbody>');
 
@@ -254,7 +315,8 @@ class ArticulosController extends Controller
                     'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion',
                     'MN_USD', 'Precio_Lista', 'Desc_Precio_Venta', 'Precio_Venta', 'Desc_Precio_Espec',
                     'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Articulo_Kit', 'Margen_Minimo',
-                    'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT', 'CostoVenta', 'PorcentajeDescuento'
+                    'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT', 'CostoVenta', 
+                    'PorcentajeDescuento', 'Area', 'IVA', 'Ubicacion', 'Sustituto', 'IDImpuestoSAT', 'Fecha_Alta'
                 );
 
             if ($search !== '') {
@@ -290,6 +352,12 @@ class ArticulosController extends Controller
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->Color) . '</td>');
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->Protocolo) . '</td>');
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->IDSAT) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)($item->IDImpuestoSAT ?? '')) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)($item->Area ?? '')) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)($item->IVA ?? '')) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)($item->Ubicacion ?? '')) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)($item->Sustituto ?? '')) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)($item->Fecha_Alta ?? '')) . '</td>');
                     
                     if ($item->Habilitado) {
                         fwrite($out, '<td style="background-color:#d1fae5; color:#065f46; text-align:center; font-weight:bold;">ACTIVO</td>');
@@ -399,8 +467,29 @@ class ArticulosController extends Controller
                     }
 
                     if ($foundInUi) {
-                        if ($field === 'habilitado') {
-                            $val = (in_array(strtoupper($val), ['ACTIVO', '1', 'SI', 'SÍ', 'S'])) ? 1 : 0;
+                        // 1. Manejo de booleanos
+                        if (in_array($field, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'mn_usd', 'color', 'protocolo'])) {
+                            $val = (in_array(strtoupper($val), ['ACTIVO', '1', 'SI', 'SÍ', 'S', 'TRUE', 'VERDADERO'])) ? 1 : 0;
+                        }
+
+                        // 2. Truncado según esquema real (evitar SQL Truncated errors)
+                        if ($field === 'descripcion') $val = mb_substr((string)$val, 0, 200);
+                        if ($field === 'linea') $val = mb_substr((string)$val, 0, 4);
+                        if ($field === 'clasificacion') $val = mb_substr((string)$val, 0, 6);
+                        if ($field === 'unidad_medida') $val = mb_substr((string)$val, 0, 4);
+                        if ($field === 'ubicacion') $val = mb_substr((string)$val, 0, 10);
+                        if ($field === 'idsat') $val = mb_substr((string)$val, 0, 25);
+                        if ($field === 'id_impuesto_sat') $val = mb_substr((string)$val, 0, 3);
+
+                        // 3. Gestión de numéricos (evitar Not Null errors)
+                        $numericCols = [
+                            'precio_lista', 'precio_venta', 'des_precio_venta', 'precio_especial', 
+                            'desc_precio_espec', 'precio4', 'desc_precio4', 'costo_venta', 
+                            'porcetaje_descuento', 'margen_minimo', 'area', 'iva', 'peso',
+                            'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'std_pack'
+                        ];
+                        if (in_array($field, $numericCols) && (!is_numeric($val) || $val === '')) {
+                            $val = 0;
                         }
                         
                         // Para el Maestro (snake_case estándar)
@@ -415,11 +504,12 @@ class ArticulosController extends Controller
 
                 if (empty($updateDataMaster)) continue;
 
+                // --- GOBERNANZA: SOLO ACTUALIZACIONES ---
+                $masterCurrent = DbMasterArticle::where('clave', $clave)->first();
+                if (!$masterCurrent) continue; // Si no existe en el maestro, no se puede crear vía CSV
+
                 // --- AUDITORÍA ANTES DE ACTUALIZAR ---
                 $auditEntries = [];
-
-                // 1. Audit Master
-                $masterCurrent = DbMasterArticle::where('clave', $clave)->first();
                 if ($masterCurrent) {
                     foreach ($updateDataMaster as $field => $newVal) {
                         $oldVal = $masterCurrent->{$field};
@@ -555,6 +645,11 @@ class ArticulosController extends Controller
                 'protocolo'           => 'Protocolo',
                 'idsat'               => 'IDSAT',
                 'habilitado'          => 'Estatus',
+                'area'                => 'Area',
+                'iva'                 => 'IVA',
+                'ubicacion'           => 'Ubicacion',
+                'sustituto'           => 'Sustituto',
+                'id_impuesto_sat'     => 'ID Impuesto SAT',
             ];
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
@@ -768,8 +863,126 @@ class ArticulosController extends Controller
             }
 
             return response()->download($path, $hist->archivo_nombre);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Error al procesar la descarga: ' . $e->getMessage());
+        }
+    }
+
+    public function crear(): \Illuminate\View\View
+    {
+        return view('articulos.crear');
+    }
+
+    /**
+     * Guarda un artículo manualmente en el Maestro y lo replica en todas las sucursales
+     */
+    public function storeManual(\Illuminate\Http\Request $request)
+    {
+        $data = $request->validate([
+            'clave'               => 'required|string|max:40|unique:db_master.Articulos,clave',
+            'descripcion'         => 'required|string|max:200',
+            'unidad_medida'       => 'required|string|max:4',
+            'linea'               => 'required|string|max:4',
+            'clasificacion'       => 'required|string|max:6',
+            'area'                => 'required|integer',
+            'mn_usd'              => 'required|boolean',
+            'precio_lista'        => 'nullable|numeric',
+            'precio_venta'        => 'nullable|numeric',
+            'des_precio_venta'    => 'nullable|numeric',
+            'precio_especial'     => 'nullable|numeric',
+            'desc_precio_espec'   => 'nullable|numeric',
+            'precio4'             => 'nullable|numeric',
+            'desc_precio4'        => 'nullable|numeric',
+            'costo_venta'         => 'nullable|numeric',
+            'porcetaje_descuento' => 'nullable|numeric',
+            'articulo_kit'        => 'nullable|boolean',
+            'articulo_serie'      => 'nullable|boolean',
+            'margen_minimo'       => 'nullable|numeric',
+            'color'               => 'nullable|boolean',
+            'protocolo'           => 'nullable|boolean',
+            'idsat'               => 'nullable|string|max:25',
+            'id_impuesto_sat'     => 'nullable|string|max:3',
+            'habilitado'          => 'required|boolean',
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            // Automatización de campos
+            $data['fecha_alta'] = now()->toDateString();
+
+            // 1. Crear en DB Master
+            $master = \App\Models\DbMasterArticle::create($data);
+
+            // 2. Logger Central
+            $historialId = \Illuminate\Support\Facades\DB::table('csv_historial')->insertGetId([
+                'archivo_nombre'      => 'CREACIÓN MANUAL',
+                'archivo_path'        => null,
+                'articulos_afectados' => 1,
+                'sucursales_json'     => json_encode(['TODAS']),
+                'fecha'               => now()
+            ]);
+
+            $branches = $this->connectionManager->getActiveBranches();
+            $errors = [];
+
+            // Logger dedicado para replicación
+            $replLogger = Log::build([
+                'driver' => 'single',
+                'path' => storage_path('logs/replicacion.log'),
+            ]);
+            $replLogger->info("--- INICIO REPLICACIÓN ARTÍCULO: " . $data['clave'] . " ---");
+            $replLogger->info("Sucursales activas detectadas: " . $branches->count());
+            
+            // 3. Replicar a Sucursales (PascalCase / Original)
+            [, , $branchFieldMap] = $this->getMappingResources();
+            
+            $branchData = [];
+            foreach ($data as $field => $val) {
+                if ($field === 'clave') {
+                    $branchData['Clave_Articulo'] = $val;
+                } elseif (isset($branchFieldMap[$field])) {
+                    $branchData[$branchFieldMap[$field]] = $val;
+                }
+            }
+
+            foreach ($branches as $branch) {
+                $replLogger->info("Sucursal {$branch->name} ({$branch->code}): Iniciando...");
+                try {
+                    $conn = $this->connectionManager->connect($branch->code);
+                    $replLogger->info("Sucursal {$branch->name}: Conexión exitosa.");
+                    
+                    $conn->table('articulo')->insert($branchData);
+                    $replLogger->info("Sucursal {$branch->name}: Inserción exitosa.");
+                } catch (\Throwable $e) {
+                    $errorMsg = "Error en sucursal {$branch->name}: " . $e->getMessage();
+                    $replLogger->error($errorMsg);
+                    $errors[] = $errorMsg;
+                }
+            }
+            $replLogger->info("--- FIN REPLICACIÓN ARTÍCULO: " . $data['clave'] . " ---");
+
+            // Log de auditoría
+            \Illuminate\Support\Facades\DB::table('csv_historial_detalles')->insert([
+                'historial_id'   => $historialId,
+                'clave'          => $data['clave'],
+                'columna'        => 'TODAS (CREACIÓN)',
+                'valor_anterior' => 'NUEVO',
+                'valor_nuevo'    => $data['descripcion'],
+                'sucursal'       => 'SISTEMA'
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            if (!empty($errors)) {
+                return redirect()->route('db_master.index')->with('warning', 'Artículo creado en Maestro, pero falló la replicación en algunas sucursales: ' . implode(' | ', $errors));
+            }
+
+            return redirect()->route('db_master.index')->with('success', 'Artículo creado exitosamente y replicado en todas las sucursales.');
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return redirect()->back()->withInput()->with('error', 'Error al crear el artículo: ' . $e->getMessage());
         }
     }
 }

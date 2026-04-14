@@ -1,0 +1,6 @@
+<div style="display:flex; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-top-left-radius: 16px; border-top-right-radius: 16px; margin: 0 auto; max-width: 900px;">
+    <button type="button" class="modal-tab active" onclick="switchCreateTab(event, 'tab-general')" style="padding:16px 24px; background:none; border:none; color:white; border-bottom:2px solid var(--violet); cursor:pointer; font-size:13px; font-weight:700;">1. General</button>
+    <button type="button" class="modal-tab" onclick="switchCreateTab(event, 'tab-precios')" style="padding:16px 24px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:13px; font-weight:700;">2. Precios y Costos</button>
+    <button type="button" class="modal-tab" onclick="switchCreateTab(event, 'tab-inventario')" style="padding:16px 24px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:13px; font-weight:700;">3. Inventario y Logística</button>
+    <button type="button" class="modal-tab" onclick="switchCreateTab(event, 'tab-extra')" style="padding:16px 24px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:13px; font-weight:700;">4. SAT y Otros</button>
+</div>

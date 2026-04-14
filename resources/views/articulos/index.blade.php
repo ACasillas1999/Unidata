@@ -73,121 +73,221 @@
 </div>
 @endif
 
-<div class="card" style="margin-top:20px;">
-    <div class="card-header card-header--row">
-        <div>
-            <h2 class="card-title">Catálogo en {{ $branches[$sucursal] ?? 'Base de datos' }}</h2>
-            <p class="card-subtitle">
-                @if($search !== '')
-                    Mostrando resultados para: <strong>{{ $search }}</strong>
-                @else
-                    Listado general de artículos
-                @endif
-            </p>
-        </div>
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div style="background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
-                <label for="page-selector-art" style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mostrar:</label>
-                <select id="page-selector-art" 
-                        onchange="document.getElementById('per_page_input').value=this.value; document.getElementById('art-form').submit();" 
-                        style="background: transparent; border: none; color: var(--violet-light); font-size: 11px; font-weight: 800; cursor: pointer; outline: none; -webkit-appearance: none; padding-right: 12px; background-image: url('data:image/svg+xml;utf8,<svg fill=%22%238b5cf6%22 height=%2214%22 viewBox=%220 0 24 24%22 width=%2214%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/></svg>'); background-repeat: no-repeat; background-position-x: 100%; background-position-y: center;">
-                    <option value="50" style="background:var(--bg-root);color:white;" @if($per_page == 50) selected @endif>50</option>
-                    <option value="100" style="background:var(--bg-root);color:white;" @if($per_page == 100) selected @endif>100</option>
-                    <option value="250" style="background:var(--bg-root);color:white;" @if($per_page == 250) selected @endif>250</option>
-                    <option value="500" style="background:var(--bg-root);color:white;" @if($per_page == 500) selected @endif>500</option>
-                </select>
+    {{-- Table Card --}}
+    <div class="card" id="branch-catalog-card" style="margin-top:20px; overflow:hidden;">
+        <div class="card-header card-header--row">
+            <div>
+                <h2 class="card-title">Catálogo en {{ $branches[$sucursal] ?? 'Base de datos' }}</h2>
+                <p class="card-subtitle">
+                    @if($search !== '')
+                        Mostrando resultados para: <strong>{{ $search }}</strong>
+                    @else
+                        Listado general con esquema expandido (60+ campos)
+                    @endif
+                </p>
             </div>
-            <span class="badge badge--slate">{{ method_exists($articles, 'total') ? $articles->total() : count($articles->items()) }} registros</span>
-        </div>
-    </div>
-
-    <div class="table-wrap" style="max-height: 60vh; overflow-y: auto; border-bottom: 1px solid #1e293b;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th style="min-width: 120px;">Clave_Articulo</th>
-                    <th style="min-width: 250px;">Descripcion</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">Unidad_Medida</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">Linea</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">Clasificacion</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">MN_USD</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio_Lista</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio_Venta</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Desc_Precio_Venta</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio_Especial</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Desc_Precio_Espec</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Precio4</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Desc_Precio4</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">CostoVenta</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">PorcentajeDescuento</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">Articulo_Kit</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">Articulo_Serie</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: right;">Margen_Minimo</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">Color</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">Protocolo</th>
-                    <th style="white-space: nowrap; padding: 0 15px;">IDSAT</th>
-                    <th style="white-space: nowrap; padding: 0 15px; text-align: center;">Habilitado</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($articles as $row)
-                    <tr>
-                        <td class="td--code" style="white-space: nowrap;">{{ $row->Clave_Articulo }}</td>
-                        <td class="td--desc" style="min-width: 250px;">{{ $row->Descripcion }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Unidad_Medida ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Linea ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Clasificacion ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->MN_USD ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio_Lista) ? number_format((float)$row->Precio_Lista, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio_Venta) ? number_format((float)$row->Precio_Venta, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Desc_Precio_Venta) ? number_format((float)$row->Desc_Precio_Venta, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio_Especial) ? number_format((float)$row->Precio_Especial, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Desc_Precio_Espec) ? number_format((float)$row->Desc_Precio_Espec, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Precio4) ? number_format((float)$row->Precio4, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace;">{{ isset($row->Desc_Precio4) ? number_format((float)$row->Desc_Precio4, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace; color: var(--amber);">{{ isset($row->CostoVenta) ? number_format((float)$row->CostoVenta, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: center; font-family: monospace; color: var(--emerald);">{{ isset($row->PorcentajeDescuento) ? number_format((float)$row->PorcentajeDescuento, 2).'%' : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: center;">{{ $row->Articulo_Kit ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: center;">{{ $row->Articulo_Serie ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px; text-align: right; font-family: monospace; color: var(--violet-light);">{{ isset($row->Margen_Minimo) ? number_format((float)$row->Margen_Minimo, 2) : '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Color ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->Protocolo ?? '' }}</td>
-                        <td style="white-space: nowrap; padding: 0 15px;">{{ $row->IDSAT ?? '' }}</td>
-                        <td>
-                            @if(isset($row->Habilitado) && $row->Habilitado)
-                                <span class="homo-pill homo-pill--ok">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Habilitado
-                                </span>
-                            @else
-                                <span class="homo-pill homo-pill--miss">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                    Inactivo
-                                </span>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="22" class="td--empty" style="padding:40px; text-align:center;">
-                            No se encontraron artículos en esta base de datos
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    @if($articles->hasPages())
-        <div class="card-footer" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; padding: 15px 20px;">
-            <p style="font-size:14px;color:var(--text-muted);margin:0;">
-                Página <strong>{{ $articles->currentPage() }}</strong> de {{ $articles->lastPage() }}
-            </p>
-            <div style="background:var(--surface-color); border-radius: 8px; padding:4px;">
-                {{ $articles->links('pagination::bootstrap-4') }}
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mostrar:</label>
+                    <select onchange="document.getElementById('per_page_input').value=this.value; document.getElementById('art-form').submit();" 
+                            style="background: transparent; border: none; color: var(--violet-light); font-size: 11px; font-weight: 800; cursor: pointer; outline: none;">
+                        <option value="50" @if($per_page == 50) selected @endif>50</option>
+                        <option value="100" @if($per_page == 100) selected @endif>100</option>
+                        <option value="250" @if($per_page == 250) selected @endif>250</option>
+                        <option value="500" @if($per_page == 500) selected @endif>500</option>
+                    </select>
+                </div>
+                <span class="badge badge--slate">{{ method_exists($articles, 'total') ? $articles->total() : count($articles->items()) }} registros</span>
             </div>
         </div>
-    @endif
+
+        {{-- High Density Scroll Container --}}
+        <div id="table-inner-wrap" style="overflow:auto; max-height: 70vh; position:relative; background: #0b0f1a;">
+            <table class="data-table" style="border-collapse: separate; border-spacing: 0; width: 100%;">
+                <thead style="position: sticky; top: 0; z-index: 10;">
+                    <tr>
+                        <th class="sticky-col-1" style="min-width: 140px; background: #1a1f2e; left: 0; z-index: 11;">Clave_Articulo</th>
+                        <th class="sticky-col-2" style="min-width: 300px; background: #1a1f2e; left: 140px; z-index: 11;">Descripcion</th>
+                        {{-- General --}}
+                        <th style="min-width: 80px;">Unidad_Medida</th>
+                        <th style="min-width: 100px;">Linea</th>
+                        <th style="min-width: 100px;">Clasificacion</th>
+                        <th style="min-width: 60px;">Area</th>
+                        <th style="min-width: 100px;">Habilitado</th>
+                        {{-- Precios --}}
+                        <th style="min-width: 120px;">Precio_Lista</th>
+                        <th style="min-width: 120px; color:var(--emerald);">Precio_Venta</th>
+                        <th style="min-width: 120px;">Desc_Precio_Venta</th>
+                        <th style="min-width: 120px;">Precio_Especial</th>
+                        <th style="min-width: 120px;">Desc_Precio_Espec</th>
+                        <th style="min-width: 120px;">Precio4</th>
+                        <th style="min-width: 120px;">Desc_Precio4</th>
+                        <th style="min-width: 120px;">Precio_Minimo</th>
+                        <th style="min-width: 120px;">Desc_Precio_Minimo</th>
+                        <th style="min-width: 120px;">PrecioTope</th>
+                        <th style="min-width: 80px;">MN_USD</th>
+                        {{-- SAT --}}
+                        <th style="min-width: 100px;">IDSAT</th>
+                        <th style="min-width: 60px;">IVA</th>
+                        <th style="min-width: 100px;">IDImpuestoSAT</th>
+                        <th style="min-width: 100px;">IDTipoFactor</th>
+                        <th style="min-width: 100px;">ControlPedimentos</th>
+                        {{-- Inventario --}}
+                        <th style="min-width: 120px;">Existencia_Teorica</th>
+                        <th style="min-width: 120px;">Existencia_Fisica</th>
+                        <th style="min-width: 120px;">Punto_Reorden</th>
+                        <th style="min-width: 120px;">Inventario_Minimo</th>
+                        <th style="min-width: 120px;">Inventario_Maximo</th>
+                        <th style="min-width: 120px;">Ubicacion</th>
+                        <th style="min-width: 80px;">StdPack</th>
+                        <th style="min-width: 80px;">Peso</th>
+                        <th style="min-width: 80px;">Articulo_Kit</th>
+                        <th style="min-width: 80px;">Articulo_Serie</th>
+                        {{-- Costos --}}
+                        <th style="min-width: 120px; color:var(--amber);">CostoVenta</th>
+                        <th style="min-width: 120px;">PorcentajeDescuento</th>
+                        <th style="min-width: 120px;">Costo_Promedio</th>
+                        <th style="min-width: 120px;">Costo_Promedio_Ant</th>
+                        <th style="min-width: 120px;">Costo_Ult_Compra</th>
+                        <th style="min-width: 120px;">Fecha_Ult_Compra</th>
+                        <th style="min-width: 120px;">Fecha_Alta</th>
+                        <th style="min-width: 80px;">En_Promocion</th>
+                        <th style="min-width: 80px;">Critico</th>
+                        {{-- Proveedores --}}
+                        <th style="min-width: 200px;">Desc_Proveedor</th>
+                        <th style="min-width: 120px;">Clave_Proveedor_1</th>
+                        <th style="min-width: 120px;">Costo_Act_Prov_1</th>
+                        <th style="min-width: 120px;">Clave_Prov_2</th>
+                        <th style="min-width: 120px;">Costo_Act_Prov_2</th>
+                        <th style="min-width: 120px;">Fecha_Costo_Act_P</th>
+                        {{-- Otros --}}
+                        <th style="min-width: 120px;">Sustituto</th>
+                        <th style="min-width: 120px;">Sustituto1</th>
+                        <th style="min-width: 120px;">ArticuloConversion</th>
+                        <th style="min-width: 80px;">Conversion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($articles as $row)
+                        <tr>
+                            <td class="sticky-col-1 td--code" style="left: 0; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05);">{{ $row->Clave_Articulo }}</td>
+                            <td class="sticky-col-2 td--desc" style="left: 140px; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05);">{{ $row->Descripcion }}</td>
+                            {{-- General --}}
+                            <td style="text-align: center;">{{ $row->Unidad_Medida }}</td>
+                            <td>{{ $row->Linea }}</td>
+                            <td>{{ $row->Clasificacion }}</td>
+                            <td style="text-align: center;">{{ $row->Area }}</td>
+                            <td>
+                                <span class="homo-pill {{ $row->Habilitado == 1 ? 'homo-pill--ok' : 'homo-pill--miss' }}" style="font-size: 10px; padding: 2px 8px;">
+                                    {{ $row->Habilitado == 1 ? 'Activo' : 'Inactivo' }}
+                                </span>
+                            </td>
+                            {{-- Precios --}}
+                            <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">{{ number_format((float)($row->Precio_Lista ?? 0), 2) }}</td>
+                            <td style="text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--emerald); font-weight: 700;">{{ number_format((float)($row->Precio_Venta ?? 0), 2) }}</td>
+                            <td style="text-align: center;">{{ number_format((float)($row->Desc_Precio_Venta ?? 0), 2) }}%</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Precio_Especial ?? 0), 2) }}</td>
+                            <td style="text-align: center;">{{ number_format((float)($row->Desc_Precio_Espec ?? 0), 2) }}%</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Precio4 ?? 0), 2) }}</td>
+                            <td style="text-align: center;">{{ number_format((float)($row->Desc_Precio4 ?? 0), 2) }}%</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Precio_Minimo ?? 0), 2) }}</td>
+                            <td style="text-align: center;">{{ number_format((float)($row->Desc_Precio_Minimo ?? 0), 2) }}%</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->PrecioTope ?? 0), 2) }}</td>
+                            <td style="text-align: center;">{{ $row->MN_USD == 1 ? 'USD' : 'MXN' }}</td>
+                            {{-- SAT --}}
+                            <td style="font-size: 11px;">{{ $row->IDSAT }}</td>
+                            <td style="text-align: center;">{{ number_format((float)($row->IVA ?? 16), 0) }}%</td>
+                            <td style="font-size: 11px;">{{ $row->IDImpuestoSAT }}</td>
+                            <td style="font-size: 11px; text-align: center;">{{ $row->IDTipoFactor }}</td>
+                            <td style="text-align: center;">{!! $row->ControlPedimentos == 1 ? '<span style="color:var(--violet-light)">●</span>' : '' !!}</td>
+                            {{-- Inventario --}}
+                            <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">{{ number_format((float)($row->Existencia_Teorica ?? 0), 2) }}</td>
+                            <td style="text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--violet-light);">{{ number_format((float)($row->Existencia_Fisica ?? 0), 2) }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Punto_Reorden ?? 0), 2) }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Inventario_Minimo ?? 0), 2) }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Inventario_Maximo ?? 0), 2) }}</td>
+                            <td>{{ $row->Ubicacion }}</td>
+                            <td style="text-align: center;">{{ $row->StdPack }}</td>
+                            <td style="text-align: center;">{{ $row->Peso }}</td>
+                            <td style="text-align: center;">{!! $row->Articulo_Kit == 1 ? '<span style="color:var(--violet-light)">●</span>' : '' !!}</td>
+                            <td style="text-align: center;">{!! $row->Articulo_Serie == 1 ? '<span style="color:var(--violet-light)">●</span>' : '' !!}</td>
+                            {{-- Costos --}}
+                            <td style="text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--amber);">{{ number_format((float)($row->CostoVenta ?? 0), 2) }}</td>
+                            <td style="text-align: center;">{{ number_format((float)($row->PorcentajeDescuento ?? 0), 2) }}%</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Costo_Promedio ?? 0), 2) }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Costo_Promedio_Ant ?? 0), 2) }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Costo_Ult_Compra ?? 0), 2) }}</td>
+                            <td style="text-align: center; font-size: 11px;">{{ $row->Fecha_Ult_Compra }}</td>
+                            <td style="text-align: center; font-size: 11px;">{{ $row->Fecha_Alta }}</td>
+                            <td style="text-align: center;">{!! $row->En_Promocion == 1 ? 'S' : '' !!}</td>
+                            <td style="text-align: center;">{!! $row->Critico == 1 ? 'S' : '' !!}</td>
+                            {{-- Proveedores --}}
+                            <td>{{ $row->Desc_Proveedor }}</td>
+                            <td>{{ $row->Clave_Proveedor_1 }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Costo_Act_Prov_1 ?? 0), 2) }}</td>
+                            <td>{{ $row->Clave_Prov_2 }}</td>
+                            <td style="text-align: right;">{{ number_format((float)($row->Costo_Act_Prov_2 ?? 0), 2) }}</td>
+                            <td style="text-align: center; font-size: 11px;">{{ $row->Fecha_Costo_Act_P }}</td>
+                            {{-- Otros --}}
+                            <td>{{ $row->Sustituto }}</td>
+                            <td>{{ $row->Sustituto1 }}</td>
+                            <td>{{ $row->ArticuloConversion }}</td>
+                            <td style="text-align: center;">{{ $row->Conversion }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="60" style="padding: 40px; text-align: center; color: var(--text-muted);">No se encontraron artículos</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($articles->hasPages())
+            <div class="card-footer" style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);">
+                <p style="font-size: 13px; color: var(--text-muted);">Página {{ $articles->currentPage() }} de {{ $articles->lastPage() }}</p>
+                <div>{{ $articles->links('pagination::bootstrap-4') }}</div>
+            </div>
+        @endif
+    </div>
 </div>
+
+<style>
+.sticky-col-1, .sticky-col-2 {
+    position: sticky !important;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
+.data-table thead th {
+    background: #1a1f2e;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 12px 15px;
+    border-bottom: 2px solid var(--border);
+}
+.data-table tbody td {
+    padding: 10px 15px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    white-space: nowrap;
+}
+.data-table tbody tr:hover td {
+    background: rgba(139, 92, 246, 0.05) !important;
+}
+</style>
+
+<script>
+function adjustTableHeight() {
+    const wrap = document.getElementById('table-inner-wrap');
+    const card = document.getElementById('branch-catalog-card');
+    if (!wrap || !card) return;
+    const cardTop = card.getBoundingClientRect().top;
+    const available = window.innerHeight - cardTop - 100; 
+    wrap.style.height = Math.max(300, available) + 'px';
+}
+document.addEventListener('DOMContentLoaded', adjustTableHeight);
+window.addEventListener('resize', adjustTableHeight);
+</script>
 
 @endsection

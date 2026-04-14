@@ -42,6 +42,132 @@
             flex-direction: column;
         }
         @stack('page-content-style')
+
+        /* =========================================================
+           SIDEBAR ACCORDION — overrides críticos post-Tailwind v4
+           (Este bloque debe estar DESPUÉS del CSS de Vite para ganar en cascada)
+           ========================================================= */
+
+        /* ── Submenu panel ── */
+        .sidebar-dropdown-menu {
+            list-style: none;
+            /* Indentación: alineada con el texto del toggle parent */
+            margin: 3px 0 6px 42px;
+            padding: 3px 0 3px 14px;
+            display: none;
+            flex-direction: column;
+            gap: 1px;
+            position: relative;
+            border-left: 1.5px solid rgba(255,255,255,0.08);
+        }
+        .sidebar-dropdown-menu[hidden] { display: none !important; }
+        .sidebar-dropdown.open .sidebar-dropdown-menu {
+            display: flex;
+            animation: subMenuIn 0.25s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        @keyframes subMenuIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .sidebar.collapsed .sidebar-dropdown-menu { display: none !important; }
+
+        /* Conector horizontal por cada ítem */
+        .sidebar-dropdown-menu > li { position: relative; }
+        .sidebar-dropdown-menu > li::before {
+            content: '';
+            position: absolute;
+            left: -14px; top: 50%;
+            width: 10px; height: 1px;
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* ── Sub-link: SIEMPRE flex row icon + label ── */
+        .sidebar-dropdown-link {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 9px !important;
+            padding: 7px 8px !important;
+            border-radius: 8px !important;
+            text-decoration: none !important;
+            color: rgba(138,145,168,1) !important;   /* --text-secondary */
+            font-size: 12.5px !important;
+            font-weight: 500 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            width: 100% !important;
+            position: relative !important;
+            transition: background 220ms ease, color 220ms ease, transform 220ms ease !important;
+            box-sizing: border-box !important;
+        }
+        .sidebar-dropdown-link:hover {
+            background: rgba(255,255,255,0.05) !important;
+            color: #f0f2f9 !important;
+            transform: translateX(2px) !important;
+        }
+        .sidebar-dropdown-link.active {
+            color: #fbbf24 !important;
+            background: rgba(245,158,11,0.12) !important;
+            font-weight: 600 !important;
+        }
+        /* Pill ámbar en ítem activo */
+        .sidebar-dropdown-link.active::after {
+            content: '';
+            position: absolute;
+            left: -15px; top: 50%;
+            width: 2.5px; height: 14px;
+            border-radius: 999px;
+            background: #f59e0b;
+            transform: translateY(-50%);
+            box-shadow: 0 0 6px rgba(245,158,11,0.5);
+        }
+
+        /* ── Ícono del sub-link ── */
+        .sidebar-dropdown-link .sidebar-link-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
+            max-width: 22px !important;
+            flex-shrink: 0 !important;
+            border-radius: 6px !important;
+            background: rgba(255,255,255,0.04) !important;
+            color: rgba(82,90,114,1) !important;
+            opacity: 1 !important;
+            transform: none !important;
+            transition: background 220ms ease, color 220ms ease !important;
+        }
+        .sidebar-dropdown-link .sidebar-link-icon svg {
+            width: 12px !important;
+            height: 12px !important;
+        }
+        .sidebar-dropdown-link:hover .sidebar-link-icon {
+            background: rgba(255,255,255,0.08) !important;
+            color: #f0f2f9 !important;
+        }
+        .sidebar-dropdown-link.active .sidebar-link-icon {
+            background: rgba(245,158,11,0.14) !important;
+            color: #f59e0b !important;
+        }
+
+        /* ── Label del sub-link: nunca oculto por el collapsed ── */
+        .sidebar-dropdown-link .sidebar-link-label {
+            display: block !important;
+            flex: 1 !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            opacity: 1 !important;
+            transform: none !important;
+            font-size: 12.5px !important;
+            color: inherit !important;
+        }
     </style>
 </head>
 <body>
@@ -76,9 +202,30 @@
                     <span class="sidebar-section-label">Módulos</span>
                     <ul class="sidebar-menu">
                         <li>
-                            <a href="{{ route('articulos.index') }}"
-                               class="sidebar-link {{ request()->routeIs('articulos.index') ? 'active' : '' }}"
-                               id="nav-articulos">
+                            <a href="{{ route('dashboard.index') }}"
+                               class="sidebar-link {{ request()->routeIs('dashboard.*') ? 'active' : '' }}"
+                               id="nav-dashboard">
+                                <span class="sidebar-link-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                                        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                                    </svg>
+                                </span>
+                                <span class="sidebar-link-label">Dashboard</span>
+                                @if(request()->routeIs('dashboard.*'))
+                                    <span class="sidebar-link-dot"></span>
+                                @endif
+                            </a>
+                        </li>
+                        
+                        @if(auth()->user()->hasPermission('modules.articulos') || auth()->user()->hasPermission('modules.db_master') || auth()->user()->hasPermission('actions.articulos_crear') || auth()->user()->hasPermission('actions.articulos_subir'))
+                        @php($artMenuOpen = request()->routeIs('articulos.*') || request()->routeIs('db_master.*'))
+                        <li class="sidebar-dropdown {{ $artMenuOpen ? 'open' : '' }}">
+                            <button class="sidebar-dropdown-toggle sidebar-link"
+                                    id="nav-articulos-group"
+                                    type="button"
+                                    aria-expanded="{{ $artMenuOpen ? 'true' : 'false' }}"
+                                    aria-controls="sidebar-articulos-menu">
                                 <span class="sidebar-link-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -86,28 +233,65 @@
                                     </svg>
                                 </span>
                                 <span class="sidebar-link-label">Artículos</span>
-                                @if(request()->routeIs('articulos.index'))
-                                    <span class="sidebar-link-dot"></span>
-                                @endif
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('articulos.subir') }}"
-                               class="sidebar-link {{ request()->routeIs('articulos.subir') ? 'active' : '' }}"
-                               id="nav-subir-articulos">
-                                <span class="sidebar-link-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                <span class="sidebar-dropdown-arrow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
                                     </svg>
                                 </span>
-                                <span class="sidebar-link-label">Subir Artículos</span>
-                                @if(request()->routeIs('articulos.subir'))
-                                    <span class="sidebar-link-dot"></span>
+                            </button>
+                            <ul class="sidebar-dropdown-menu" id="sidebar-articulos-menu" @if (!$artMenuOpen) hidden @endif>
+                                @if(auth()->user()->hasPermission('modules.articulos'))
+                                <li>
+                                    <a href="{{ route('articulos.index') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('articulos.index') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><ellipse cx="12" cy="5" rx="9" ry="3"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Catálogo Sucursales</span>
+                                    </a>
+                                </li>
                                 @endif
-                            </a>
+                                
+                                @if(auth()->user()->hasPermission('modules.db_master'))
+                                <li>
+                                    <a href="{{ route('db_master.index') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('db_master.*') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Lista Maestro (DB Master)</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                @if(auth()->user()->hasPermission('actions.articulos_crear'))
+                                <li>
+                                    <a href="{{ route('articulos.crear') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('articulos.crear') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Crear Artículo</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                @if(auth()->user()->hasPermission('actions.articulos_subir'))
+                                <li>
+                                    <a href="{{ route('articulos.subir') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('articulos.subir') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Actualizar Artículos</span>
+                                    </a>
+                                </li>
+                                @endif
+                            </ul>
                         </li>
+                        @endif
+
+                        @if(auth()->user()->hasPermission('modules.homologacion'))
                         <li>
                             <a href="{{ route('homologacion.index') }}"
                                class="sidebar-link {{ request()->routeIs('homologacion.*') ? 'active' : '' }}"
@@ -123,23 +307,9 @@
                                 @endif
                             </a>
                         </li>
-                        <li>
-                            <a href="{{ route('db_master.index') }}"
-                               class="sidebar-link {{ request()->routeIs('db_master.*') ? 'active' : '' }}"
-                               id="nav-db-master">
-                                <span class="sidebar-link-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                                    </svg>
-                                </span>
-                                <span class="sidebar-link-label">DB Master</span>
-                                @if(request()->routeIs('db_master.*'))
-                                    <span class="sidebar-link-dot"></span>
-                                @endif
-                            </a>
-                        </li>
+                        @endif
+
+                        @if(auth()->user()->hasPermission('modules.estadisticas'))
                         <li>
                             <a href="{{ route('estadisticas.index') }}"
                                class="sidebar-link {{ request()->routeIs('estadisticas.*') ? 'active' : '' }}"
@@ -157,66 +327,21 @@
                                 @endif
                             </a>
                         </li>
-                        <li>
-                            <a href="{{ route('clientes.index') }}"
-                               class="sidebar-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}"
-                               id="nav-clientes">
-                                <span class="sidebar-link-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="9" cy="7" r="4"/>
-                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                    </svg>
-                                </span>
-                                <span class="sidebar-link-label">Clientes</span>
-                                @if(request()->routeIs('clientes.*'))
-                                    <span class="sidebar-link-dot"></span>
-                                @endif
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('proveedores.index') }}"
-                               class="sidebar-link {{ request()->routeIs('proveedores.*') ? 'active' : '' }}"
-                               id="nav-proveedores">
-                                <span class="sidebar-link-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                                        <polyline points="9 22 9 12 15 12 15 22"/>
-                                    </svg>
-                                </span>
-                                <span class="sidebar-link-label">Proveedores</span>
-                                @if(request()->routeIs('proveedores.*'))
-                                    <span class="sidebar-link-dot"></span>
-                                @endif
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('conexiones.index') }}"
-                               class="sidebar-link {{ request()->routeIs('conexiones.*') ? 'active' : '' }}"
-                               id="nav-conexiones">
-                                <span class="sidebar-link-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
-                                        <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
-                                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-                                        <circle cx="12" cy="20" r="1" fill="currentColor"/>
-                                    </svg>
-                                </span>
-                                <span class="sidebar-link-label">Conexiones</span>
-                                @if(request()->routeIs('conexiones.*'))
-                                    <span class="sidebar-link-dot"></span>
-                                @endif
-                            </a>
-                        </li>
+                        @endif
                     </ul>
                 </div>
 
+                @if(auth()->user()->hasPermission('modules.configuracion') || auth()->user()->hasPermission('actions.usuarios_gestionar') || auth()->user()->hasPermission('actions.conexiones_gestionar') || auth()->user()->hasPermission('actions.roles_gestionar'))
+                @php($configMenuOpen = request()->routeIs('conexiones.*') || request()->routeIs('usuarios.*') || request()->routeIs('roles.*'))
                 <div class="sidebar-section sidebar-section--bottom">
                     <span class="sidebar-section-label">Sistema</span>
                     <ul class="sidebar-menu">
-                        <li>
-                            <a href="#" class="sidebar-link" id="nav-config">
+                        <li class="sidebar-dropdown {{ $configMenuOpen ? 'open' : '' }}">
+                            <button class="sidebar-dropdown-toggle sidebar-link"
+                                    id="nav-config"
+                                    type="button"
+                                    aria-expanded="{{ $configMenuOpen ? 'true' : 'false' }}"
+                                    aria-controls="sidebar-config-menu">
                                 <span class="sidebar-link-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <circle cx="12" cy="12" r="3"/>
@@ -225,21 +350,74 @@
                                     </svg>
                                 </span>
                                 <span class="sidebar-link-label">Configuración</span>
-                            </a>
+                                <span class="sidebar-dropdown-arrow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </span>
+                            </button>
+                            <ul class="sidebar-dropdown-menu" id="sidebar-config-menu" @if (! $configMenuOpen) hidden @endif>
+                                @if(auth()->user()->hasPermission('actions.usuarios_gestionar') || auth()->user()->hasPermission('modules.configuracion'))
+                                <li>
+                                    <a href="{{ route('usuarios.index') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('usuarios.*') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Usuarios</span>
+                                    </a>
+                                </li>
+                                @endif
+                                
+                                @if(auth()->user()->hasPermission('actions.conexiones_gestionar') || auth()->user()->hasPermission('modules.configuracion'))
+                                <li>
+                                    <a href="{{ route('conexiones.index') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('conexiones.*') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Conexiones</span>
+                                    </a>
+                                </li>
+                                @endif
+                                
+                                @if(auth()->user()->hasPermission('actions.roles_gestionar') || auth()->user()->hasPermission('modules.configuracion'))
+                                <li>
+                                    <a href="{{ route('roles.index') }}" 
+                                       class="sidebar-dropdown-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Roles y Permisos</span>
+                                    </a>
+                                </li>
+                                @endif
+                            </ul>
                         </li>
                     </ul>
                 </div>
+                @endif
             </nav>
 
-            <div class="sidebar-footer">
-                <div class="sidebar-footer-info">
-                    <div class="sidebar-footer-avatar">U</div>
-                    <div class="sidebar-footer-text">
-                        <p class="sidebar-footer-name">Unidata v1.0</p>
-                        <p class="sidebar-footer-role">Sistema central</p>
-                    </div>
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-info" style="width:100%; display:flex; align-items:center; gap:12px;">
+                <div class="sidebar-footer-avatar">{{ substr(auth()->user()->name ?? 'U', 0, 1) }}</div>
+                <div class="sidebar-footer-text">
+                    <p class="sidebar-footer-name" style="font-size:13px; font-weight:700; color:#fff; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ auth()->user()->name ?? 'Unidata v1.0' }}</p>
+                    <p class="sidebar-footer-role" style="color:var(--text-muted); font-size:11px; margin:0;">{{ auth()->user()->role ?? 'Sistema central' }}</p>
                 </div>
+                <form action="{{ route('logout') }}" method="POST" style="margin-left:auto;">
+                    @csrf
+                    <button type="submit" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:6px; border-radius:6px; transition:all 0.2s;" title="Cerrar sesión" onmouseover="this.style.color='#f43f5e'; this.style.backgroundColor='rgba(244,63,94,0.1)';" onmouseout="this.style.color='var(--text-muted)'; this.style.backgroundColor='transparent';">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
+                </form>
             </div>
+        </div>
         </aside>
 
         {{-- ===== OVERLAY MOBILE ===== --}}
@@ -265,7 +443,7 @@
                     </nav>
                 </div>
                 <div class="topbar-right" style="display:flex; align-items:center; gap:16px;">
-                    
+
                     {{-- ── GLOBAL DOWNLOADS CENTER (GDC) ── --}}
                     <div style="position:relative;">
                         <button id="gdc-toggle-btn" class="topbar-menu-btn" style="border:none; background:transparent; color:var(--text-secondary); cursor:pointer; padding:8px; border-radius:8px; display:flex; align-items:center; position:relative; transition:background 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.05)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -274,7 +452,7 @@
                             </svg>
                             <span id="gdc-badge" style="display:none; position:absolute; top:2px; right:2px; width:9px; height:9px; background:var(--emerald); border-radius:50%; border:2px solid var(--bg-root);"></span>
                         </button>
-                        
+
                         <div id="gdc-panel" class="shadow-premium" style="display:none; position:absolute; top:46px; right:0; width:340px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; z-index:1000; overflow:hidden;">
                             <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02);">
                                 <span style="font-size:13px; font-weight:800; color:white;">Centro de Descargas</span>
@@ -308,13 +486,8 @@
             const toggleBtn = document.getElementById('sidebarToggle');
             const mobileBtn = document.getElementById('mobileMenuBtn');
 
-            // Persist collapsed state
-            const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-            if (collapsed) sidebar.classList.add('collapsed');
-
             toggleBtn?.addEventListener('click', () => {
                 sidebar.classList.toggle('collapsed');
-                localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
             });
 
             mobileBtn?.addEventListener('click', () => {
@@ -328,17 +501,30 @@
             });
 
             // Accordion Logic
-            document.querySelectorAll('.sidebar-dropdown-toggle').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const dropdown = btn.closest('.sidebar-dropdown');
-                    const isOpen = dropdown.classList.contains('open');
-                    
-                    // Close other dropdowns (optional, but cleaner)
-                    document.querySelectorAll('.sidebar-dropdown').forEach(d => {
-                        if (d !== dropdown) d.classList.remove('open');
-                    });
+            const dropdowns = Array.from(document.querySelectorAll('.sidebar-dropdown'));
+            const syncDropdownState = (dropdown, open) => {
+                const trigger = dropdown.querySelector('.sidebar-dropdown-toggle');
+                const menu = dropdown.querySelector('.sidebar-dropdown-menu');
 
-                    dropdown.classList.toggle('open');
+                dropdown.classList.toggle('open', open);
+                trigger?.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                if (menu) {
+                    menu.hidden = !open;
+                }
+            };
+
+            dropdowns.forEach(dropdown => {
+                const trigger = dropdown.querySelector('.sidebar-dropdown-toggle');
+
+                syncDropdownState(dropdown, dropdown.classList.contains('open'));
+
+                trigger?.addEventListener('click', () => {
+                    const shouldOpen = !dropdown.classList.contains('open');
+
+                    dropdowns.forEach(item => {
+                        syncDropdownState(item, item === dropdown ? shouldOpen : false);
+                    });
                 });
             });
         })();
@@ -389,7 +575,7 @@
             </div>
             {{-- Indicador pulsante --}}
             <div id="sync-toast-pulse" style="flex-shrink:0; width:8px; height:8px; border-radius:50%; background:#f59e0b; margin-top:5px; animation: pulse 1.4s infinite;"></div>
-            
+
             {{-- Botón Cancelar Global --}}
             <button onclick="globalCancelSync()" id="sync-toast-close" title="Interrumpir proceso" style="background:transparent; border:none; color:#f43f5e; cursor:pointer; padding:2px; height:18px; position:absolute; top:10px; right:12px; display:none;">
                 <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -493,7 +679,7 @@
         function showErrorOrCancelled(data) {
             title.textContent = data.status === 'cancelled' ? 'Sincronización Interrumpida' : 'Error en sincronización';
             msg.textContent   = data.message ?? 'Proceso detenido.';
-            
+
             inner.style.borderColor  = 'rgba(244,63,94,0.35)';
             spinner.style.display    = 'none';
             check.style.display      = 'block';
@@ -528,7 +714,7 @@
                 if (result.isConfirmed) {
                     const btn = document.getElementById('sync-toast-close');
                     if(btn) btn.style.opacity = '0.3';
-                    
+
                     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                     if(!csrfToken) {
                          // Si no hay token en esta pantalla, tratamos de cerrar el toast de todos modos.
@@ -559,7 +745,7 @@
         const panel     = document.getElementById('gdc-panel');
         const list      = document.getElementById('gdc-list');
         const badge     = document.getElementById('gdc-badge');
-        
+
         let isPanelOpen = false;
 
         toggleBtn?.addEventListener('click', (e) => {
@@ -579,7 +765,7 @@
         window.removeGdcItem = function(id) {
             const el = document.getElementById('gdc-item-'+id);
             if(el) el.style.opacity = '0.5';
-            
+
             fetch('/descargas/' + id, {
                 method: 'DELETE',
                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }
@@ -591,7 +777,7 @@
             .then(r => r.json())
             .then(data => {
                 if (!Array.isArray(data)) return;
-                
+
                 let html = '';
                 let isAnyProcessing = false;
 
@@ -603,7 +789,7 @@
                     if (job.status === 'processing') isAnyProcessing = true;
 
                     html += `<div id="gdc-item-${job.id}" style="padding:12px; border-radius:8px; margin-bottom:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); position:relative; transition:opacity 0.2s;">`;
-                    
+
                     // Header row
                     html += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
                                 <span style="font-size:12px; font-weight:700; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:20px; display:flex; align-items:center; gap:6px;">
@@ -648,7 +834,7 @@
         }, 3000); // We keep it at 3s so the green notification badge in the navbar updates in real time globally!
 
         // Initial fetch
-        setTimeout(fetchGDCData, 500); 
+        setTimeout(fetchGDCData, 500);
     })();
     </script>
 </body>

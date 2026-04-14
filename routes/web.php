@@ -3,15 +3,27 @@
 use App\Http\Controllers\ArticulosController;
 use App\Http\Controllers\ClientesController;
 use App\Http\Controllers\ConexionesController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomologacionController;
 use App\Http\Controllers\ProveedoresController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\DownloadsController;
 use App\Http\Controllers\DBMasterController;
+use App\Http\Controllers\RolesController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
-// Redirect raíz a artículos
-Route::redirect('/', '/articulos');
+// Autenticación
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::middleware('auth')->group(function () {
+    // Redirect raíz a dashboard
+    Route::redirect('/', '/dashboard');
+
+// Módulo: Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
 // Módulo: Estadísticas
 Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
@@ -19,6 +31,8 @@ Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('est
 
 // Módulo: Artículos
 Route::get('/articulos', [ArticulosController::class, 'index'])->name('articulos.index');
+Route::get('/articulos/crear', [ArticulosController::class, 'crear'])->name('articulos.crear');
+Route::post('/articulos/crear', [ArticulosController::class, 'storeManual'])->name('articulos.storeManual');
 Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
 Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');
 Route::get('/articulos/export', [ArticulosController::class, 'export'])->name('articulos.export');
@@ -40,6 +54,7 @@ Route::get('/homologacion/export/status/{job_id}', [HomologacionController::clas
 // Módulo: DB Master
 Route::get('/db-master', [DBMasterController::class, 'index'])->name('db_master.index');
 Route::get('/db-master/export', [DBMasterController::class, 'export'])->name('db_master.export');
+Route::post('/db-master/item/{id}', [DBMasterController::class, 'updateManual'])->name('db_master.update_item');
 Route::post('/db-master/sync', [DBMasterController::class, 'sync'])->name('db_master.sync');
 Route::get('/db-master/history', [DBMasterController::class, 'history'])->name('db_master.history');
 
@@ -60,3 +75,16 @@ Route::post('/conexiones/{id}/test', [ConexionesController::class, 'test'])->nam
 Route::put('/conexiones/{id}', [ConexionesController::class, 'update'])->name('conexiones.update');
 Route::delete('/conexiones/{id}', [ConexionesController::class, 'destroy'])->name('conexiones.destroy');
 
+// Módulo: Usuarios
+Route::get('/usuarios', [\App\Http\Controllers\UsuariosController::class, 'index'])->name('usuarios.index');
+Route::post('/usuarios', [\App\Http\Controllers\UsuariosController::class, 'store'])->name('usuarios.store');
+Route::put('/usuarios/{id}', [\App\Http\Controllers\UsuariosController::class, 'update'])->name('usuarios.update');
+Route::delete('/usuarios/{id}', [\App\Http\Controllers\UsuariosController::class, 'destroy'])->name('usuarios.destroy');
+
+// Módulo: Roles y Permisos
+Route::get('/roles', [RolesController::class, 'index'])->name('roles.index');
+Route::post('/roles', [RolesController::class, 'store'])->name('roles.store');
+Route::post('/roles/{id}/duplicate', [RolesController::class, 'duplicate'])->name('roles.duplicate');
+Route::put('/roles/{id}', [RolesController::class, 'update'])->name('roles.update');
+Route::delete('/roles/{id}', [RolesController::class, 'destroy'])->name('roles.destroy');
+});
