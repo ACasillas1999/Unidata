@@ -79,7 +79,7 @@
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                             @php
-                                $cols = ['Descripción', 'U.M.', 'Línea', 'Clasificación', 'MN/USD', 'P. Lista', 'P. Venta', 'Desc. P. Venta', 'P. Especial', 'Desc. P. Espec', 'Precio 4', 'Desc. Precio 4', 'Costo Venta', '% Descuento', 'Art. Kit', 'Art. Serie', 'Mg Mín', 'Color', 'Protocolo', 'IDSAT', 'Estatus'];
+                                $cols = ['Descripción', 'U.M.', 'Línea', 'Clasificación', 'Area', 'IVA', 'Ubicación', 'Sustituto', 'MN/USD', 'P. Lista', 'P. Venta', 'Desc. P. Venta', 'P. Especial', 'Desc. P. Espec', 'Precio 4', 'Desc. Precio 4', 'Costo Venta', '% Descuento', 'Art. Kit', 'Art. Serie', 'Mg Mín', 'Color', 'Protocolo', 'IDSAT', 'ID Impuesto SAT', 'Estatus'];
                             @endphp
                             @foreach($cols as $col)
                                 <label class="checkbox-wrapper">

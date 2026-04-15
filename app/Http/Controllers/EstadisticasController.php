@@ -94,9 +94,9 @@ class EstadisticasController extends Controller
             $stats['radar_data'] = $radarData;
 
             // Gráfica 4 — Horizontal bar top 10 líneas por artículos
-            $stats['lineas_chart'] = MatrizHomologacion::selectRaw('linea, COUNT(*) as total')
-                ->whereNotNull('linea')->where('linea', '!=', '')
-                ->groupBy('linea')->orderByDesc('total')->limit(10)
+            $stats['lineas_chart'] = MatrizHomologacion::selectRaw('SUBSTRING(clave, 1, 5) as linea, COUNT(*) as total')
+                ->whereNotNull('clave')->where('clave', '!=', '')
+                ->groupByRaw('SUBSTRING(clave, 1, 5)')->orderByDesc('total')->limit(10)
                 ->pluck('total', 'linea')->toArray();
 
             // Gráfica 5 — Histograma de presencias (cuántos artículos en exactamente N sucursales)
@@ -115,13 +115,13 @@ class EstadisticasController extends Controller
 
             // Tabla 1 — Cobertura por Línea
             $stats['por_linea'] = MatrizHomologacion::selectRaw("
-                    linea,
+                    SUBSTRING(clave, 1, 5) as linea,
                     COUNT(*) as total,
                     SUM(({$sumExpr})) as presencias,
                     COUNT(CASE WHEN habilitado = 1 THEN 1 END) as habilitados_linea
                 ")
-                ->whereNotNull('linea')->where('linea', '!=', '')
-                ->groupBy('linea')->orderByDesc('total')->limit(15)->get()
+                ->whereNotNull('clave')->where('clave', '!=', '')
+                ->groupByRaw('SUBSTRING(clave, 1, 5)')->orderByDesc('total')->limit(15)->get()
                 ->map(fn($r) => [
                     'linea'           => $r->linea,
                     'total'           => (int)$r->total,
