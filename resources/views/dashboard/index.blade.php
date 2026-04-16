@@ -300,7 +300,7 @@
             ['label' => 'Usuarios',        'desc' => 'Gestionar usuarios',   'route' => 'usuarios.index',      'color' => '#f43f5e', 'icon' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'],
             ['label' => 'Conexiones',      'desc' => 'Bases de datos',       'route' => 'conexiones.index',    'color' => '#06b6d4', 'icon' => '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/>'],
             ['label' => 'Roles',           'desc' => 'Permisos y accesos',   'route' => 'roles.index',         'color' => '#a855f7', 'icon' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>'],
-            ['label' => 'Descargas',       'desc' => 'Exportaciones',        'route' => 'descargas.index',     'color' => '#64748b', 'icon' => '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'],
+            
         ];
         @endphp
         @foreach($shortcuts as $sc)
