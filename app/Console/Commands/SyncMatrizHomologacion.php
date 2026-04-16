@@ -20,13 +20,14 @@ class SyncMatrizHomologacion extends Command
 
     private function writeStatus(string $status, string $message, int $step = 0, int $total = 0): void
     {
-        file_put_contents(self::statusFile(), json_encode([
+        $json = json_encode([
             'status'     => $status,        // running | done | error
             'message'    => $message,
             'step'       => $step,
             'total'      => $total,
             'updated_at' => time(),
-        ], JSON_UNESCAPED_UNICODE));
+        ], JSON_UNESCAPED_UNICODE);
+        file_put_contents(self::statusFile(), $json, LOCK_EX);
     }
 
     /** Resolves the branch code to the correct matrix column name */
@@ -199,7 +200,9 @@ class SyncMatrizHomologacion extends Command
                                 $colName              => $art->Habilitado ? 1 : 0,
                             ];
                         }
-                        MatrizHomologacion::upsert($upsertData, ['clave'], $updateColumns);
+                        foreach (array_chunk($upsertData, 500) as $chunk) {
+                            MatrizHomologacion::upsert($chunk, ['clave'], $updateColumns);
+                        }
                         $totalProcessed += count($articles);
                     });
 
