@@ -29,11 +29,11 @@
             <label class="modal-label">Unidad de Medida</label>
             <input type="text" name="unidad_medida" value="{{ old('unidad_medida', 'PZ') }}" required maxlength="4" class="modal-input">
         </div>
-        <div class="form-group" style="display: flex; align-items: center; gap: 20px; padding-top: 10px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input type="checkbox" name="color" value="1" {{ old('color') == '1' ? 'checked' : '' }} style="width:16px; height:16px;">
-                <span style="font-size: 13px; font-weight: 700; color: white;">Color</span>
-            </label>
+        <div class="form-group">
+            <label class="modal-label">Color (ID)</label>
+            <input type="number" name="color" value="{{ old('color', 0) }}" class="modal-input" placeholder="0">
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; padding-top: 24px;">
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                 <input type="checkbox" name="protocolo" value="1" {{ old('protocolo') == '1' ? 'checked' : '' }} style="width:16px; height:16px;">
                 <span style="font-size: 13px; font-weight: 700; color: white;">Protocolo</span>

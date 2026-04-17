@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Crear Artículo')
-@section('breadcrumb', 'Crear Artículo')
+@section('title', 'Crear Artï¿½culo')
+@section('breadcrumb', 'Crear Artï¿½culo')
 
 @section('content')
 
@@ -13,8 +13,8 @@
             </svg>
         </div>
         <div>
-            <h1 class="page-title" style="letter-spacing: -0.01em; margin:0;">Crear Artículo</h1>
-            <p class="page-subtitle" style="color: var(--text-secondary); margin:4px 0 0;">Agregar un nuevo artículo al catálogo maestro</p>
+            <h1 class="page-title" style="letter-spacing: -0.01em; margin:0;">Crear ArtÃ­culo</h1>
+            <p class="page-subtitle" style="color: var(--text-secondary); margin:4px 0 0;">Agregar un nuevo artÃ­culo al catÃ¡logo maestro</p>
         </div>
     </div>
     <a href="{{ route('articulos.index') }}" class="btn btn--ghost" style="border: 1px solid var(--border);">
