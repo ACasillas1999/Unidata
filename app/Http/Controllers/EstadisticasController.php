@@ -22,8 +22,14 @@ class EstadisticasController extends Controller
             $branches           = Branch::active()->orderBy('name')->get();
             $totalBranchesCount = $branches->count();
 
+            $physicalCols = array_values(MatrizHomologacion::getPhysicalBranchColumns());
+
             foreach ($branches as $branch) {
                 $col = MatrizHomologacion::resolveColumnName($branch->code);
+                // Solo incluir sucursales cuya columna existe en la tabla física
+                if (! in_array($col, $physicalCols, true)) {
+                    continue;
+                }
                 $branchesArr[$branch->name] = [
                     'conn' => strtolower($branch->code),
                     'col'  => $col,

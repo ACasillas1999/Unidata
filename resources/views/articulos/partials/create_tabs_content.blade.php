@@ -86,6 +86,7 @@
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <!-- FILA 1: DATOS BASE -->
         <div class="form-group">
             <label class="modal-label">Moneda</label>
             <select name="mn_usd" class="modal-input">
@@ -94,33 +95,54 @@
             </select>
         </div>
         <div class="form-group">
-            <label class="modal-label">Precio Lista</label>
-            <input type="number" step="0.0001" name="precio_lista" value="{{ old('precio_lista', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Precio Venta</label>
-            <input type="number" step="0.0001" name="precio_venta" value="{{ old('precio_venta', 0) }}" class="modal-input">
+            <label class="modal-label">Precio Lista <span style="color:var(--rose)">*</span></label>
+            <input type="number" step="0.0001" id="precio_lista" name="precio_lista" value="{{ old('precio_lista', 0) }}" class="modal-input" required>
         </div>
         <div class="form-group">
             <label class="modal-label">Costo Venta</label>
             <input type="number" step="0.0001" name="costo_venta" value="{{ old('costo_venta', 0) }}" class="modal-input">
         </div>
-        
-        <div class="form-group">
-            <label class="modal-label">Desc. Venta (%)</label>
-            <input type="number" step="0.01" name="des_precio_venta" value="{{ old('des_precio_venta', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Precio Especial</label>
-            <input type="number" step="0.0001" name="precio_especial" value="{{ old('precio_especial', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Desc. Especial (%)</label>
-            <input type="number" step="0.01" name="desc_precio_espec" value="{{ old('desc_precio_espec', 0) }}" class="modal-input">
-        </div>
         <div class="form-group">
             <label class="modal-label">Margen Mín. (%)</label>
             <input type="number" step="0.01" name="margen_minimo" value="{{ old('margen_minimo', 0) }}" class="modal-input">
+        </div>
+        
+        <!-- FILA 2: PRECIO 4 -->
+        <div class="form-group">
+            <label class="modal-label">Desc. Precio 4 (%)</label>
+            <input type="number" step="0.01" id="desc_precio4" name="desc_precio4" value="{{ old('desc_precio4', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Precio 4 (Resultado)</label>
+            <input type="number" step="0.0001" id="precio4" name="precio4" value="{{ old('precio4', 0) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+        </div>
+        <div class="form-group"></div>
+        <div class="form-group"></div>
+
+        <!-- FILA 3: PRECIO ESPECIAL -->
+        <div class="form-group">
+            <label class="modal-label">Desc. Especial (%)</label>
+            <input type="number" step="0.01" id="desc_precio_espec" name="desc_precio_espec" value="{{ old('desc_precio_espec', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Precio Especial</label>
+            <input type="number" step="0.0001" id="precio_especial" name="precio_especial" value="{{ old('precio_especial', 0) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+        </div>
+        <div class="form-group"></div>
+        <div class="form-group"></div>
+
+        <!-- FILA 4: PRECIO VENTA -->
+        <div class="form-group">
+            <label class="modal-label">Porcentaje PV (%)</label>
+            <input type="number" step="0.01" id="porcentaje_pv" name="porcentaje_pv" value="{{ old('porcentaje_pv', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Precio Venta</label>
+            <input type="number" step="0.0001" id="precio_venta" name="precio_venta" value="{{ old('precio_venta', 0) }}" class="modal-input" readonly style="background: var(--grad-premium); border:none; font-weight: bold; cursor: not-allowed;">
+        </div>
+        <div class="form-group" style="grid-column: span 2;">
+            <label class="modal-label">Desc. Venta Final (%)</label>
+            <input type="number" step="0.01" id="des_precio_venta" name="des_precio_venta" value="{{ old('des_precio_venta', 0) }}" class="modal-input" readonly style="background: rgba(16,185,129,0.1); border-color: var(--emerald); color: var(--emerald); font-weight: bold; cursor: not-allowed;">
         </div>
     </div>
 </div>

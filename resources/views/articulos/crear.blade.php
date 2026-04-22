@@ -63,6 +63,51 @@
 
 @push('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const precioListaInput = document.getElementById('precio_lista');
+    const descP4Input = document.getElementById('desc_precio4');
+    const precio4Input = document.getElementById('precio4');
+    const descEspInput = document.getElementById('desc_precio_espec');
+    const precioEspInput = document.getElementById('precio_especial');
+    const porcPVInput = document.getElementById('porcentaje_pv');
+    const precioVentaInput = document.getElementById('precio_venta');
+    const desVentaFinalInput = document.getElementById('des_precio_venta');
+
+    function calculatePrices() {
+        const lista = parseFloat(precioListaInput.value) || 0;
+        const d4 = parseFloat(descP4Input.value) || 0;
+        const dEsp = parseFloat(descEspInput.value) || 0;
+        const pPV = parseFloat(porcPVInput.value) || 0;
+
+        // 1. Precio 4 = Precio_Lista * (100 - Desc_Precio4) / 100
+        const p4 = lista * (100 - d4) / 100;
+        precio4Input.value = p4.toFixed(4);
+
+        // 2. Precio Especial = Precio_Lista * (100 - Desc_Precio_Esp) / 100
+        const pEsp = lista * (100 - dEsp) / 100;
+        precioEspInput.value = pEsp.toFixed(4);
+
+        // 3. Precio Venta = Precio_Especial * (1 + Porcentaje_PV / 100)
+        const pVenta = pEsp * (1 + pPV / 100);
+        precioVentaInput.value = pVenta.toFixed(4);
+
+        // 4. Descuento Precio Venta = 100 - Precio_Venta / Precio_Lista * 100
+        if (lista > 0) {
+            const dVentaFinal = 100 - (pVenta / lista * 100);
+            desVentaFinalInput.value = dVentaFinal.toFixed(2);
+        } else {
+            desVentaFinalInput.value = "0.00";
+        }
+    }
+
+    [precioListaInput, descP4Input, descEspInput, porcPVInput].forEach(el => {
+        if (el) el.addEventListener('input', calculatePrices);
+    });
+
+    // Ejecutar cálculo inicial
+    calculatePrices();
+});
+
 document.getElementById('create-article-form').addEventListener('submit', function(e) {
     Swal.fire({
         title: 'Creando Artículo...',
