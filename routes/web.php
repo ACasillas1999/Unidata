@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\ArticulosController;
 use App\Http\Controllers\ClientesController;
@@ -13,23 +13,23 @@ use App\Http\Controllers\RolesController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
-// AutenticaciÃ³n
+// Autenticación
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
-    // Redirect raÃ­z a dashboard
+    // Redirect raiz a dashboard
     Route::redirect('/', '/dashboard');
 
-// MÃ³dulo: Dashboard
+// Módulo: Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
-// MÃ³dulo: EstadÃ­sticas
+// Módulo: Estadísticas
 Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
 
-// MÃ³dulo: ArtÃ­culos
+// Módulo: Artículos
 Route::get('/articulos', [ArticulosController::class, 'index'])->name('articulos.index');
 Route::get('/articulos/crear', [ArticulosController::class, 'crear'])->name('articulos.crear');
 Route::post('/articulos/crear', [ArticulosController::class, 'storeManual'])->name('articulos.storeManual');
@@ -42,7 +42,7 @@ Route::get('/articulos/historial/{id}/detalles', [ArticulosController::class, 'h
 Route::get('/articulos/historial/{id}/descargar', [ArticulosController::class, 'descargarCsv'])->name('articulos.historial.descargar');
 Route::post('/articulos/revertir/{id}', [ArticulosController::class, 'revertirSubida'])->name('articulos.revertir');
 
-// MÃ³dulo: HomologaciÃ³n
+// Módulo: Homologación
 Route::get('/homologacion', [HomologacionController::class, 'index'])->name('homologacion.index');
 Route::post('/homologacion/sync', [HomologacionController::class, 'sync'])->name('homologacion.sync');
 Route::post('/homologacion/sync/cancel', [HomologacionController::class, 'cancelSync'])->name('homologacion.sync.cancel');
@@ -50,8 +50,9 @@ Route::get('/homologacion/sync/status', [HomologacionController::class, 'syncSta
 Route::get('/homologacion/export', [HomologacionController::class, 'export'])->name('homologacion.export');
 Route::post('/homologacion/export/bg', [HomologacionController::class, 'exportBgStart'])->name('homologacion.export.bg');
 Route::get('/homologacion/export/status/{job_id}', [HomologacionController::class, 'exportBgStatus'])->name('homologacion.export.status');
+Route::get('/homologacion/historial', [HomologacionController::class, 'historial'])->name('homologacion.historial');
 
-// MÃ³dulo: DB Master
+// Módulo: DB Master
 Route::get('/db-master', [DBMasterController::class, 'index'])->name('db_master.index');
 Route::get('/db-master/export', [DBMasterController::class, 'export'])->name('db_master.export');
 Route::post('/db-master/item/{id}', [DBMasterController::class, 'updateManual'])->name('db_master.update_item');
@@ -59,16 +60,16 @@ Route::post('/db-master/sync', [DBMasterController::class, 'sync'])->name('db_ma
 Route::get('/db-master/sync/status', [DBMasterController::class, 'syncStatus'])->name('db_master.sync.status');
 Route::get('/db-master/history', [DBMasterController::class, 'history'])->name('db_master.history');
 
-// MÃ³dulo: Descargas Globales
+// Módulo: Descargas Globales
 Route::get('/descargas', [DownloadsController::class, 'index'])->name('descargas.index');
 Route::delete('/descargas/{id}', [DownloadsController::class, 'destroy'])->name('descargas.destroy');
-// MÃ³dulo: Clientes
+// Módulo: Clientes
 Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
 
-// MÃ³dulo: Proveedores
+// Módulo: Proveedores
 Route::get('/proveedores', [ProveedoresController::class, 'index'])->name('proveedores.index');
 
-// MÃ³dulo: Conexiones
+// Módulo: Conexiones
 Route::get('/conexiones', [ConexionesController::class, 'index'])->name('conexiones.index');
 Route::post('/conexiones', [ConexionesController::class, 'store'])->name('conexiones.store');
 Route::post('/conexiones/test-all', [ConexionesController::class, 'testAll'])->name('conexiones.test-all');
@@ -76,13 +77,13 @@ Route::post('/conexiones/{id}/test', [ConexionesController::class, 'test'])->nam
 Route::put('/conexiones/{id}', [ConexionesController::class, 'update'])->name('conexiones.update');
 Route::delete('/conexiones/{id}', [ConexionesController::class, 'destroy'])->name('conexiones.destroy');
 
-// MÃ³dulo: Usuarios
+// Módulo: Usuarios
 Route::get('/usuarios', [\App\Http\Controllers\UsuariosController::class, 'index'])->name('usuarios.index');
 Route::post('/usuarios', [\App\Http\Controllers\UsuariosController::class, 'store'])->name('usuarios.store');
 Route::put('/usuarios/{id}', [\App\Http\Controllers\UsuariosController::class, 'update'])->name('usuarios.update');
 Route::delete('/usuarios/{id}', [\App\Http\Controllers\UsuariosController::class, 'destroy'])->name('usuarios.destroy');
 
-// MÃ³dulo: Roles y Permisos
+// Módulo: Roles y Permisos
 Route::get('/roles', [RolesController::class, 'index'])->name('roles.index');
 Route::post('/roles', [RolesController::class, 'store'])->name('roles.store');
 Route::post('/roles/{id}/duplicate', [RolesController::class, 'duplicate'])->name('roles.duplicate');

@@ -23,9 +23,46 @@
 #table-inner-wrap {
     overflow-y: auto !important;
     overflow-x: auto !important;
-    /* Altura: viewport menos barra lateral de cabecera del sistema (~52px) + padding + header + filtros + encabezado del card */
     height: calc(100vh - 270px);
     min-height: 200px;
+}
+
+/* Columnas Pegajosas (Sticky) */
+.data-table { border-collapse: separate !important; }
+.data-table th, .data-table td { white-space: nowrap; }
+
+/* Código Maestro (Col 1) */
+.data-table th:nth-child(1), 
+.data-table td:nth-child(1) {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #111827 !important; /* var(--bg-card-2) fallback */
+    min-width: 140px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
+
+/* Descripción (Col 2) */
+.data-table th:nth-child(2), 
+.data-table td:nth-child(2) {
+    position: sticky;
+    left: 140px; /* Suma del ancho anterior */
+    z-index: 19;
+    background: #111827 !important;
+    min-width: 280px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
+
+/* Asegurar que el header esté por encima de las celdas sticky */
+.data-table thead th { z-index: 30 !important; }
+.data-table thead th:nth-child(1),
+.data-table thead th:nth-child(2) { z-index: 40 !important; }
+
+/* Ajuste para que la descripción no se corte si es larga (opcional) */
+.data-table td:nth-child(2) {
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 </style>
 
@@ -53,6 +90,10 @@
             <span class="stat-chip-dot" style="background:var(--violet);"></span>
             Centralizado
         </div>
+        <a href="{{ route('homologacion.historial') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid var(--border); display:flex; align-items:center; gap:6px; padding:9px 14px;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Historial
+        </a>
         <form method="POST" action="{{ route('homologacion.sync') }}" id="sync-form" style="margin:0;">
             @csrf
             <button type="button" id="sync-btn" class="btn btn--primary shadow-premium" style="background:var(--grad-premium); border:none; color:white; padding: 10px 20px;" onclick="startSync()">
@@ -61,6 +102,7 @@
             </button>
         </form>
     </div>
+
 </div>
 
 {{-- ── ADVANCED FILTERS (collapsible panel) ── --}}
@@ -294,7 +336,7 @@
 
     {{-- Paginación Premium --}}
     @if($articles->hasPages())
-        <div style="padding: 16px 24px; background: var(--bg-card); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
+        <div id="pagination-footer" style="padding: 12px 20px; background: var(--bg-card); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
             <p style="font-size: 12px; color: var(--text-muted); margin:0;">
                 Mostrando página <span style="color:var(--text-primary); font-weight:700;">{{ $articles->currentPage() }}</span> de {{ $articles->lastPage() }}
             </p>
@@ -670,18 +712,23 @@ function startExportExcelBg() {
 function adjustTableHeight() {
     const wrap = document.getElementById('table-inner-wrap');
     const card = document.getElementById('homo-table-card');
+    const footer = document.getElementById('pagination-footer');
     if (!wrap || !card) return;
 
-    const cardTop = card.getBoundingClientRect().top;          // px desde arriba del viewport
-    const cardHeaderH = card.querySelector('div')?.offsetHeight ?? 48; // header del card
-    const bottomPad = 8;
-    const available = window.innerHeight - cardTop - cardHeaderH - bottomPad;
+    const cardTop = card.getBoundingClientRect().top;
+    const cardHeaderH = card.querySelector('div')?.offsetHeight ?? 48;
+    const footerH = footer ? footer.offsetHeight : 0;
+    const bottomPad = 15; // Un poco más de margen inferior
+    
+    const available = window.innerHeight - cardTop - cardHeaderH - footerH - bottomPad;
 
-    wrap.style.height = Math.max(180, available) + 'px';
+    wrap.style.height = Math.max(200, available) + 'px';
 }
 
-// Ejecutar al cargar
-document.addEventListener('DOMContentLoaded', adjustTableHeight);
+// Ejecutar al cargar y redimensionar
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(adjustTableHeight, 50); // Pequeño delay para asegurar renderizado
+});
 window.addEventListener('resize', adjustTableHeight);
 
 // Volver a ajustar cuando el panel de filtros cambia de tamaño

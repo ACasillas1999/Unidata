@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Models\Branch;
+use App\Models\HomologacionSnapshot;
 use App\Models\MatrizHomologacion;
 use App\Services\BranchConnectionManager;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 
 class SyncMatrizHomologacion extends Command
 {
@@ -225,7 +227,44 @@ class SyncMatrizHomologacion extends Command
             }
         }
 
+        // ── Guardar snapshot de conteos por sucursal ───────────────────
+        $this->guardarSnapshot($branches);
+
         $this->writeStatus('done', '¡Sincronización completada exitosamente!', $total, $total);
         $this->info('¡Sincronización Finalizada con Éxito!');
+    }
+
+    /**
+     * Persiste un snapshot con el conteo de artículos activos/inactivos/falta
+     * por sucursal en la tabla homologacion_snapshots.
+     * Se llama una vez al finalizar cada sync exitosa.
+     */
+    private function guardarSnapshot(Collection $branches): void
+    {
+        $now          = now();
+        $physicalCols = MatrizHomologacion::getPhysicalBranchColumns();
+
+        foreach ($branches as $branch) {
+            $col = $this->resolveColumnName($branch->code);
+
+            if (!in_array($col, $physicalCols)) {
+                continue;
+            }
+
+            $activos   = MatrizHomologacion::where($col, 1)->count();
+            $inactivos = MatrizHomologacion::where($col, 0)->count();
+            $falta     = MatrizHomologacion::whereNull($col)->count();
+
+            HomologacionSnapshot::create([
+                'synced_at'       => $now,
+                'branch_code'     => $branch->code,
+                'branch_name'     => $branch->name,
+                'total_activos'   => $activos,
+                'total_inactivos' => $inactivos,
+                'total_falta'     => $falta,
+            ]);
+
+            $this->info("   [SNAPSHOT] {$branch->name}: {$activos} activos | {$inactivos} inactivos | {$falta} falta");
+        }
     }
 }

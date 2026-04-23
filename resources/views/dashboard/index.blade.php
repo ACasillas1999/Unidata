@@ -64,7 +64,7 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════
      ROW 1 — KPI Cards
 ═══════════════════════════════════════════════════════════════════════════ --}}
-<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;">
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px;">
 
     {{-- Artículos Universo --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden;">
@@ -73,12 +73,12 @@
             <span style="width:32px; height:32px; background:var(--violet-bg); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="var(--violet-light)" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
             </span>
-            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">Universo de artículos</span>
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">Total Sucursales</span>
         </div>
         <div style="font-size:30px; font-weight:800; color:var(--text-primary); letter-spacing:-0.04em; line-height:1;">
             {{ !empty($stats['universo']) ? number_format($stats['universo']) : '—' }}
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">Catálogo maestro total</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">HABILITADOS E INHABILITADOS EN TODAS LAS SUCURSALES</p>
         @if(!empty($stats['en_todas']))
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:6px;">
             <span style="width:6px; height:6px; border-radius:50%; background:var(--emerald); box-shadow:0 0 6px var(--emerald);"></span>
@@ -99,7 +99,7 @@
         <div style="font-size:30px; font-weight:800; letter-spacing:-0.04em; line-height:1; color:{{ !empty($stats['cobertura_global_pct']) && $stats['cobertura_global_pct'] >= 60 ? 'var(--emerald)' : (!empty($stats['cobertura_global_pct']) && $stats['cobertura_global_pct'] >= 30 ? 'var(--amber)' : 'var(--rose)') }};">
             {{ !empty($stats['cobertura_global_pct']) ? $stats['cobertura_global_pct'] . '%' : '—' }}
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">Presencia promedio en sucursales</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">PROMEDIO DE ARTICULOS EN TOTAL</p>
         @if(!empty($stats['total_branches']))
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:6px;">
             <span style="width:6px; height:6px; border-radius:50%; background:var(--sky);"></span>
@@ -115,38 +115,19 @@
             <span style="width:32px; height:32px; background:var(--sky-bg); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="var(--sky)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </span>
-            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">DB Master</span>
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">Listado de artículos</span>
         </div>
         <div style="font-size:30px; font-weight:800; color:var(--text-primary); letter-spacing:-0.04em; line-height:1;">
             {{ !empty($stats['db_master_total']) ? number_format($stats['db_master_total']) : '—' }}
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">Artículos en lista maestra</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">ARTICULOS HOMOLOGADOS</p>
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:6px;">
             <span style="width:6px; height:6px; border-radius:50%; background:var(--sky);"></span>
             <span style="font-size:11px; color:var(--text-muted);">Último sync: {{ $stats['db_master_last_sync'] ?? 'N/A' }}</span>
         </div>
     </div>
-
-    {{-- Usuarios --}}
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; overflow:hidden;">
-        <div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:rgba(245,158,11,.07); border-radius:50%;"></div>
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-            <span style="width:32px; height:32px; background:var(--amber-bg); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="var(--amber)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">Usuarios del sistema</span>
-        </div>
-        <div style="font-size:30px; font-weight:800; color:var(--text-primary); letter-spacing:-0.04em; line-height:1;">
-            {{ $stats['total_usuarios'] ?? 0 }}
-        </div>
-        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">{{ $stats['total_roles'] ?? 0 }} roles configurados</p>
-        <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); display:flex; gap:8px; flex-wrap:wrap;">
-            @foreach($stats['roles_breakdown'] ?? [] as $roleName => $cnt)
-            <span style="font-size:10px; font-weight:700; background:rgba(255,255,255,.05); border-radius:20px; padding:2px 9px; color:var(--text-secondary);">{{ $roleName }}: {{ $cnt }}</span>
-            @endforeach
-        </div>
-    </div>
 </div>
+
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      ROW 2 — Cobertura por Sucursal + Distribución Doughnut
@@ -164,24 +145,28 @@
     {{-- Cobertura scrollable por sucursal --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
         <div style="padding:14px 20px; border-bottom:1px solid var(--border); background:rgba(255,255,255,.02); display:flex; align-items:center; justify-content:space-between;">
-            <h3 style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--text-primary); margin:0;">Cobertura por Sucursal</h3>
-            <span style="font-size:11px; color:var(--text-muted);">Artículos homologados / total</span>
+            <h3 style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--text-primary); margin:0;">PROGRESO DE HOMOLOGACION POR SUCURSAL</h3>
+            <span style="font-size:11px; color:var(--text-muted);">Artículos homologados / universo</span>
         </div>
         @php $cobCols = (int)ceil(count($cols) / 2); @endphp
         <div id="cobertura-scroll" style="overflow-x:auto; padding:16px 20px;">
-            <div style="display:grid; grid-template-columns:repeat({{ $cobCols }}, 1fr); grid-template-rows:repeat(2, auto); grid-auto-flow:column; gap:10px;">
+            <div style="display:grid; grid-template-columns:repeat({{ max($cobCols,1) }}, 1fr); grid-template-rows:repeat(2, auto); grid-auto-flow:column; gap:10px;">
                 @foreach($cols as $label => $cnt)
-                @php $pct = ($stats['total'] ?? 0) > 0 ? round($cnt / $stats['total'] * 100) : 0; @endphp
+                @php 
+                    $pct = ($stats['total'] ?? 0) > 0 ? round($cnt / $stats['total'] * 100, 1) : 0; 
+                    $sc = $pct >= 80 ? '#10b981' : ($pct >= 50 ? '#3b82f6' : ($pct >= 20 ? '#f59e0b' : '#f43f5e'));
+                @endphp
                 <div style="background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:10px; padding:12px 14px; transition:transform .2s, border-color .2s; cursor:default;"
-                     onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(139,92,246,.3)';"
-                     onmouseout="this.style.transform='none'; this.style.borderColor='var(--border)';">
+                     onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='{{ $sc }}44';"
+                     onmouseout="this.style.transform='none'; this.style.borderColor='var(--border)';"
+                     title="{{ $pct }}% de cobertura">
                     <p style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $label }}</p>
                     <div style="display:flex; align-items:baseline; gap:5px; margin-bottom:8px;">
                         <span style="font-size:18px; font-weight:800; color:var(--text-primary);">{{ number_format($cnt) }}</span>
-                        <span style="font-size:12px; font-weight:800; color:{{ $pct > 80 ? 'var(--emerald)' : ($pct > 50 ? 'var(--amber)' : 'var(--rose)') }};">{{ $pct }}%</span>
+                        <span style="font-size:12px; font-weight:800; color:{{ $sc }};">{{ $pct }}%</span>
                     </div>
                     <div style="height:4px; background:rgba(255,255,255,.05); border-radius:10px; overflow:hidden;">
-                        <div style="height:100%; width:{{ $pct }}%; background:{{ $pct > 80 ? 'var(--emerald)' : ($pct > 50 ? 'var(--amber)' : 'var(--rose)') }}; border-radius:10px; transition:width 1s ease;"></div>
+                        <div style="height:100%; width:{{ $pct }}%; background:{{ $sc }}; border-radius:10px; transition:width 1s ease;"></div>
                     </div>
                 </div>
                 @endforeach
@@ -191,7 +176,7 @@
 
     {{-- Doughnut distribución --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px 20px;">
-        <h3 style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--text-primary); margin:0 0 16px;">Distribución</h3>
+        <h3 style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--text-primary); margin:0 0 16px;">DISTRIBUCION DE ARTICULOS EN SUCURSALES</h3>
         <div style="position:relative; height:200px;">
             <canvas id="distChart"></canvas>
         </div>
@@ -340,7 +325,7 @@
 </div>
 
 {{-- Mini KPIs del sistema (siempre disponibles) --}}
-<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px;">
+<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:20px;">
 
     {{-- Sucursales --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; position:relative; overflow:hidden;">
@@ -367,31 +352,6 @@
         </div>
     </div>
 
-    {{-- Usuarios & Roles --}}
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; position:relative; overflow:hidden;">
-        <div style="position:absolute; top:-15px; right:-15px; width:70px; height:70px; background:rgba(245,158,11,.06); border-radius:50%;"></div>
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
-            <span style="width:32px; height:32px; background:var(--amber-bg); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="var(--amber)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">Usuarios & Roles</span>
-        </div>
-        <div style="font-size:28px; font-weight:800; color:var(--text-primary); letter-spacing:-0.04em; line-height:1; margin-bottom:6px;">
-            {{ $stats['total_usuarios'] ?? 0 }}
-        </div>
-        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">{{ $stats['total_roles'] ?? 0 }} roles configurados</p>
-        <div style="display:flex; flex-direction:column; gap:6px;">
-            @forelse($stats['roles_breakdown'] ?? [] as $rolName => $rolCnt)
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background:rgba(245,158,11,.05); border-radius:6px; border:1px solid rgba(245,158,11,.1);">
-                <span style="font-size:11px; font-weight:600; color:var(--text-secondary);">{{ $rolName }}</span>
-                <span style="font-size:12px; color:var(--amber); font-weight:800;">{{ $rolCnt }} usuario{{ $rolCnt != 1 ? 's' : '' }}</span>
-            </div>
-            @empty
-            <p style="font-size:11px; color:var(--text-muted); margin:0;">Sin roles definidos</p>
-            @endforelse
-        </div>
-    </div>
-
     {{-- DB Master --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; position:relative; overflow:hidden;">
         <div style="position:absolute; top:-15px; right:-15px; width:70px; height:70px; background:rgba(16,185,129,.06); border-radius:50%;"></div>
@@ -399,12 +359,12 @@
             <span style="width:32px; height:32px; background:var(--emerald-bg); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="var(--emerald)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </span>
-            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">DB Master</span>
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em;">Listado de artículos</span>
         </div>
         <div style="font-size:28px; font-weight:800; color:var(--text-primary); letter-spacing:-0.04em; line-height:1; margin-bottom:6px;">
             {{ !empty($stats['db_master_total']) ? number_format($stats['db_master_total']) : '—' }}
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Artículos en lista maestra</p>
+        <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Artículos homologados</p>
         <div style="display:flex; flex-direction:column; gap:6px;">
             <div style="display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background:rgba(16,185,129,.05); border-radius:6px; border:1px solid rgba(16,185,129,.1);">
                 <span style="font-size:11px; color:var(--text-muted);">Último sync</span>
@@ -423,8 +383,8 @@
             @endif
         </div>
     </div>
-
 </div>
+
 
 {{-- Accesos rápidos (siempre visibles) --}}
 <div style="margin-bottom:32px;">
@@ -434,7 +394,7 @@
         $shortcuts = [
             ['label' => 'Catálogo',        'desc' => 'Ver artículos',        'route' => 'articulos.index',     'color' => '#8b5cf6', 'icon' => '<path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><ellipse cx="12" cy="5" rx="9" ry="3"/>'],
             ['label' => 'Homologación',    'desc' => 'Comparar sucursales',  'route' => 'homologacion.index',  'color' => '#0ea5e9', 'icon' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
-            ['label' => 'DB Master',       'desc' => 'Lista maestra',        'route' => 'db_master.index',     'color' => '#10b981', 'icon' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'],
+            ['label' => 'Listado de artículos', 'desc' => 'Lista maestra',        'route' => 'db_master.index',     'color' => '#10b981', 'icon' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'],
             ['label' => 'Estadísticas',    'desc' => 'Análisis global',      'route' => 'estadisticas.index',  'color' => '#f59e0b', 'icon' => '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'],
             ['label' => 'Usuarios',        'desc' => 'Gestionar usuarios',   'route' => 'usuarios.index',      'color' => '#f43f5e', 'icon' => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'],
             ['label' => 'Conexiones',      'desc' => 'Bases de datos',       'route' => 'conexiones.index',    'color' => '#06b6d4', 'icon' => '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/>'],

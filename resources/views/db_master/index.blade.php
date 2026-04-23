@@ -31,7 +31,7 @@
 {{-- Wrapper --}}
 <div style="flex-shrink: 0; overflow-x: auto;">
 
-    {{-- â”€â”€ PREMIUM HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
+
     <div class="page-header shadow-premium" style="margin-bottom: 12px; padding: 14px 20px; background: var(--grad-surface); border-radius: var(--radius-xl); border: 1px solid var(--glass-border); position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center;">
         {{-- Efecto decorativo de fondo --}}
         <div style="position:absolute; top:-50px; right:-50px; width:150px; height:150px; background:var(--emerald); filter:blur(100px); opacity:0.1; pointer-events:none;"></div>
@@ -46,7 +46,7 @@
             </div>
             <div>
                 <h1 class="page-title" style="letter-spacing: -0.01em; margin:0;">DB Master</h1>
-                <p class="page-subtitle" style="color: var(--text-secondary); margin:4px 0 0;">CatÃ¡logo Maestro Independiente</p>
+                <p class="page-subtitle" style="color: var(--text-secondary); margin:4px 0 0;">Catálogo Maestro Independiente</p>
             </div>
         </div>
         <div class="page-header-actions" style="display:flex;gap:12px;align-items:center; z-index: 1;">
@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    {{-- â”€â”€ SIMPLE SEARCH BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
+    
     <form method="GET" action="{{ route('db_master.index') }}" style="margin-bottom: 12px; flex-shrink: 0;">
         <input type="hidden" name="per_page" id="per_page_input" value="{{ request('per_page', 50) }}">
 
@@ -74,7 +74,7 @@
                 <span class="search-icon" style="padding: 0 12px; color:var(--text-muted); display:flex; align-items:center;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 </span>
-                <input type="text" name="q" value="{{ $search }}" placeholder="Buscar por cÃ³digo maestro o descripciÃ³n..." class="search-input" autocomplete="off" style="width: 100%; border:none; background:transparent; padding:9px 12px 9px 0; color:white; outline:none; font-size:12px; font-weight:600;">
+                <input type="text" name="q" value="{{ $search }}" placeholder="Buscar por código maestro o descripción..." class="search-input" autocomplete="off" style="width: 100%; border:none; background:transparent; padding:9px 12px 9px 0; color:white; outline:none; font-size:12px; font-weight:600;">
             </div>
 
             <div style="display:flex; align-items:center; gap:8px;">
@@ -89,7 +89,7 @@
     {{-- â”€â”€ ALERTS (Success/Errores) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
     @if(session('success'))
     <div class="alert alert--success shadow-premium" style="margin-bottom:16px; border-left: 4px solid #10b981; padding: 12px 16px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 6px;">
-        <strong>Â¡Ã‰xito!</strong> {{ session('success') }}
+        <strong>¡Éxito!</strong> {{ session('success') }}
     </div>
     @endif
 
@@ -105,13 +105,13 @@
 <div class="glass-card shadow-premium" id="db-master-table-card" style="display: flex; flex-direction: column; margin-bottom: 0;">
     <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <div style="display:flex; align-items:center; gap:10px;">
-            <h2 style="font-size: 13px; font-weight: 800; color: var(--text-primary); margin:0;">CatÃ¡logo Universal</h2>
+            <h2 style="font-size: 13px; font-weight: 800; color: var(--text-primary); margin:0;">Catálogo Universal</h2>
             <span style="font-size: 10px; color: var(--text-muted);">
-                Â· Ãšltima sincronizaciÃ³n: <span style="color:var(--emerald);font-weight:700;">{{ $stats['last_sync'] ?? 'Nunca' }}</span>
+                · Última sincronización: <span style="color:var(--emerald);font-weight:700;">{{ $stats['last_sync'] ?? 'Nunca' }}</span>
                 @if($search)
-                    Â· "<span style="color: var(--violet-light);">{{ $search }}</span>" Â· {{ number_format($articles->total()) }}
+                    · "<span style="color: var(--violet-light);">{{ $search }}</span>" · {{ number_format($articles->total()) }}
                 @else
-                    Â· {{ number_format($stats['universo'] ?? 0) }} artÃ­culos
+                    · {{ number_format($stats['universo'] ?? 0) }} artículos
                 @endif
             </span>
         </div>
@@ -239,7 +239,7 @@
                         <td style="padding: 12px 20px; text-align: left; font-size: 11px; color: var(--text-secondary); border-bottom: 1px solid var(--border-light);">{{ $row->sustituto }}</td>
                         <td style="padding: 12px 20px; text-align: left; font-size: 11px; color: var(--text-secondary); border-bottom: 1px solid var(--border-light);">{{ $row->sustituto1 }}</td>
                         <td style="padding: 12px 20px; text-align: center; border-bottom: 1px solid var(--border-light); white-space: nowrap; z-index: 10;">
-                            <button onclick='openEditModal({!! json_encode($row) !!})' class="btn btn--sm btn--ghost shadow-premium" style="padding: 6px 10px; border: 1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--violet-light);" title="Editar ArtÃ­culo">
+                            <button onclick='openEditModal({!! json_encode($row) !!})' class="btn btn--sm btn--ghost shadow-premium" style="padding: 6px 10px; border: 1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--violet-light);" title="Editar Artículo">
                                 <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                         </td>
@@ -248,7 +248,7 @@
                     <tr>
                         <td colspan="60" style="padding: 60px; text-align: center; color: var(--text-muted); font-size: 14px;">
                             <svg style="opacity: 0.2; margin-bottom: 12px;" viewBox="0 0 24 24" fill="none" width="48" height="48" stroke="currentColor" stroke-width="1"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                            <p>No hay artÃ­culos en la base maestra. Pulsa "Sincronizar Maestro" para actualizar.</p>
+                            <p>No hay artículos en la base maestra. Pulsa "Sincronizar Maestro" para actualizar.</p>
                         </td>
                     </tr>
                 @endforelse
@@ -259,7 +259,7 @@
     @if($articles->hasPages())
         <div style="padding: 16px 24px; background: var(--bg-card); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
             <p style="font-size: 12px; color: var(--text-muted); margin:0;">
-                Mostrando pÃ¡gina <span style="color:var(--text-primary); font-weight:700;">{{ $articles->currentPage() }}</span> de {{ $articles->lastPage() }}
+                Mostrando página <span style="color:var(--text-primary); font-weight:700;">{{ $articles->currentPage() }}</span> de {{ $articles->lastPage() }}
             </p>
             <div class="premium-pagination">
                 {{ $articles->links('pagination::bootstrap-4') }}
@@ -276,7 +276,7 @@
                 <div style="width:32px; height:32px; border-radius:8px; background:var(--emerald); color:white; display:flex; align-items:center; justify-content:center;">
                     <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-                <h3 style="margin:0; font-size:16px; font-weight:800; color:white;">Historial de SincronizaciÃ³n</h3>
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:white;">Historial de Sincronización</h3>
             </div>
             <button onclick="closeHistoryModal()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer;"><svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
@@ -377,14 +377,14 @@ function openHistoryModal() {
     .then(r => r.json())
     .then(data => {
         if (!data || data.length === 0) {
-            content.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted); font-size:12px;">No hay registros de sincronizaciÃ³n aÃºn.</div>';
+            content.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted); font-size:12px;">No hay registros de sincronización aún.</div>';
             return;
         }
 
         let html = '<table style="width:100%; font-size:12px; border-collapse:collapse;">';
         html += '<thead style="background:rgba(255,255,255,0.03);"><tr style="border-bottom:1px solid var(--border);">';
         html += '<th style="padding:10px;text-align:left;color:var(--text-muted);">FECHA / HORA</th>';
-        html += '<th style="padding:10px;text-align:right;color:var(--text-muted);">ARTÃCULOS</th>';
+        html += '<th style="padding:10px;text-align:right;color:var(--text-muted);">ARTÍCULOS</th>';
         html += '</tr></thead><tbody>';
 
         data.forEach(h => {
@@ -505,7 +505,7 @@ document.getElementById('edit-article-form').addEventListener('submit', function
 
     Swal.fire({
         title: 'Guardando cambios...',
-        text: 'Se actualizarÃ¡ el Maestro y se replicarÃ¡ a todas las sucursales.',
+        text: 'Se actualizará el Maestro y se replicará a todas las sucursales.',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
     });
@@ -522,14 +522,14 @@ document.getElementById('edit-article-form').addEventListener('submit', function
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            Swal.fire('Ã‰xito', data.message, 'success').then(() => location.reload());
+            Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
         } else {
             Swal.fire('Error', data.message || 'Error desconocido', 'error');
         }
     })
     .catch(err => {
         console.error(err);
-        Swal.fire('Error', 'Fallo en la comunicaciÃ³n con el servidor', 'error');
+        Swal.fire('Error', 'Fallo en la comunicación con el servidor', 'error');
     });
 });
 
@@ -553,7 +553,7 @@ window.addEventListener('resize', adjustTableHeight);
                 <div style="width:32px; height:32px; border-radius:8px; background:var(--violet); color:white; display:flex; align-items:center; justify-content:center;">
                     <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
-                <h3 style="margin:0; font-size:16px; font-weight:800; color:white;">Editar ArtÃ­culo Maestro <span id="modal-clave-badge" style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:4px; font-size:12px; margin-left:10px; color:var(--violet-light);"></span></h3>
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:white;">Editar Artículo Maestro <span id="modal-clave-badge" style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:4px; font-size:12px; margin-left:10px; color:var(--violet-light);"></span></h3>
             </div>
             <button onclick="closeEditModal()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer;"><svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
@@ -562,7 +562,7 @@ window.addEventListener('resize', adjustTableHeight);
         <div style="display:flex; background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border); padding:0 24px;">
             <button class="modal-tab active" onclick="switchModalTab(event, 'tab-general')" style="padding:12px 20px; background:none; border:none; color:white; border-bottom:2px solid var(--violet); cursor:pointer; font-size:12px; font-weight:600;">General</button>
             <button class="modal-tab" onclick="switchModalTab(event, 'tab-precios')" style="padding:12px 20px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:12px; font-weight:600;">Precios y Costos</button>
-            <button class="modal-tab" onclick="switchModalTab(event, 'tab-inventario')" style="padding:12px 20px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:12px; font-weight:600;">Inventario y LogÃ­stica</button>
+            <button class="modal-tab" onclick="switchModalTab(event, 'tab-inventario')" style="padding:12px 20px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:12px; font-weight:600;">Inventario y Logística</button>
             <button class="modal-tab" onclick="switchModalTab(event, 'tab-extra')" style="padding:12px 20px; background:none; border:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; font-size:12px; font-weight:600;">SAT y Sustitutos</button>
         </div>
         
@@ -578,19 +578,19 @@ window.addEventListener('resize', adjustTableHeight);
                             <input type="text" id="edit-clave" readonly class="modal-input readonly">
                         </div>
                         <div class="form-group" style="grid-column: span 2;">
-                            <label class="modal-label">DescripciÃ³n</label>
+                            <label class="modal-label">Descripción</label>
                             <input type="text" name="descripcion" id="edit-descripcion" maxlength="200" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">LÃ­nea</label>
+                            <label class="modal-label">Línea</label>
                             <input type="text" name="linea" id="edit-linea" required maxlength="4" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">ClasificaciÃ³n</label>
+                            <label class="modal-label">Clasificación</label>
                             <input type="text" name="clasificacion" id="edit-clasificacion" required maxlength="6" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Ãrea</label>
+                            <label class="modal-label">Area</label>
                             <input type="number" name="area" id="edit-area" required class="modal-input">
                         </div>
                         <div class="form-group">
@@ -661,11 +661,11 @@ window.addEventListener('resize', adjustTableHeight);
                             <input type="number" step="0.01" name="desc_precio4" id="edit-desc_precio4" class="modal-input">
                         </div>
                          <div class="form-group">
-                            <label class="modal-label">Precio MÃ­nimo</label>
+                            <label class="modal-label">Precio Mínimo</label>
                             <input type="number" step="0.0001" name="precio_minimo" id="edit-precio_minimo" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Desc. MÃ­nimo (%)</label>
+                            <label class="modal-label">Desc. Mínimo (%)</label>
                             <input type="number" step="0.01" name="desc_precio_minimo" id="edit-desc_precio_minimo" class="modal-input">
                         </div>
                         <div class="form-group">
@@ -673,7 +673,7 @@ window.addEventListener('resize', adjustTableHeight);
                             <input type="number" step="0.0001" name="precio_tope" id="edit-precio_tope" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Margen MÃ­nimo (%)</label>
+                            <label class="modal-label">Margen Mínimo (%)</label>
                             <input type="number" step="0.01" name="margen_minimo" id="edit-margen_minimo" class="modal-input">
                         </div>
                         <div class="form-group">
@@ -695,11 +695,11 @@ window.addEventListener('resize', adjustTableHeight);
                 <div id="tab-inventario" class="modal-tab-panel" style="display:none;">
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
                         <div class="form-group">
-                            <label class="modal-label">Inventario MÃ¡ximo</label>
+                            <label class="modal-label">Inventario Máximo</label>
                             <input type="number" step="0.01" name="inventario_maximo" id="edit-inventario_maximo" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Inventario MÃ­nimo</label>
+                            <label class="modal-label">Inventario Mínimo</label>
                             <input type="number" step="0.01" name="inventario_minimo" id="edit-inventario_minimo" class="modal-input">
                         </div>
                         <div class="form-group">
@@ -707,15 +707,15 @@ window.addEventListener('resize', adjustTableHeight);
                             <input type="number" step="0.01" name="punto_reorden" id="edit-punto_reorden" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Existencia TeÃ³rica</label>
+                            <label class="modal-label">Existencia Teórica</label>
                             <input type="number" step="0.01" name="existencia_teorica" id="edit-existencia_teorica" class="modal-input readonly" readonly>
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Existencia FÃ­sica</label>
+                            <label class="modal-label">Existencia Física</label>
                             <input type="number" step="0.01" name="existencia_fisica" id="edit-existencia_fisica" class="modal-input readonly" readonly>
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">UbicaciÃ³n</label>
+                            <label class="modal-label">Ubicación</label>
                             <input type="text" name="ubicacion" id="edit-ubicacion" class="modal-input">
                         </div>
                         <div class="form-group">
@@ -727,14 +727,14 @@ window.addEventListener('resize', adjustTableHeight);
                             <input type="number" step="0.01" name="std_pack" id="edit-std_pack" class="modal-input">
                         </div>
                         <div class="form-group" style="grid-column: span 3; border-top: 1px solid var(--border); margin-top: 10px; padding-top: 15px;">
-                             <label style="color:var(--violet-light); font-size:11px; font-weight:800; text-transform:uppercase;">Ãšltimas Compras</label>
+                             <label style="color:var(--violet-light); font-size:11px; font-weight:800; text-transform:uppercase;">Últimas Compras</label>
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Ãšltimo Costo</label>
+                            <label class="modal-label">Último Costo</label>
                             <input type="number" step="0.0001" name="costo_ult_compra" id="edit-costo_ult_compra" class="modal-input">
                         </div>
                         <div class="form-group">
-                            <label class="modal-label">Fecha Ãšlt. Compra</label>
+                            <label class="modal-label">Fecha Últ. Compra</label>
                             <input type="date" name="fecha_ult_compra" id="edit-fecha_ult_compra" class="modal-input">
                         </div>
                         <div class="form-group">
@@ -776,11 +776,11 @@ window.addEventListener('resize', adjustTableHeight);
                         </div>
                         <div class="form-group" style="display:flex; align-items:center; gap:10px;">
                             <input type="checkbox" name="en_promocion" id="edit-en_promocion" style="width:16px; height:16px;">
-                            <label style="font-size:11px; font-weight:700; color:white;">En PromociÃ³n</label>
+                            <label style="font-size:11px; font-weight:700; color:white;">En Promoción</label>
                         </div>
                         <div class="form-group" style="display:flex; align-items:center; gap:10px;">
                             <input type="checkbox" name="critico" id="edit-critico" style="width:16px; height:16px;">
-                            <label style="font-size:11px; font-weight:700; color:white;">CrÃ­tico</label>
+                            <label style="font-size:11px; font-weight:700; color:white;">Crítico</label>
                         </div>
                         <div class="form-group" style="display:flex; align-items:center; gap:10px;">
                             <input type="checkbox" name="control_pedimentos" id="edit-control_pedimentos" style="width:16px; height:16px;">

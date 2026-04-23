@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HomologacionSnapshot;
 use App\Models\MatrizHomologacion;
 use App\Console\Commands\SyncMatrizHomologacion;
 use Illuminate\Http\Request;
@@ -448,5 +449,74 @@ class HomologacionController extends Controller
         
         return response()->json($data);
     }
-}
 
+    /**
+     * Historial de sincronizaciones.
+     * Muestra cómo evolucionó el conteo de artículos activos por sucursal
+     * de una sync a la siguiente (delta día a día).
+     */
+    public function historial(): View
+    {
+        // Todos los snapshots ordenados del más reciente al más antiguo
+        $snapshots = HomologacionSnapshot::orderBy('synced_at', 'desc')
+            ->orderBy('branch_code')
+            ->get();
+
+        // Agrupar por timestamp exacto de la sync (mismo now() = misma pasada)
+        // Usamos Y-m-d H:i:s para que dos syncs distintas nunca se mezclen,
+        // incluso si se lanzan con minutos de diferencia el mismo día.
+        $grouped = $snapshots->groupBy(fn ($s) => $s->synced_at->format('Y-m-d H:i:s'));
+
+        // Obtener sucursales únicas (branch_code => branch_name) en orden alfabético
+        $branches = $snapshots
+            ->unique('branch_code')
+            ->sortBy('branch_name')
+            ->pluck('branch_name', 'branch_code')
+            ->toArray();
+
+        // Construir filas con delta vs sync anterior
+        $dates   = $grouped->keys()->toArray();   // fechas ordenadas desc
+        $rows    = [];
+
+        foreach ($dates as $idx => $dateKey) {
+            $syncData    = $grouped[$dateKey];      // snapshot de esta sync
+            $prevDateKey = $dates[$idx + 1] ?? null; // sync anterior (siguiente idx porque es desc)
+            $prevData    = $prevDateKey ? $grouped[$prevDateKey] : null;
+
+            // Indexar por branch_code para acceso rápido
+            $byCode     = $syncData->keyBy('branch_code');
+            $prevByCode = $prevData ? $prevData->keyBy('branch_code') : collect();
+
+            $cells = [];
+            foreach ($branches as $code => $name) {
+                $curr  = $byCode->get($code);
+                $prev  = $prevByCode->get($code);
+
+                $activos = $curr ? $curr->total_activos : null;
+                $delta   = null;
+
+                if ($curr && $prev) {
+                    $delta = $curr->total_activos - $prev->total_activos;
+                }
+
+                $cells[$code] = [
+                    'activos'   => $activos,
+                    'inactivos' => $curr ? $curr->total_inactivos : null,
+                    'falta'     => $curr ? $curr->total_falta : null,
+                    'delta'     => $delta,
+                ];
+            }
+
+            $rows[] = [
+                'date'  => $dateKey,
+                'cells' => $cells,
+            ];
+        }
+
+        return view('homologacion.historial', [
+            'rows'     => $rows,
+            'branches' => $branches,
+            'total'    => count($rows),
+        ]);
+    }
+}

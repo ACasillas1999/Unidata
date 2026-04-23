@@ -89,14 +89,16 @@
 {{-- ══════════════════════════════════════════════════════════════════════════
      FILA 1 — KPIs GLOBALES (8 tarjetas)
 ══════════════════════════════════════════════════════════════════════════ --}}
-<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px;">
+<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:20px;">
 @php
+$avance = $stats['avance_homologacion'] ?? ['pct'=>0, 'diferencia'=>0];
 $kpis = [
-    ['l'=>'Universo',        'v'=> number_format($universo),                    'c'=>'#8b5cf6', 'i'=>'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>'],
-    ['l'=>'Cobertura',       'v'=> ($stats['cobertura_global_pct']??0).'%',      'c'=> ($stats['cobertura_global_pct']??0)>=60?'#10b981':(($stats['cobertura_global_pct']??0)>=30?'#f59e0b':'#f43f5e'), 'i'=>'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
-    ['l'=>'En Todas',        'v'=> number_format($stats['en_todas']??0),          'c'=>'#10b981', 'i'=>'<polyline points="20 6 9 17 4 12"/>'],
-    ['l'=>'Sin Cobertura',   'v'=> number_format($stats['en_ninguna']??0),        'c'=>'#f43f5e', 'i'=>'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'],
-    ['l'=>'Habilitados',     'v'=> number_format($inv['habilitados']??0),         'c'=>'#0ea5e9', 'i'=>'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>'],
+    ['l'=>'Total Sucursales', 'v'=> number_format($universo),                    'c'=>'#8b5cf6', 'i'=>'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>', 's'=>'HABILITADOS E INHABILITADOS EN TODAS LAS SUCURSALES'],
+    ['l'=>'Habilitados EN SUCURSALES',     'v'=> number_format($inv['habilitados']??0),         'c'=>'#0ea5e9', 'i'=>'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>', 's'=>'SOLO HABILITADOS EN TODAS LAS SUCURSALES'],
+    ['l'=>'Activo en Todas', 'v'=> number_format($stats['en_todas']??0),          'c'=>'#10b981', 'i'=>'<polyline points="20 6 9 17 4 12"/>', 's'=>'SOLO HABILITADOS EN TODAS LAS SUCURSALES'],
+    ['l'=>'Inhabilitados',   'v'=> number_format($inv['deshabilitados']??0),      'c'=>'#f43f5e', 'i'=>'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>', 's'=>'INHABILITADOS E INEXISTENTES EN TODAS LAS SUCURSALES'],
+    ['l'=>'Avance HOMOLOGACION',   'v'=> ($avance['pct']).'%',                        'c'=>'#fbbf24', 'i'=>'<path d="M12 20v-6M9 20v-10M15 20v-2M18 20v-8M21 20v-4M6 20v-12M3 20v-3"/><path d="M3 10l6-6 4 4 8-8"/>', 's' => number_format($avance['diferencia']).' pendientes'],
+    ['l'=>'Cobertura Global','v'=> ($stats['cobertura_global_pct']??0).'%',      'c'=> ($stats['cobertura_global_pct']??0)>=60?'#10b981':(($stats['cobertura_global_pct']??0)>=30?'#f59e0b':'#f43f5e'), 'i'=>'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', 's'=>'IGUALDAD DE TODAS LAS SUCURSALES'],
 ];
 @endphp
 @foreach($kpis as $k)
@@ -107,6 +109,9 @@ $kpis = [
     </div>
     <div style="font-size:20px; font-weight:800; color:{{ $k['c'] }}; letter-spacing:-0.04em; line-height:1;">{{ $k['v'] }}</div>
     <div style="font-size:10px; font-weight:700; color:var(--text-muted); margin-top:4px; text-transform:uppercase; letter-spacing:.06em;">{{ $k['l'] }}</div>
+    @if(isset($k['s']))
+    <div style="font-size:9px; color:{{ $k['c'] }}; opacity:0.8; margin-top:2px; font-weight:600;">{{ $k['s'] }}</div>
+    @endif
 </div>
 @endforeach
 </div>
@@ -183,7 +188,7 @@ $kpis = [
     {{-- Score de salud por sucursal --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
         <div class="ph">
-            <h3>Score de Salud por Sucursal</h3>
+            <h3>PROGRESO DE HOMOLOGACION POR SUCURSAL</h3>
             <span>artículos / universo</span>
         </div>
         @php $hCols = (int)ceil(count($stats['health_scores']??[]) / 2); @endphp
@@ -247,7 +252,6 @@ $kpis = [
 
 {{-- Fila A: 2 tablas lado a lado --}}
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
-
     {{-- Tabla 1 — Cobertura por Línea --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
         <div class="ph">
@@ -278,42 +282,6 @@ $kpis = [
             </table>
         </div>
     </div>
-
-    {{-- Tabla 10 (Movida a lugar de Clasificación) — Oportunidades: Sin Cobertura --}}
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
-        <div class="ph" style="border-bottom-color:rgba(244,63,94,.2); background:rgba(244,63,94,.04);">
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:6px; height:6px; background:var(--rose); border-radius:50%; box-shadow:0 0 5px var(--rose);"></span>
-                <h3>Oportunidades — Sin Cobertura</h3>
-            </div>
-            <span>activos en 0 sucursales</span>
-        </div>
-        <div class="ps" style="overflow-y:auto; max-height:290px;">
-            <table class="et">
-                <thead><tr>
-                    <th>Clave</th>
-                    <th>Descripción</th>
-                    <th>Línea</th>
-                    <th class="num">P. Lista</th>
-                </tr></thead>
-                <tbody>
-                @forelse($stats['sin_cobertura']??[] as $art)
-                <tr>
-                    <td style="font-weight:700; color:var(--rose); white-space:nowrap;">{{ $art['clave'] }}</td>
-                    <td style="color:var(--text-secondary); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $art['descripcion'] }}">{{ $art['descripcion'] }}</td>
-                    <td><span class="b br" style="font-size:9px;">{{ Str::limit($art['linea']??'—',12) }}</span></td>
-                    <td class="num">${{ number_format($art['precio_lista']??0,2) }}</td>
-                </tr>
-                @empty<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:18px;">Sin datos disponibles</td></tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-{{-- Fila B: 2 tablas lado a lado --}}
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
 
     {{-- Tabla 3 — Discrepancias: DB Master -> Matriz --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
@@ -346,7 +314,10 @@ $kpis = [
             </table>
         </div>
     </div>
+</div>
 
+{{-- Fila B: 2 tablas lado a lado --}}
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
     {{-- Tabla 4 — Ranking de Sucursales (Salud de Cobertura) --}}
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
         <div class="ph" style="border-bottom-color:rgba(16,185,129,.2); background:rgba(16,185,129,.04);">
@@ -378,45 +349,6 @@ $kpis = [
                     <td class="pct" style="color:{{ $rc }};">{{ $rank['pct'] }}%</td>
                 </tr>
                 @empty<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:18px;">Sin datos</td></tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-{{-- Fila C: 2 tablas lado a lado --}}
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
-
-    {{-- Tabla 5 — Brecha de Cobertura por Línea --}}
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
-        <div class="ph" style="border-bottom-color:rgba(245,158,11,.2); background:rgba(245,158,11,.04);">
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:6px; height:6px; background:var(--amber); border-radius:50%; box-shadow:0 0 5px var(--amber);"></span>
-                <h3>Brecha de Cobertura por Línea</h3>
-            </div>
-            <span>slots faltantes en sucursales</span>
-        </div>
-        <div class="ps" style="overflow-y:auto; max-height:290px;">
-            <table class="et">
-                <thead><tr>
-                    <th>Línea</th>
-                    <th class="num">Arts.</th>
-                    <th class="num">Faltan</th>
-                    <th class="pct">Brecha</th>
-                </tr></thead>
-                <tbody>
-                @forelse($stats['brecha_linea']??[] as $brecha)
-                @php
-                    $bc = $brecha['brecha_pct'] >= 50 ? '#f43f5e' : ($brecha['brecha_pct'] >= 20 ? '#f59e0b' : '#10b981');
-                @endphp
-                <tr>
-                    <td style="font-weight:700; color:var(--amber); white-space:nowrap;">{{ Str::limit($brecha['linea'] ?: 'Sin línea', 15) }}</td>
-                    <td class="num" style="color:var(--text-primary);">{{ number_format($brecha['total_arts']) }}</td>
-                    <td class="num" style="color:var(--rose);">{{ number_format($brecha['faltantes']) }}</td>
-                    <td class="pct" style="color:{{ $bc }};">{{ $brecha['brecha_pct'] }}%</td>
-                </tr>
-                @empty<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:18px;">Sin datos</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -468,76 +400,7 @@ $kpis = [
     </div>
 </div>
 
-{{-- Fila D: Tabla extra En Promoción + 100% Homologados --}}
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px;">
 
-    {{-- Tabla 7 — Discrepancias: Matriz -> DB Master --}}
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
-        <div class="ph" style="border-bottom-color:rgba(245,158,11,.2); background:rgba(245,158,11,.03);">
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:6px; height:6px; background:var(--amber); border-radius:50%; box-shadow:0 0 5px var(--amber);"></span>
-                <h3>Nuevos en Matriz (No en Master)</h3>
-            </div>
-            <span>creados en sucursal sin alta global</span>
-        </div>
-        <div class="ps" style="overflow-y:auto; max-height:260px;">
-            <table class="et">
-                <thead><tr>
-                    <th>Clave</th>
-                    <th>Descripción</th>
-                    <th class="num">P. Lista</th>
-                    <th class="num" style="text-align:center;">Sucursales</th>
-                </tr></thead>
-                <tbody>
-                @forelse($stats['missing_in_master']??[] as $art)
-                @php $pres = $art['presencias']??0; $pc = $pres>=$totalB?'#10b981':($pres>0?'#f59e0b':'#f43f5e'); @endphp
-                <tr>
-                    <td style="font-weight:700; color:var(--amber); white-space:nowrap;">{{ $art['clave'] }}</td>
-                    <td style="color:var(--text-secondary); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $art['descripcion'] }}">{{ $art['descripcion'] }}</td>
-                    <td class="num">${{ number_format($art['precio_lista']??0,2) }}</td>
-                    <td style="text-align:center; font-weight:800; color:{{ $pc }};">{{ $pres }}/{{ $totalB }}</td>
-                </tr>
-                @empty<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:18px;">Sin artículos foráneos</td></tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    {{-- Tabla 8 — 100% Homologados --}}
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
-        <div class="ph" style="border-bottom-color:rgba(16,185,129,.2); background:rgba(16,185,129,.04);">
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:6px; height:6px; background:var(--emerald); border-radius:50%; box-shadow:0 0 5px var(--emerald);"></span>
-                <h3>Artículos 100% Homologados</h3>
-            </div>
-            <span>en TODAS las sucursales</span>
-        </div>
-        <div class="ps" style="overflow-y:auto; max-height:260px;">
-            <table class="et">
-                <thead><tr>
-                    <th>Clave</th>
-                    <th>Descripción</th>
-                    <th>Línea</th>
-                    <th>Clasificación</th>
-                    <th class="num">P. Lista</th>
-                </tr></thead>
-                <tbody>
-                @forelse($stats['top_homologados']??[] as $art)
-                <tr>
-                    <td style="font-weight:700; color:var(--emerald); white-space:nowrap;">{{ $art['clave'] }}</td>
-                    <td style="color:var(--text-secondary); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ $art['descripcion'] }}">{{ $art['descripcion'] }}</td>
-                    <td><span class="b bg" style="font-size:9px;">{{ Str::limit($art['linea']??'—',12) }}</span></td>
-                    <td style="color:var(--text-muted); font-size:11px;">{{ Str::limit($art['clasificacion']??'—',14) }}</td>
-                    <td class="num">${{ number_format($art['precio_lista']??0,2) }}</td>
-                </tr>
-                @empty<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:18px;">Sin datos disponibles</td></tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 
 
 
@@ -634,19 +497,16 @@ const fnt = { family: 'inherit', size: 10 };
         'Radar — % Cobertura por Sucursal': 'Representa de forma radial la proporción del catálogo global que ha asimilado cada sucursal. Útil para identificar el "área" o alcance general de la red.',
         'Histograma de Presencias': 'Indica con qué frecuencia un artículo se repite en la misma cantidad de sucursales (ej. cuántos artículos únicos solo existen en 1 sucursal, cuántos existen en 2, etc).',
         'Top 10 Líneas de Producto': 'Clasifica las familias o líneas de producto principales basándose en la cantidad de artículos únicos vinculados.',
-        'Score de Salud por Sucursal': 'Proporciona una calificación rápida del estado del inventario calculando el porcentaje del catálogo maestro presente en cada sucursal (Excelente, Bueno, Regular, Bajo).',
+        'PROGRESO DE HOMOLOGACION POR SUCURSAL': 'Proporciona una calificación rápida del estado del inventario calculando el porcentaje del catálogo maestro presente en cada sucursal (Excelente, Bueno, Regular, Bajo).',
         'Inventario & Catálogo Global': 'Muestra indicadores aglomerados del conjunto del catálogo: valoración monetaria del inventario teórico listado y conteo de características especiales como promos y críticos.',
         'Cobertura por Línea de Producto': 'Evalúa porcentualmente la cobertura homologada de cada línea. Entre más alto, significa que los artículos de dicha línea están presentes en mayor número de sucursales.',
         'Cobertura por Clasificación': 'Desglosa la penetración en sucursales basándose en las clasificaciones internas de los artículos.',
         'Faltantes en Matriz': 'Artículos que existen oficialmente en el DB Master pero que no están sincronizados en la tabla de Homologación de esta instancia.',
         'Ranking de Sucursales': 'Clasifica a las sucursales ordenadas por el número artículos que tienen y detalla exactamente cuántos "slots" de productos únicos les faltan para tener el 100% de productos de la matriz.',
-        'Brecha de Cobertura por Línea': 'Identifica las líneas que suponen un mayor "hueco" en la red de abastecimiento. La brecha contabiliza el número de ubicaciones vacías que podrían tener stock de esta categoría.',
         'Detalle de Matriz por Cobertura': 'Una versión en tabla detallada sobre el histograma y radar, exponiendo métricas exactas del reparto de existencias multidependencia.',
-        'Nuevos en Matriz (No en Master)': 'Muestra artículos que han sido creados directamente en los sistemas de algunas sucursales locales pero que NO existen en el catálogo padre DB Master.',
-        'Artículos 100% Homologados': 'El núcleo del catálogo maestro: aquellos productos que figuran consistentemente y sin excepción en los inventarios homologados de todas las sucursales conectadas.',
-        'Matriz de Salud Global Completa': 'Control maestro interactivo que agrupa a todos los artículos acorde a su redundancia. Cliquear en una fila abre automáticamente el Visualizador de Homologación con los artículos exactos listados.',
-        'Oportunidades — Sin Cobertura': 'Catálogo de artículos habilitados que actualmente no tienen presencia ni stock en ninguna sucursal. Ideal para detectar áreas de oportunidad o productos descontinuados pendientes de expurgar.'
+        'Matriz de Salud Global Completa': 'Control maestro interactivo que agrupa a todos los artículos acorde a su redundancia. Cliquear en una fila abre automáticamente el Visualizador de Homologación con los artículos exactos listados.'
     };
+
 
     document.querySelectorAll('.ph').forEach(ph => {
         let titleEl = ph.querySelector('h3');

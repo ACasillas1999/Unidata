@@ -175,6 +175,7 @@ class EstadisticasController extends Controller
                 ->limit(15)->get()->toArray();
 
             // ════════════════════════════════════════════════════════════════
+
             // INVENTARIO GLOBAL
             // ════════════════════════════════════════════════════════════════
             $inv = MatrizHomologacion::selectRaw('
@@ -204,6 +205,20 @@ class EstadisticasController extends Controller
                 'series_count'       => (int)($inv->series_cnt        ?? 0),
                 'con_sustituto'      => (int)($inv->con_sustituto     ?? 0),
             ];
+
+            // ── Avance Homologación (Solicitado por el usuario) ───────────
+            $enTodas      = $stats['en_todas'] ?? 0;
+            $habilitados  = $stats['inventario']['habilitados'] ?? 0;
+            $diferencia   = max(0, $habilitados - $enTodas);
+            $pctAvance    = $habilitados > 0 ? round(($enTodas / $habilitados) * 100, 1) : 0;
+
+            $stats['avance_homologacion'] = [
+                'en_todas'    => $enTodas,
+                'habilitados' => $habilitados,
+                'diferencia'  => $diferencia,
+                'pct'         => $pctAvance
+            ];
+
 
             // ════════════════════════════════════════════════════════════════
             // HEALTH SCORES por sucursal
