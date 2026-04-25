@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Branch;
 use App\Models\HomologacionSnapshot;
 use App\Models\MatrizHomologacion;
+use App\Models\MatrizSyncCampo;
 use App\Services\BranchConnectionManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -30,6 +31,76 @@ class SyncMatrizHomologacion extends Command
             'updated_at' => time(),
         ], JSON_UNESCAPED_UNICODE);
         file_put_contents(self::statusFile(), $json, LOCK_EX);
+    }
+
+    /** 
+     * Mapeo de campos entre la base de datos origen (Sucursal) y la Matriz local.
+     * Facilita la mantenibilidad al centralizar los nombres de columnas.
+     */
+    private function getFieldMapping(): array
+    {
+        return [
+            'clave'               => 'Clave_Articulo',
+            'descripcion'         => 'Descripcion',
+            'unidad_medida'       => 'Unidad_Medida',
+            'linea'               => 'Linea',
+            'clasificacion'       => 'Clasificacion',
+            'area'                => 'Area',
+            'mn_usd'              => 'MN_USD',
+            'precio_lista'        => 'Precio_Lista',
+            'des_precio_venta'    => 'Desc_Precio_Venta',
+            'precio_venta'        => 'Precio_Venta',
+            'desc_precio_espec'   => 'Desc_Precio_Espec',
+            'precio_especial'     => 'Precio_Especial',
+            'desc_precio4'        => 'Desc_Precio4',
+            'precio4'             => 'Precio4',
+            'desc_precio_minimo'  => 'Desc_Precio_Minimo',
+            'precio_minimo'       => 'Precio_Minimo',
+            'precio_tope'         => 'PrecioTope',
+            'costo_venta'         => 'CostoVenta',
+            'porcetaje_descuento' => 'PorcentajeDescuento',
+            'desc_proveedor'      => 'Desc_Proveedor',
+            'articulo_kit'        => 'Articulo_Kit',
+            'margen_minimo'       => 'Margen_Minimo',
+            'articulo_serie'      => 'Articulo_Serie',
+            'color'               => 'Color',
+            'protocolo'           => 'Protocolo',
+            'idsat'               => 'IDSAT',
+            'clave_proveedor_1'   => 'Clave_Proveedor_1',
+            'costo_act_prov_1'    => 'Costo_Act_Prov_1',
+            'clave_prov_2'        => 'Clave_Prov_2',
+            'costo_act_prov_2'    => 'Costo_Act_Prov_2',
+            'clave_prov_3'        => 'Clave_Prov_3',
+            'costo_act_prov_3'    => 'Costo_Act_Prov_3',
+            'fecha_costo_act_p'   => 'Fecha_Costo_Act_P',
+            'inventario_maximo'   => 'Inventario_Maximo',
+            'inventario_minimo'   => 'Inventario_Minimo',
+            'punto_reorden'       => 'Punto_Reorden',
+            'existencia_teorica'  => 'Existencia_Teorica',
+            'existencia_fisica'   => 'Existencia_Fisica',
+            'costo_promedio'      => 'Costo_Promedio',
+            'costo_promedio_ant'  => 'Costo_Promedio_Ant',
+            'costo_ult_compra'    => 'Costo_Ult_Compra',
+            'fecha_ult_compra'    => 'Fecha_Ult_Compra',
+            'costo_compra_ant'    => 'Costo_Compra_Ant',
+            'fecha_compra_ant'    => 'Fecha_Compra_Ant',
+            'fecha_alta'          => 'Fecha_Alta',
+            'en_promocion'        => 'En_Promocion',
+            'critico'             => 'Critico',
+            'control_pedimentos'  => 'ControlPedimentos',
+            'id_impuesto_sat'     => 'IDImpuestoSAT',
+            'iva'                 => 'IVA',
+            'id_tipo_factor'      => 'IDTipoFactor',
+            'sustituto'           => 'Sustituto',
+            'sustituto1'          => 'Sustituto1',
+            'sustituto2'          => 'Sustituto2',
+            'articulo_conversion' => 'ArticuloConversion',
+            'conversion'          => 'Conversion',
+            'peso'                => 'Peso',
+            'ubicacion'           => 'Ubicacion',
+            'std_pack'            => 'StdPack',
+            'habilitado'          => 'Habilitado'
+        ];
     }
 
     /** Resolves the branch code to the correct matrix column name */
@@ -66,16 +137,26 @@ class SyncMatrizHomologacion extends Command
         $this->writeStatus('running', 'Iniciando sincronización...', 0, $total);
         $this->info("Iniciando sincronización ({$total} sucursales activas)...");
 
-        // Resetear columnas de todas las sucursales activas que existen físicamente
+        // ── LIMPIEZA INICIAL ─────────────────────────────────────────────
+        // 1. Resetear marcas de existencia en sucursales
         $physicalCols = MatrizHomologacion::getPhysicalBranchColumns();
-        $colsToReset = $branches->map(fn ($b) => $this->resolveColumnName($b->code))->toArray();
+        $colsToReset  = $branches->map(fn ($b) => $this->resolveColumnName($b->code))->toArray();
+        $validCols    = array_intersect($colsToReset, $physicalCols);
         
-        // Solo resetear columnas que existen tanto en el modelo como físicamente
-        $validCols = array_intersect($colsToReset, $physicalCols);
-
         if (!empty($validCols)) {
             MatrizHomologacion::query()->update(array_fill_keys($validCols, null));
         }
+
+        // 2. Limpiar campos que NO están seleccionados (según requerimiento del usuario)
+        $inactiveCampos = MatrizSyncCampo::where('is_active', false)->pluck('campo')->toArray();
+        if (!empty($inactiveCampos)) {
+            $this->info("   [CLEANUP] Limpiando campos inactivos en la matriz...");
+            MatrizHomologacion::query()->update(array_fill_keys($inactiveCampos, null));
+        }
+        // ─────────────────────────────────────────────────────────────────
+
+        $fieldMap = $this->getFieldMapping();
+        $activeCampos = MatrizSyncCampo::where('is_active', true)->pluck('campo')->toArray();
 
         foreach ($branches as $branch) {
             // Revisar si el usuario canceló la sincronización
@@ -100,108 +181,62 @@ class SyncMatrizHomologacion extends Command
             $this->info("-> Conectando a [{$branch->name} / {$branch->code}]...");
 
             try {
-                $connection    = $manager->connect($branch);
+                $connection = $manager->connect($branch);
                 $totalProcessed = 0;
 
-                $updateColumns = [
-                    $colName, 'descripcion', 'unidad_medida', 'linea', 'clasificacion', 'area',
-                    'mn_usd', 'precio_lista', 'des_precio_venta', 'precio_venta', 'desc_precio_espec',
-                    'precio_especial', 'desc_precio4', 'precio4', 'desc_precio_minimo', 'precio_minimo',
-                    'precio_tope', 'costo_venta', 'porcetaje_descuento', 'desc_proveedor',
-                    'articulo_kit', 'margen_minimo', 'articulo_serie', 'color', 'protocolo', 'idsat',
-                    'clave_proveedor_1', 'costo_act_prov_1', 'clave_prov_2', 'costo_act_prov_2', 
-                    'clave_prov_3', 'costo_act_prov_3', 'fecha_costo_act_p',
-                    'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'existencia_teorica', 'existencia_fisica',
-                    'costo_promedio', 'costo_promedio_ant', 'costo_ult_compra', 'fecha_ult_compra', 
-                    'costo_compra_ant', 'fecha_compra_ant', 'fecha_alta',
-                    'en_promocion', 'critico', 'control_pedimentos', 'id_impuesto_sat', 'iva', 'id_tipo_factor',
-                    'sustituto', 'sustituto1', 'sustituto2', 'articulo_conversion', 'conversion', 'peso', 'ubicacion', 'std_pack'
-                ];
+                // Definir qué columnas vamos a actualizar en el upsert
+                $updateColumns = array_unique(array_merge($activeCampos, ['clave', 'descripcion', 'habilitado', $colName]));
+                
+                // Construir el select dinámicamente basado en los campos activos
+                $sourceSelect = [];
+                foreach ($updateColumns as $col) {
+                    if (isset($fieldMap[$col])) {
+                        $sourceSelect[] = $fieldMap[$col];
+                    }
+                }
+                // Asegurar campos base si no estaban
+                $sourceSelect = array_unique(array_merge($sourceSelect, ['Clave_Articulo', 'Habilitado']));
 
                 $connection
                     ->table('articulo')
-                    ->select(
-                        'Clave_Articulo', 'Descripcion', 'Unidad_Medida', 'Linea', 'Clasificacion', 'Area',
-                        'MN_USD', 'Precio_Lista', 'Desc_Precio_Venta', 'Precio_Venta', 'Desc_Precio_Espec',
-                        'Precio_Especial', 'Desc_Precio4', 'Precio4', 'Desc_Precio_Minimo', 'Precio_Minimo',
-                        'PrecioTope', 'CostoVenta', 'PorcentajeDescuento', 'Desc_Proveedor',
-                        'Articulo_Kit', 'Margen_Minimo', 'Articulo_Serie', 'Color', 'Habilitado', 'Protocolo', 'IDSAT',
-                        'Clave_Proveedor_1', 'Costo_Act_Prov_1', 'Clave_Prov_2', 'Costo_Act_Prov_2', 
-                        'Clave_Prov_3', 'Costo_Act_Prov_3', 'Fecha_Costo_Act_P',
-                        'Inventario_Maximo', 'Inventario_Minimo', 'Punto_Reorden', 'Existencia_Teorica', 'Existencia_Fisica',
-                        'Costo_Promedio', 'Costo_Promedio_Ant', 'Costo_Ult_Compra', 'Fecha_Ult_Compra', 
-                        'Costo_Compra_Ant', 'Fecha_Compra_Ant', 'Fecha_Alta',
-                        'En_Promocion', 'Critico', 'ControlPedimentos', 'IDImpuestoSAT', 'IVA', 'IDTipoFactor',
-                        'Sustituto', 'Sustituto1', 'Sustituto2', 'ArticuloConversion', 'Conversion', 'Peso', 'Ubicacion', 'StdPack'
-                    )
+                    ->select($sourceSelect)
                     ->orderBy('Clave_Articulo')
-                    ->chunk(2000, function ($articles) use ($colName, $updateColumns, &$totalProcessed) {
+                    ->chunk(2000, function ($articles) use ($colName, $updateColumns, $fieldMap, &$totalProcessed) {
                         $upsertData = [];
                         foreach ($articles as $art) {
-                            $upsertData[] = [
-                                'clave'               => $art->Clave_Articulo,
-                                'descripcion'         => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
-                                'unidad_medida'       => $art->Unidad_Medida ?? null,
-                                'linea'               => $art->Linea ?? null,
-                                'clasificacion'       => $art->Clasificacion ?? null,
-                                'area'                => $art->Area ?? null,
-                                'mn_usd'              => $art->MN_USD ?? null,
-                                'precio_lista'        => $art->Precio_Lista ?? null,
-                                'des_precio_venta'    => $art->Desc_Precio_Venta ?? null,
-                                'precio_venta'        => $art->Precio_Venta ?? null,
-                                'desc_precio_espec'   => $art->Desc_Precio_Espec ?? null,
-                                'precio_especial'     => $art->Precio_Especial ?? null,
-                                'desc_precio4'        => $art->Desc_Precio4 ?? null,
-                                'precio4'             => $art->Precio4 ?? null,
-                                'desc_precio_minimo'  => $art->Desc_Precio_Minimo ?? null,
-                                'precio_minimo'       => $art->Precio_Minimo ?? null,
-                                'precio_tope'         => $art->PrecioTope ?? null,
-                                'costo_venta'         => $art->CostoVenta ?? null,
-                                'porcetaje_descuento' => $art->PorcentajeDescuento ?? null,
-                                'desc_proveedor'      => $art->Desc_Proveedor ?? null,
-                                'articulo_kit'        => $art->Articulo_Kit ?? 0,
-                                'margen_minimo'       => $art->Margen_Minimo ?? null,
-                                'articulo_serie'      => $art->Articulo_Serie ?? 0,
-                                'color'               => $art->Color ?? null,
-                                'protocolo'           => $art->Protocolo ?? null,
-                                'idsat'               => $art->IDSAT ?? null,
-                                'clave_proveedor_1'   => $art->Clave_Proveedor_1 ?? null,
-                                'costo_act_prov_1'    => $art->Costo_Act_Prov_1 ?? null,
-                                'clave_prov_2'        => $art->Clave_Prov_2 ?? null,
-                                'costo_act_prov_2'    => $art->Costo_Act_Prov_2 ?? null,
-                                'clave_prov_3'        => $art->Clave_Prov_3 ?? null,
-                                'costo_act_prov_3'    => $art->Costo_Act_Prov_3 ?? null,
-                                'fecha_costo_act_p'   => $this->sanitizeDate($art->Fecha_Costo_Act_P),
-                                'inventario_maximo'   => $art->Inventario_Maximo ?? null,
-                                'inventario_minimo'   => $art->Inventario_Minimo ?? null,
-                                'punto_reorden'       => $art->Punto_Reorden ?? null,
-                                'existencia_teorica'  => $art->Existencia_Teorica ?? null,
-                                'existencia_fisica'   => $art->Existencia_Fisica ?? null,
-                                'costo_promedio'      => $art->Costo_Promedio ?? null,
-                                'costo_promedio_ant'  => $art->Costo_Promedio_Ant ?? null,
-                                'costo_ult_compra'    => $art->Costo_Ult_Compra ?? null,
-                                'fecha_ult_compra'    => $this->sanitizeDate($art->Fecha_Ult_Compra),
-                                'costo_compra_ant'    => $art->Costo_Compra_Ant ?? null,
-                                'fecha_compra_ant'    => $this->sanitizeDate($art->Fecha_Compra_Ant),
-                                'fecha_alta'          => $this->sanitizeDate($art->Fecha_Alta),
-                                'en_promocion'        => $art->En_Promocion ?? 0,
-                                'critico'             => $art->Critico ?? 0,
-                                'control_pedimentos'  => $art->ControlPedimentos ?? 0,
-                                'id_impuesto_sat'     => $art->IDImpuestoSAT ?? null,
-                                'iva'                 => $art->IVA ?? 16.00,
-                                'id_tipo_factor'      => $art->IDTipoFactor ?? null,
-                                'sustituto'           => $art->Sustituto ?? null,
-                                'sustituto1'          => $art->Sustituto1 ?? null,
-                                'sustituto2'          => $art->Sustituto2 ?? null,
-                                'articulo_conversion' => $art->ArticuloConversion ?? null,
-                                'conversion'          => $art->Conversion ?? null,
-                                'peso'                => $art->Peso ?? null,
-                                'ubicacion'           => $art->Ubicacion ?? null,
-                                'std_pack'            => $art->StdPack ?? null,
-                                'habilitado'          => $art->Habilitado ? 1 : 0,
-                                $colName              => $art->Habilitado ? 1 : 0,
-                            ];
+                            $row = [];
+                            
+                            // Mapeo dinámico
+                            foreach ($updateColumns as $matrixCol) {
+                                if ($matrixCol === $colName) {
+                                    $row[$matrixCol] = ($art->Habilitado ?? 0) ? 1 : 0;
+                                    continue;
+                                }
+
+                                $sourceCol = $fieldMap[$matrixCol] ?? null;
+                                if (!$sourceCol) continue;
+
+                                $val = $art->{$sourceCol} ?? null;
+
+                                // Lógica especial para ciertos campos
+                                if (str_starts_with($matrixCol, 'fecha_')) {
+                                    $val = $this->sanitizeDate($val);
+                                } elseif ($matrixCol === 'descripcion') {
+                                    $val = $val ?: 'SIN DESCRIPCIÓN';
+                                } elseif ($matrixCol === 'iva' && $val === null) {
+                                    $val = 16.00;
+                                } elseif (in_array($matrixCol, ['articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos'])) {
+                                    $val = $val ? 1 : 0;
+                                } elseif ($matrixCol === 'habilitado') {
+                                    $val = $val ? 1 : 0;
+                                }
+
+                                $row[$matrixCol] = $val;
+                            }
+                            
+                            $upsertData[] = $row;
                         }
+
                         foreach (array_chunk($upsertData, 500) as $chunk) {
                             MatrizHomologacion::upsert($chunk, ['clave'], $updateColumns);
                         }
@@ -212,8 +247,11 @@ class SyncMatrizHomologacion extends Command
 
             } catch (\Throwable $e) {
                 $this->error("   [ERROR] {$branch->name}: " . $e->getMessage());
+                // Registrar el error detallado para depuración
+                file_put_contents(storage_path('logs/sync_error_detail.log'), $e->getMessage() . PHP_EOL . $e->getTraceAsString(), FILE_APPEND);
             }
         }
+
         
         // Eliminar artículos que no están en ninguna sucursal (todas las columnas son NULL)
         if (!empty($validCols)) {

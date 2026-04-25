@@ -11,21 +11,6 @@ class ExportExcelBg extends Command
     protected $signature = 'unidata:export-bg {module} {job_id}';
     protected $description = 'Genera exportaciones pesadas a Excel en proceso asíncrono para no bloquear la aplicación';
 
-    private const BRANCHES = [
-        'DEASA'      => ['col' => 'en_deasa'],
-        'AIESA'      => ['col' => 'en_aiesa'],
-        'CEDIS'      => ['col' => 'en_cedis'],
-        'DIMEGSA'    => ['col' => 'en_dimegsa'],
-        'FESA'       => ['col' => 'en_fesa'],
-        'GABSA'      => ['col' => 'en_gabsa'],
-        'ILU'        => ['col' => 'en_ilu'],
-        'QUERÉTARO'  => ['col' => 'en_queretaro'],
-        'SEGSA'      => ['col' => 'en_segsa'],
-        'TAPATÍA'    => ['col' => 'en_tapatia'],
-        'VALLARTA'   => ['col' => 'en_vallarta'],
-        'WASHINGTON' => ['col' => 'en_washington'],
-    ];
-
     public function handle()
     {
         set_time_limit(0);
@@ -51,7 +36,7 @@ class ExportExcelBg extends Command
             }
         } catch (\Throwable $e) {
             $jobData['status'] = 'error';
-            $jobData['message'] = $e->getMessage();
+            $jobData['message'] = $e->getMessage() . " (" . $e->getFile() . ":" . $e->getLine() . ")";
             file_put_contents($jobFile, json_encode($jobData, JSON_UNESCAPED_UNICODE));
             $this->error("Export Error: " . $e->getMessage());
         }
@@ -82,6 +67,26 @@ class ExportExcelBg extends Command
             throw new \Exception("No se pudo escribir en la carpeta exports.");
         }
 
+        // ── Obtener sucursales dinámicas ──────────────────────────────
+        $activeBranches = \App\Models\Branch::query()->active()->orderBy('name')->get();
+        $physicalCols   = MatrizHomologacion::getPhysicalBranchColumns();
+        
+        $branchCols  = [];
+        $branchNames = [];
+        foreach ($activeBranches as $branch) {
+            $colName = MatrizHomologacion::resolveColumnName($branch->code);
+            if (in_array($colName, $physicalCols)) {
+                $branchCols[]  = $colName;
+                $branchNames[] = $branch->name;
+            }
+        }
+
+        // ── Obtener campos dinámicos activos ──────────────────────────
+        $activeFields = \App\Models\MatrizSyncCampo::where('is_active', true)
+            ->whereNotIn('campo', ['clave', 'descripcion', 'habilitado'])
+            ->orderBy('id')
+            ->get();
+
         // HTML Headers
         fwrite($out, '<html xmlns:x="urn:schemas-microsoft-com:office:excel">');
         fwrite($out, '<head><meta charset="utf-8"></head><body>');
@@ -92,11 +97,13 @@ class ExportExcelBg extends Command
         fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Código Maestro</th>');
         fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Descripción Universal</th>');
         
-        $branchCols = [];
-        $allCols = [];
-        foreach (self::BRANCHES as $name => $info) {
-            $branchCols[] = $info['col'];
-            $allCols[]    = $info['col'];
+        // Campos de artículo
+        foreach ($activeFields as $f) {
+            fwrite($out, '<th style="background:#334155; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars(ucwords(str_replace('_', ' ', $f->campo))) . '</th>');
+        }
+
+        // Sucursales
+        foreach ($branchNames as $name) {
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars($name) . '</th>');
         }
         fwrite($out, '</tr></thead><tbody>');
@@ -121,12 +128,13 @@ class ExportExcelBg extends Command
             }
         }
 
-        $sumParts = array_map(fn($c) => "COALESCE(`{$c}`, 0)", $allCols);
+        $allBranchCols = $branchCols;
+        $sumParts = array_map(fn($c) => "COALESCE(`{$c}`, 0)", $allBranchCols);
         $sumExpr  = implode(' + ', $sumParts);
-        $total    = count($allCols);
+        $total    = count($allBranchCols);
         
-        if ($cobertura === 'todas')            { foreach ($allCols as $c) $query->where($c, 1); }
-        elseif ($cobertura === 'ninguna')      { foreach ($allCols as $c) $query->whereNull($c); }
+        if ($cobertura === 'todas')            { foreach ($allBranchCols as $c) $query->where($c, 1); }
+        elseif ($cobertura === 'ninguna')      { foreach ($allBranchCols as $c) $query->whereNull($c); }
         elseif ($cobertura === 'incompleta')   { $query->whereRaw("({$sumExpr}) > 0")->whereRaw("({$sumExpr}) < {$total}"); }
         elseif ($cobertura === 'solo_una')     { $query->whereRaw("({$sumExpr}) = 1"); }
         elseif ($cobertura === 'todas_menos_una') { $query->whereRaw("({$sumExpr}) = " . ($total - 1)); }
@@ -136,8 +144,8 @@ class ExportExcelBg extends Command
             $query->whereRaw("({$sumExpr}) = {$exactCount}");
         }
         
-        foreach ($tienEn  as $c) { if (in_array($c, $allCols, true)) $query->where($c, 1); }
-        foreach ($faltaEn as $c) { if (in_array($c, $allCols, true)) $query->whereNull($c); }
+        foreach ($tienEn  as $c) { if (in_array($c, $allBranchCols, true)) $query->where($c, 1); }
+        foreach ($faltaEn as $c) { if (in_array($c, $allBranchCols, true)) $query->whereNull($c); }
 
         $sumExprRaw = '';
         foreach ($branchCols as $col) {
@@ -156,12 +164,19 @@ class ExportExcelBg extends Command
         file_put_contents($jobFile, json_encode($jobData, JSON_UNESCAPED_UNICODE));
 
         // Procesar y escribir
-        $query->chunk(500, function ($rows) use ($out, $branchCols, &$processedRecords, $jobId, &$jobData, $jobFile) {
+        $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields, &$processedRecords, $jobId, &$jobData, $jobFile) {
             foreach ($rows as $item) {
                 fwrite($out, '<tr>');
                 fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
                 fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
                 
+                // Campos de artículo
+                foreach ($activeFields as $f) {
+                    $val = $item->{$f->campo};
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$val) . '</td>');
+                }
+
+                // Sucursales
                 foreach ($branchCols as $col) {
                     $raw = $item->getRawOriginal($col);
                     if ($raw === 1 || $raw === '1') {

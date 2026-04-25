@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\HomologacionSnapshot;
 use App\Models\MatrizHomologacion;
+use App\Models\MatrizSyncCampo;
 use App\Console\Commands\SyncMatrizHomologacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -289,19 +290,25 @@ class HomologacionController extends Controller
 
         // Obtenemos sucursales dinámicas
         $branchesMap = $this->getDynamicBranches();
-        $branchCols = [];
+        $branchCols  = [];
         $branchNames = [];
-        $allCols = [];
+        $allCols     = [];
         foreach ($branchesMap as $name => $info) {
             $branchNames[] = $name;
             $branchCols[]  = $info['col'];
             $allCols[]     = $info['col'];
         }
 
-        $callback = function () use ($search, $filterCol, $filterVal, $cobertura, $tienEn, $faltaEn, $branchNames, $branchCols, $allCols) {
+        // Obtenemos los campos adicionales activos (excluyendo clave y descripcion que ya van al inicio)
+        $activeFields = MatrizSyncCampo::where('is_active', true)
+            ->whereNotIn('campo', ['clave', 'descripcion', 'habilitado'])
+            ->orderBy('id')
+            ->get();
+
+        $callback = function () use ($search, $filterCol, $filterVal, $cobertura, $tienEn, $faltaEn, $branchNames, $branchCols, $allCols, $activeFields) {
             $out = fopen('php://output', 'w');
 
-            // 1. HTML Headers para engañar a Excel y que retenga CSS en línea
+            // 1. HTML Headers
             fwrite($out, '<html xmlns:x="urn:schemas-microsoft-com:office:excel">');
             fwrite($out, '<head><meta charset="utf-8"></head><body>');
             fwrite($out, '<table border="1" style="font-family: Arial, sans-serif; font-size: 11px;">');
@@ -310,6 +317,12 @@ class HomologacionController extends Controller
             fwrite($out, '<thead><tr>');
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Código Maestro</th>');
             fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">Descripción Universal</th>');
+            
+            // Añadir cabeceras de campos dinámicos
+            foreach ($activeFields as $f) {
+                fwrite($out, '<th style="background:#334155; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars(ucwords(str_replace('_', ' ', $f->campo))) . '</th>');
+            }
+
             foreach ($branchNames as $name) {
                 fwrite($out, '<th style="background:#1e293b; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars($name) . '</th>');
             }
@@ -334,7 +347,7 @@ class HomologacionController extends Controller
                 }
             }
 
-            // Filtros de cobertura en export
+            // Filtros de cobertura
             $sumParts = array_map(fn($c) => "COALESCE(`{$c}`, 0)", $allCols);
             $sumExpr  = implode(' + ', $sumParts);
             $total    = count($allCols);
@@ -351,33 +364,36 @@ class HomologacionController extends Controller
             foreach ($tienEn  as $c) { if (in_array($c, $allCols, true)) $query->where($c, 1); }
             foreach ($faltaEn as $c) { if (in_array($c, $allCols, true)) $query->whereNull($c); }
 
-            // Ordenamiento manual para evitar errores de array-to-string
-            $sumExpr = '';
+            // Ordenamiento
+            $sumExprSort = '';
             foreach ($branchCols as $col) {
-                $sumExpr .= ($sumExpr === '' ? '' : ' + ') . "COALESCE(`{$col}`, 0)";
+                $sumExprSort .= ($sumExprSort === '' ? '' : ' + ') . "COALESCE(`{$col}`, 0)";
             }
-            
-            if ($sumExpr !== '') {
-                $query->orderByRaw("({$sumExpr}) DESC");
+            if ($sumExprSort !== '') {
+                $query->orderByRaw("({$sumExprSort}) DESC");
             }
             $query->orderBy('clave');
 
-            $query->chunk(500, function ($rows) use ($out, $branchCols) {
+            $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields) {
                 foreach ($rows as $item) {
                     fwrite($out, '<tr>');
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
                     
+                    // Datos del artículo
+                    foreach ($activeFields as $f) {
+                        $val = $item->{$f->campo};
+                        fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$val) . '</td>');
+                    }
+
+                    // Estado en sucursales
                     foreach ($branchCols as $col) {
                         $raw = $item->getRawOriginal($col);
                         if ($raw === 1 || $raw === '1') {
-                            // ACTIVO -> Fondo Verde
                             fwrite($out, '<td style="background-color:#d1fae5; color:#065f46; text-align:center; font-weight:bold;">ACTIVO</td>');
                         } elseif ($raw === 0 || $raw === '0') {
-                            // INACTIVO -> Fondo Naranja
                             fwrite($out, '<td style="background-color:#fef3c7; color:#92400e; text-align:center;">INACTIVO</td>');
                         } else {
-                            // FALTA -> Fondo Rojo
                             fwrite($out, '<td style="background-color:#fee2e2; color:#991b1b; text-align:center;">FALTA</td>');
                         }
                     }
@@ -385,7 +401,7 @@ class HomologacionController extends Controller
                 }
             });
 
-            // Cerrar tabla y HTML
+            // Cerrar tabla
             fwrite($out, '</tbody></table></body></html>');
             fclose($out);
         };
@@ -518,5 +534,38 @@ class HomologacionController extends Controller
             'branches' => $branches,
             'total'    => count($rows),
         ]);
+    }
+
+    /**
+     * Muestra la vista para configurar qué campos se sincronizan
+     */
+    public function campos(): View
+    {
+        $campos = MatrizSyncCampo::orderBy('campo')->get();
+        return view('homologacion.campos', compact('campos'));
+    }
+
+    /**
+     * Actualiza el estado (is_active) de los campos configurados
+     */
+    public function updateCampos(Request $request)
+    {
+        $activos = $request->input('campos', []);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($activos) {
+            // 1. Desactivamos todos los que no son requeridos
+            MatrizSyncCampo::where('is_required', false)->update(['is_active' => false]);
+
+            // 2. Activamos los que vinieron en el request
+            if (!empty($activos)) {
+                MatrizSyncCampo::whereIn('campo', $activos)->update(['is_active' => true]);
+            }
+            
+            // 3. Forzar requeridos a estar activos siempre
+            MatrizSyncCampo::where('is_required', true)->update(['is_active' => true]);
+        });
+
+        return redirect()->route('homologacion.campos')
+            ->with('success', 'Configuración de campos actualizada correctamente.');
     }
 }

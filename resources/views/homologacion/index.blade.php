@@ -90,6 +90,10 @@
             <span class="stat-chip-dot" style="background:var(--violet);"></span>
             Centralizado
         </div>
+        <a href="{{ route('homologacion.campos') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid var(--border); display:flex; align-items:center; gap:6px; padding:9px 14px;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16v0Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4v0Z"/></svg>
+            Configuración
+        </a>
         <a href="{{ route('homologacion.historial') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid var(--border); display:flex; align-items:center; gap:6px; padding:9px 14px;">
             <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Historial

@@ -51,6 +51,8 @@ Route::get('/homologacion/export', [HomologacionController::class, 'export'])->n
 Route::post('/homologacion/export/bg', [HomologacionController::class, 'exportBgStart'])->name('homologacion.export.bg');
 Route::get('/homologacion/export/status/{job_id}', [HomologacionController::class, 'exportBgStatus'])->name('homologacion.export.status');
 Route::get('/homologacion/historial', [HomologacionController::class, 'historial'])->name('homologacion.historial');
+Route::get('/homologacion/campos', [HomologacionController::class, 'campos'])->name('homologacion.campos');
+Route::post('/homologacion/campos', [HomologacionController::class, 'updateCampos'])->name('homologacion.campos.update');
 
 // Módulo: DB Master
 Route::get('/db-master', [DBMasterController::class, 'index'])->name('db_master.index');
