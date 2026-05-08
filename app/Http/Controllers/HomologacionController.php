@@ -377,13 +377,23 @@ class HomologacionController extends Controller
             $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields) {
                 foreach ($rows as $item) {
                     fwrite($out, '<tr>');
-                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
+                    // mso-number-format:'@' fuerza texto puro → evita que Excel interprete "10205E17" como notación científica
+                    fwrite($out, '<td style="vertical-align:middle; mso-number-format:\'\\@\';">' . htmlspecialchars((string)$item->clave) . '</td>');
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
                     
                     // Datos del artículo
                     foreach ($activeFields as $f) {
                         $val = $item->{$f->campo};
-                        fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$val) . '</td>');
+                        // Los campos DECIMAL de MySQL pueden llegar como "0." desde el driver PDO.
+                        // Se limpia el punto decimal sobrante cuando el valor es numérico.
+                        if ($val === null) {
+                            $display = '';
+                        } elseif (is_numeric($val)) {
+                            $display = rtrim(rtrim((string)$val, '0'), '.');
+                        } else {
+                            $display = (string)$val;
+                        }
+                        fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars($display) . '</td>');
                     }
 
                     // Estado en sucursales
