@@ -89,7 +89,7 @@ class ExportExcelBg extends Command
 
         // HTML Headers
         fwrite($out, '<html xmlns:x="urn:schemas-microsoft-com:office:excel">');
-        fwrite($out, '<head><meta charset="utf-8"></head><body>');
+        fwrite($out, '<head><meta charset="utf-8"><style>.txt { mso-number-format:"\@"; }</style></head><body>');
         fwrite($out, '<table border="1" style="font-family: Arial, sans-serif; font-size: 11px;">');
         
         // Tabla Cabecera
@@ -167,13 +167,23 @@ class ExportExcelBg extends Command
         $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields, &$processedRecords, $jobId, &$jobData, $jobFile) {
             foreach ($rows as $item) {
                 fwrite($out, '<tr>');
-                fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
+                // class="txt" fuerza texto puro → evita que Excel interprete "10205E17" como notación científica
+                fwrite($out, '<td class="txt" style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
                 fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
                 
                 // Campos de artículo
                 foreach ($activeFields as $f) {
                     $val = $item->{$f->campo};
-                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$val) . '</td>');
+                    // Los campos DECIMAL de MySQL pueden llegar como "0." desde el driver PDO.
+                    // Se limpia el punto decimal sobrante cuando el valor es numérico.
+                    if ($val === null) {
+                        $display = '';
+                    } elseif (is_numeric($val)) {
+                        $display = rtrim(rtrim((string)$val, '0'), '.');
+                    } else {
+                        $display = (string)$val;
+                    }
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars($display) . '</td>');
                 }
 
                 // Sucursales

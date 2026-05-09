@@ -310,7 +310,7 @@ class HomologacionController extends Controller
 
             // 1. HTML Headers
             fwrite($out, '<html xmlns:x="urn:schemas-microsoft-com:office:excel">');
-            fwrite($out, '<head><meta charset="utf-8"></head><body>');
+            fwrite($out, '<head><meta charset="utf-8"><style>.txt { mso-number-format:"\@"; }</style></head><body>');
             fwrite($out, '<table border="1" style="font-family: Arial, sans-serif; font-size: 11px;">');
             
             // 2. Cabecera Table
@@ -377,8 +377,8 @@ class HomologacionController extends Controller
             $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields) {
                 foreach ($rows as $item) {
                     fwrite($out, '<tr>');
-                    // mso-number-format:'@' fuerza texto puro → evita que Excel interprete "10205E17" como notación científica
-                    fwrite($out, '<td style="vertical-align:middle; mso-number-format:\'\\@\';">' . htmlspecialchars((string)$item->clave) . '</td>');
+                    // class="txt" fuerza texto puro → evita que Excel interprete "10205E17" como notación científica
+                    fwrite($out, '<td class="txt" style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
                     fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
                     
                     // Datos del artículo
