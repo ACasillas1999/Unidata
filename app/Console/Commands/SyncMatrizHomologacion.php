@@ -3,6 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Branch;
+use App\Models\HomologacionLineaConfig;
+use App\Models\ArticuloRechazado;
+use App\Models\ArticuloSinConfigurar;
 use App\Models\HomologacionSnapshot;
 use App\Models\MatrizHomologacion;
 use App\Models\MatrizSyncCampo;
@@ -155,8 +158,16 @@ class SyncMatrizHomologacion extends Command
         }
         // ─────────────────────────────────────────────────────────────────
 
-        $fieldMap = $this->getFieldMapping();
+        $fieldMap     = $this->getFieldMapping();
         $activeCampos = MatrizSyncCampo::where('is_active', true)->pluck('campo')->toArray();
+
+        // ── FILTRO DE LÍNEAS ─────────────────────────────────────────────
+        // Líneas "si se pasan" y "sin configurar": incluir siempre (activos e inactivos)
+        // Líneas "no se pasan": nunca incluir
+        $lineasSi = HomologacionLineaConfig::siSePasa()->pluck('linea')->toArray();
+        $lineasNo = HomologacionLineaConfig::noSePasa()->pluck('linea')->toArray();
+        $hayFiltroLineas = !empty($lineasSi) || !empty($lineasNo);
+        // ─────────────────────────────────────────────────────────────────
 
         foreach ($branches as $branch) {
             // Revisar si el usuario canceló la sincronización
@@ -197,11 +208,22 @@ class SyncMatrizHomologacion extends Command
                 // Asegurar campos base si no estaban
                 $sourceSelect = array_unique(array_merge($sourceSelect, ['Clave_Articulo', 'Habilitado']));
 
-                $connection
+                $query = $connection
                     ->table('articulo')
                     ->select($sourceSelect)
-                    ->orderBy('Clave_Articulo')
-                    ->chunk(2000, function ($articles) use ($colName, $updateColumns, $fieldMap, &$totalProcessed) {
+                    ->orderBy('Clave_Articulo');
+
+                // 1. MATRIZ PRINCIPAL: Solo artículos cuyas primeros 5 caracteres de Clave_Articulo están en "Sí se pasan"
+                if (!empty($lineasSi)) {
+                    // Protegemos el arreglo para el IN()
+                    $inSi = implode("','", array_map('addslashes', $lineasSi));
+                    $query->whereRaw("LEFT(Clave_Articulo, 5) IN ('$inSi')");
+                } else {
+                    // Si no hay líneas configuradas como SI, forzamos 0 resultados
+                    $query->whereRaw('1 = 0');
+                }
+
+                $query->chunk(2000, function ($articles) use ($colName, $updateColumns, $fieldMap, &$totalProcessed) {
                         $upsertData = [];
                         foreach ($articles as $art) {
                             $row = [];
@@ -242,6 +264,69 @@ class SyncMatrizHomologacion extends Command
                         }
                         $totalProcessed += count($articles);
                     });
+
+                // ── GUARDAR ARTÍCULOS RECHAZADOS ──
+                if (!empty($lineasNo)) {
+                    $inNo = implode("','", array_map('addslashes', $lineasNo));
+                    
+                    // Limpiar rechazados anteriores de esta sucursal
+                    ArticuloRechazado::where('sucursal', $branch->code)->delete();
+
+                    $connection->table('articulo')
+                        ->select(['Clave_Articulo', 'Descripcion'])
+                        ->whereRaw("LEFT(Clave_Articulo, 5) IN ('$inNo')")
+                        ->orderBy('Clave_Articulo')
+                        ->chunk(2000, function ($rejected) use ($branch) {
+                            $insertData = [];
+                            $now = now();
+                            foreach ($rejected as $art) {
+                                $insertData[] = [
+                                    'clave' => $art->Clave_Articulo,
+                                    'descripcion' => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
+                                    'linea' => substr($art->Clave_Articulo, 0, 5),
+                                    'sucursal' => $branch->code,
+                                    'motivo' => 'Línea excluida ("No se pasa")',
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ];
+                            }
+                            ArticuloRechazado::insert($insertData);
+                        });
+                }
+                // ─────────────────────────────────
+
+                // ── GUARDAR ARTÍCULOS SIN CONFIGURAR (PENDIENTES) ──
+                // Limpiar pendientes anteriores de esta sucursal
+                ArticuloSinConfigurar::where('sucursal', $branch->code)->delete();
+
+                $excluidas = array_merge($lineasSi, $lineasNo);
+                
+                $queryPendientes = $connection->table('articulo')
+                    ->select(['Clave_Articulo', 'Descripcion'])
+                    ->orderBy('Clave_Articulo');
+
+                if (!empty($excluidas)) {
+                    $inExcluidas = implode("','", array_map('addslashes', $excluidas));
+                    $queryPendientes->whereRaw("LEFT(Clave_Articulo, 5) NOT IN ('$inExcluidas')");
+                }
+
+                $queryPendientes->chunk(2000, function ($pendientes) use ($branch) {
+                    $insertData = [];
+                    $now = now();
+                    foreach ($pendientes as $art) {
+                        $insertData[] = [
+                            'clave' => $art->Clave_Articulo,
+                            'descripcion' => $art->Descripcion ?: 'SIN DESCRIPCIÓN',
+                            'linea' => substr($art->Clave_Articulo, 0, 5),
+                            'sucursal' => $branch->code,
+                            'motivo' => 'Línea sin configurar',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+                    ArticuloSinConfigurar::insert($insertData);
+                });
+                // ──────────────────────────────────────────────────
 
                 $this->info("   [OK] {$branch->name}: {$totalProcessed} registros.");
 

@@ -292,6 +292,49 @@
                         </li>
                         @endif
 
+                        @php($cliMenuOpen = request()->routeIs('clientes.*'))
+                        <li class="sidebar-dropdown {{ $cliMenuOpen ? 'open' : '' }}">
+                            <button class="sidebar-dropdown-toggle sidebar-link"
+                                    id="nav-clientes-group"
+                                    type="button"
+                                    aria-expanded="{{ $cliMenuOpen ? 'true' : 'false' }}"
+                                    aria-controls="sidebar-clientes-menu">
+                                <span class="sidebar-link-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </span>
+                                <span class="sidebar-link-label">Clientes</span>
+                                <span class="sidebar-dropdown-arrow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </span>
+                            </button>
+                            <ul class="sidebar-dropdown-menu" id="sidebar-clientes-menu" @if(!$cliMenuOpen) hidden @endif>
+                                <li>
+                                    <a href="{{ route('clientes.index') }}"
+                                       class="sidebar-dropdown-link {{ request()->routeIs('clientes.index') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><ellipse cx="12" cy="5" rx="9" ry="3"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Lista de Clientes</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('clientes.create') }}"
+                                       class="sidebar-dropdown-link {{ request()->routeIs('clientes.create') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Nuevo Cliente</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         @if(auth()->user()->hasPermission('modules.homologacion'))
                         <li>
                             <a href="{{ route('homologacion.index') }}"

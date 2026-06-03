@@ -94,6 +94,18 @@
             <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16v0Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4v0Z"/></svg>
             Configuración
         </a>
+        <a href="{{ route('homologacion.lineas') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid var(--border); display:flex; align-items:center; gap:6px; padding:9px 14px;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Líneas
+        </a>
+        <a href="{{ route('homologacion.pendientes') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid rgba(234,179,8,0.3); color:#facc15; background:rgba(234,179,8,0.05); display:flex; align-items:center; gap:6px; padding:9px 14px;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Pendientes
+        </a>
+        <a href="{{ route('homologacion.rechazados') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid rgba(239,68,68,0.3); color:#f87171; background:rgba(239,68,68,0.05); display:flex; align-items:center; gap:6px; padding:9px 14px;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Rechazados
+        </a>
         <a href="{{ route('homologacion.historial') }}" class="btn btn--ghost btn--sm" style="font-size:11px; border:1px solid var(--border); display:flex; align-items:center; gap:6px; padding:9px 14px;">
             <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Historial

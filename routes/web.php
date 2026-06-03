@@ -5,6 +5,7 @@ use App\Http\Controllers\ClientesController;
 use App\Http\Controllers\ConexionesController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomologacionController;
+use App\Http\Controllers\HomologacionLineasController;
 use App\Http\Controllers\ProveedoresController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\DownloadsController;
@@ -54,6 +55,14 @@ Route::get('/homologacion/historial', [HomologacionController::class, 'historial
 Route::get('/homologacion/campos', [HomologacionController::class, 'campos'])->name('homologacion.campos');
 Route::post('/homologacion/campos', [HomologacionController::class, 'updateCampos'])->name('homologacion.campos.update');
 
+// Líneas de homologación
+Route::get('/homologacion/lineas',          [HomologacionLineasController::class, 'index'])->name('homologacion.lineas');
+Route::get('/homologacion/rechazados',      [HomologacionLineasController::class, 'rechazados'])->name('homologacion.rechazados');
+Route::get('/homologacion/pendientes',      [HomologacionLineasController::class, 'pendientes'])->name('homologacion.pendientes');
+Route::post('/homologacion/lineas',         [HomologacionLineasController::class, 'store'])->name('homologacion.lineas.store');
+Route::delete('/homologacion/lineas/{id}',  [HomologacionLineasController::class, 'destroy'])->name('homologacion.lineas.destroy');
+Route::post('/homologacion/lineas/import',  [HomologacionLineasController::class, 'importCsv'])->name('homologacion.lineas.import');
+
 // Módulo: DB Master
 Route::get('/db-master', [DBMasterController::class, 'index'])->name('db_master.index');
 Route::get('/db-master/export', [DBMasterController::class, 'export'])->name('db_master.export');
@@ -66,7 +75,15 @@ Route::get('/db-master/history', [DBMasterController::class, 'history'])->name('
 Route::get('/descargas', [DownloadsController::class, 'index'])->name('descargas.index');
 Route::delete('/descargas/{id}', [DownloadsController::class, 'destroy'])->name('descargas.destroy');
 // Módulo: Clientes
-Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
+Route::get('/clientes',                  [ClientesController::class, 'index'])->name('clientes.index');
+Route::get('/clientes/crear',            [ClientesController::class, 'create'])->name('clientes.create');
+Route::post('/clientes',                 [ClientesController::class, 'store'])->name('clientes.store');
+Route::get('/clientes/campos',           [ClientesController::class, 'campos'])->name('clientes.campos');
+Route::post('/clientes/campos',          [ClientesController::class, 'updateCampos'])->name('clientes.campos.update');
+Route::get('/clientes/{rfc}/editar',     [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
+Route::put('/clientes/{rfc}',            [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '.+');
+Route::delete('/clientes/{rfc}',         [ClientesController::class, 'destroy'])->name('clientes.destroy')->where('rfc', '.+');
+Route::get('/clientes/{rfc}/estado',     [ClientesController::class, 'estadoSucursales'])->name('clientes.estado')->where('rfc', '.+');
 
 // Módulo: Proveedores
 Route::get('/proveedores', [ProveedoresController::class, 'index'])->name('proveedores.index');
