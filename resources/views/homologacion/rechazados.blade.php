@@ -27,8 +27,8 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header card-header--row" style="background:rgba(255,255,255,0.02); border-bottom:1px solid var(--border); padding:12px 16px;">
+<div class="card" style="flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 24px;">
+    <div class="card-header card-header--row" style="background:rgba(255,255,255,0.02); border-bottom:1px solid var(--border); padding:12px 16px; flex-shrink: 0;">
         <form method="GET" action="{{ route('homologacion.rechazados') }}" style="display:flex; gap:12px; width:100%; align-items:center; margin:0;">
             <div class="search-input-wrap" style="flex:1; margin:0; background:var(--bg-root); border-radius:8px; border:1px solid var(--border); display:flex; align-items:center; overflow:hidden;">
                 <span style="padding:0 12px; color:var(--text-muted);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
@@ -45,7 +45,7 @@
         </form>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="flex: 1; overflow: auto; min-height: 0;">
         <table class="data-table" style="width:100%;">
             <thead>
                 <tr>
@@ -77,7 +77,7 @@
     </div>
     
     @if($rechazados->hasPages())
-    <div style="padding:12px 16px; border-top:1px solid var(--border); background:var(--bg-card);">
+    <div style="padding:12px 16px; border-top:1px solid var(--border); background:var(--bg-card); flex-shrink: 0;">
         {{ $rechazados->links('pagination::bootstrap-4') }}
     </div>
     @endif
