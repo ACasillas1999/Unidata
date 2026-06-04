@@ -169,6 +169,20 @@
             font-size: 12.5px !important;
             color: inherit !important;
         }
+
+        /* =========================================================
+           PAGINATION STYLES (Bootstrap 4 override for dark theme)
+           ========================================================= */
+        .pagination { display: flex; padding-left: 0; list-style: none; margin: 0; gap: 4px; }
+        .page-item .page-link { 
+            position: relative; display: block; padding: 6px 12px; font-size: 13px; font-weight: 600;
+            color: var(--text-secondary, #94a3b8); text-decoration: none; 
+            background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .page-item.active .page-link { z-index: 3; color: #fff; background-color: var(--indigo, #6366f1); border-color: var(--indigo, #6366f1); }
+        .page-item.disabled .page-link { color: rgba(255,255,255,0.2); pointer-events: none; background-color: transparent; border-color: rgba(255,255,255,0.04); }
+        .page-item:not(.active):not(.disabled) .page-link:hover { z-index: 2; color: #fff; background-color: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); }
     </style>
 </head>
 <body>

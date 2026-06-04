@@ -45,7 +45,7 @@ class HomologacionLineasController extends Controller
             $query->where('sucursal', $request->sucursal);
         }
 
-        $rechazados = $query->orderBy('sucursal')->orderBy('clave')->paginate(50);
+        $rechazados = $query->orderBy('sucursal')->orderBy('clave')->paginate(50)->withQueryString();
         
         $sucursales = ArticuloRechazado::select('sucursal')->distinct()->pluck('sucursal');
 
@@ -69,7 +69,7 @@ class HomologacionLineasController extends Controller
             $query->where('sucursal', $request->sucursal);
         }
 
-        $pendientes = $query->orderBy('sucursal')->orderBy('clave')->paginate(50);
+        $pendientes = $query->orderBy('sucursal')->orderBy('clave')->paginate(50)->withQueryString();
         
         $sucursales = ArticuloSinConfigurar::select('sucursal')->distinct()->pluck('sucursal');
 
