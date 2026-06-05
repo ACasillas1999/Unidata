@@ -5,7 +5,7 @@
 
 @section('content')
 
-<div style="max-width: 1100px; margin: 0 auto 30px auto;">
+<div style="width: 100%; margin: 0 auto 30px auto;">
 
     {{-- Header --}}
     <div class="page-header shadow-premium" style="margin-bottom: 24px; padding: 20px 30px; background: var(--grad-surface); border-radius: var(--radius-xl); border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">

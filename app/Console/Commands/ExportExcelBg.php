@@ -31,6 +31,8 @@ class ExportExcelBg extends Command
         try {
             if ($module === 'homologacion') {
                 $this->exportHomologacion($jobId, $jobData, $jobFile);
+            } elseif ($module === 'pendientes') {
+                $this->exportPendientes($jobId, $jobData, $jobFile);
             } else {
                 throw new \Exception("Modulo '{$module}' no soportado para background export.");
             }
@@ -211,6 +213,127 @@ class ExportExcelBg extends Command
         fclose($out);
 
         // Limpiar el json anunciando que se acabó
+        $jobData['status'] = 'done';
+        $jobData['file_url'] = $fileUrl;
+        $jobData['processed'] = $totalRecords;
+        file_put_contents($jobFile, json_encode($jobData, JSON_UNESCAPED_UNICODE));
+    }
+
+    private function exportPendientes($jobId, &$jobData, $jobFile)
+    {
+        $publicDir = public_path('exports');
+        if (!File::exists($publicDir)) {
+            File::makeDirectory($publicDir, 0755, true);
+        }
+
+        $filename = 'pendientes_homologacion_' . now()->format('Y-m-d_His') . '_' . substr($jobId, 0, 5) . '.xls';
+        $filepath = $publicDir . DIRECTORY_SEPARATOR . $filename;
+        $fileUrl  = url('exports/' . $filename);
+
+        $out = fopen($filepath, 'w');
+        if (!$out) {
+            throw new \Exception("No se pudo escribir en la carpeta exports.");
+        }
+
+        // ── Obtener sucursales dinámicas ──────────────────────────────
+        $activeBranches = \App\Models\Branch::query()->active()->orderBy('name')->get();
+        $physicalCols   = MatrizHomologacion::getPhysicalBranchColumns();
+        
+        $branchCols  = [];
+        $branchNames = [];
+        foreach ($activeBranches as $branch) {
+            $colName = MatrizHomologacion::resolveColumnName($branch->code);
+            if (in_array($colName, $physicalCols)) {
+                $branchCols[]  = $colName;
+                $branchNames[] = $branch->name;
+            }
+        }
+
+        $totalBranchesCount = count($branchCols);
+
+        // ── Obtener campos dinámicos activos ──────────────────────────
+        $activeFields = \App\Models\MatrizSyncCampo::where('is_active', true)
+            ->whereNotIn('campo', ['clave', 'descripcion', 'habilitado'])
+            ->orderBy('id')
+            ->get();
+
+        // HTML Headers
+        fwrite($out, '<html xmlns:x="urn:schemas-microsoft-com:office:excel">');
+        fwrite($out, '<head><meta charset="utf-8"><style>.txt { mso-number-format:"\@"; }</style></head><body>');
+        fwrite($out, '<table border="1" style="font-family: Arial, sans-serif; font-size: 11px;">');
+        
+        // Tabla Cabecera
+        fwrite($out, '<thead><tr>');
+        fwrite($out, '<th style="background:#b45309; color:#ffffff; font-weight:bold; padding:8px;">Código Maestro</th>');
+        fwrite($out, '<th style="background:#b45309; color:#ffffff; font-weight:bold; padding:8px;">Descripción Universal</th>');
+        
+        // Campos de artículo
+        foreach ($activeFields as $f) {
+            fwrite($out, '<th style="background:#78350f; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars(ucwords(str_replace('_', ' ', $f->campo))) . '</th>');
+        }
+
+        // Sucursales
+        foreach ($branchNames as $name) {
+            fwrite($out, '<th style="background:#b45309; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars($name) . '</th>');
+        }
+        fwrite($out, '</tr></thead><tbody>');
+
+        // Construir la Query
+        $sumParts = array_map(fn($c) => "COALESCE(`{$c}`, 0)", $branchCols);
+        $sumExpr  = count($sumParts) > 0 ? implode(' + ', $sumParts) : '0';
+
+        $query = MatrizHomologacion::query()
+            ->where('habilitado', 1)
+            ->whereRaw("({$sumExpr}) < {$totalBranchesCount}");
+
+        $query->orderBy('clave');
+
+        $totalRecords = $query->count();
+        $processedRecords = 0;
+        
+        $jobData['total'] = $totalRecords;
+        file_put_contents($jobFile, json_encode($jobData, JSON_UNESCAPED_UNICODE));
+
+        // Procesar y escribir
+        $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields, &$processedRecords, $jobId, &$jobData, $jobFile) {
+            foreach ($rows as $item) {
+                fwrite($out, '<tr>');
+                fwrite($out, '<td class="txt" style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
+                fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
+                
+                foreach ($activeFields as $f) {
+                    $val = $item->{$f->campo};
+                    if ($val === null) {
+                        $display = '';
+                    } elseif (is_numeric($val)) {
+                        $display = rtrim(rtrim((string)$val, '0'), '.');
+                    } else {
+                        $display = (string)$val;
+                    }
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars($display) . '</td>');
+                }
+
+                foreach ($branchCols as $col) {
+                    $raw = $item->getRawOriginal($col);
+                    if ($raw === 1 || $raw === '1') {
+                        fwrite($out, '<td style="background-color:#d1fae5; color:#065f46; text-align:center; font-weight:bold;">ACTIVO</td>');
+                    } elseif ($raw === 0 || $raw === '0') {
+                        fwrite($out, '<td style="background-color:#fef3c7; color:#92400e; text-align:center;">INACTIVO</td>');
+                    } else {
+                        fwrite($out, '<td style="background-color:#fee2e2; color:#991b1b; text-align:center;">FALTA</td>');
+                    }
+                }
+                fwrite($out, '</tr>');
+                $processedRecords++;
+            }
+            
+            $jobData['processed'] = $processedRecords;
+            file_put_contents($jobFile, json_encode($jobData, JSON_UNESCAPED_UNICODE));
+        });
+
+        fwrite($out, '</tbody></table></body></html>');
+        fclose($out);
+
         $jobData['status'] = 'done';
         $jobData['file_url'] = $fileUrl;
         $jobData['processed'] = $totalRecords;

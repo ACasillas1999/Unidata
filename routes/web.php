@@ -28,6 +28,8 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard
 
 // Módulo: Estadísticas
 Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
+Route::get('/estadisticas/export-pendientes', [EstadisticasController::class, 'exportPendientes'])->name('estadisticas.export_pendientes');
+Route::post('/estadisticas/export-pendientes/bg', [EstadisticasController::class, 'exportPendientesBgStart'])->name('estadisticas.export_pendientes.bg');
 
 
 // Módulo: Artículos
@@ -80,6 +82,8 @@ Route::get('/clientes/crear',            [ClientesController::class, 'create'])-
 Route::post('/clientes',                 [ClientesController::class, 'store'])->name('clientes.store');
 Route::get('/clientes/campos',           [ClientesController::class, 'campos'])->name('clientes.campos');
 Route::post('/clientes/campos',          [ClientesController::class, 'updateCampos'])->name('clientes.campos.update');
+Route::post('/clientes/sync',            [ClientesController::class, 'sync'])->name('clientes.sync');
+Route::get('/clientes/sync/status',      [ClientesController::class, 'syncStatus'])->name('clientes.sync.status');
 Route::get('/clientes/{rfc}/editar',     [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
 Route::put('/clientes/{rfc}',            [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '.+');
 Route::delete('/clientes/{rfc}',         [ClientesController::class, 'destroy'])->name('clientes.destroy')->where('rfc', '.+');

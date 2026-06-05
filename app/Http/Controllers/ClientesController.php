@@ -176,8 +176,8 @@ class ClientesController extends Controller
             abort(404, "Cliente {$rfc} no encontrado en ninguna sucursal ni en maestro.");
         }
 
-        // Solo obtener campos configurados para Editar
-        $campos = ClienteCampo::where('show_in_edit', true)->orderBy('id')->get();
+        // Obtener TODOS los campos para mostrarlos (si show_in_edit es false, se mostrarán como readonly en la vista)
+        $campos = ClienteCampo::orderBy('id')->get();
 
         // Consultar estado en cada sucursal
         $estadoSucursales = $this->resolveEstadoSucursales($cliente);
@@ -366,6 +366,55 @@ class ClientesController extends Controller
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
         $estado  = $this->resolveEstadoSucursales($cliente);
         return response()->json($estado);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HOMOLOGACION / SYNC
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function sync()
+    {
+        $statusFile = \App\Console\Commands\SyncClientesMaestro::statusFile();
+
+        // Si ya hay una sincronización corriendo (< 10 min), rechazar
+        if (file_exists($statusFile)) {
+            $prev = json_decode(file_get_contents($statusFile), true);
+            if (($prev['status'] ?? '') === 'running' && (time() - (int)($prev['updated_at'] ?? 0)) < 600) {
+                return response()->json(['status' => 'already_running', 'message' => 'Ya hay una sincronización en progreso.']);
+            }
+        }
+
+        // Escribir estado inicial
+        file_put_contents($statusFile, json_encode([
+            'status'     => 'running',
+            'message'    => 'Preparando entorno...',
+            'step'       => 0,
+            'total'      => 0,
+            'updated_at' => time(),
+        ], JSON_UNESCAPED_UNICODE));
+
+        // Lanzar proceso de fondo en Windows (start /B) sin bloquear a Apache
+        $php     = PHP_BINARY;
+        $artisan = base_path('artisan');
+        $log     = storage_path('logs') . DIRECTORY_SEPARATOR . 'sync_clientes_bg.log';
+
+        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:sync-clientes-maestro >> "' . $log . '" 2>&1';
+        pclose(popen($cmd, 'r'));
+
+        return response()->json(['status' => 'started']);
+    }
+
+    public function syncStatus()
+    {
+        $file = \App\Console\Commands\SyncClientesMaestro::statusFile();
+        if (!file_exists($file)) {
+            return response()->json(['status' => 'waiting', 'message' => 'Preparando...', 'step' => 0, 'total' => 0]);
+        }
+
+        $content = file_get_contents($file);
+        $data = json_decode($content, true);
+
+        return response()->json($data ?: ['status' => 'waiting', 'message' => 'Preparando...', 'step' => 0, 'total' => 0]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

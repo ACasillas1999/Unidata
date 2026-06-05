@@ -104,6 +104,21 @@ $kpis = [
 @foreach($kpis as $k)
 <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:14px 14px; position:relative; overflow:hidden;">
     <div style="position:absolute; top:-14px; right:-14px; width:56px; height:56px; background:{{ $k['c'] }}10; border-radius:50%;"></div>
+    
+    @if($k['l'] === 'Avance HOMOLOGACION')
+    <button onclick="startExportPendientesBg()" 
+       style="position:absolute; top:12px; right:12px; width:26px; height:26px; background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.3); border-radius:7px; display:flex; align-items:center; justify-content:center; color:#fbbf24; cursor:pointer; transition:all 0.2s; z-index:10; padding:0;"
+       title="Descargar artículos pendientes en Excel"
+       onmouseover="this.style.background='rgba(245,158,11,.3)'; this.style.color='#fff';"
+       onmouseout="this.style.background='rgba(245,158,11,.15)'; this.style.color='#fbbf24';">
+        <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+    </button>
+    @endif
+
     <div style="width:26px; height:26px; background:{{ $k['c'] }}18; border-radius:7px; display:flex; align-items:center; justify-content:center; margin-bottom:9px;">
         <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="{{ $k['c'] }}" stroke-width="2">{!! $k['i'] !!}</svg>
     </div>
@@ -665,5 +680,38 @@ const fnt = { family: 'inherit', size: 10 };
 
     @endif
 });
+
+function startExportPendientesBg() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+    // Disparar toast informativo
+    Swal.mixin({
+      toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, background: '#1e293b', color: '#f8fafc'
+    }).fire({
+        icon: 'success',
+        title: 'Exportación iniciada',
+        text: 'Puedes revisar el progreso en el Centro de Descargas (arriba a la derecha)'
+    });
+
+    fetch('{{ route("estadisticas.export_pendientes.bg") }}', {
+        method: 'POST',
+        headers: { 
+            'X-CSRF-TOKEN': csrfToken, 
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'started') {
+            // Check if GDC (Centro de Descargas) exists and trigger open
+            const gdcBtn = document.getElementById('gdc-toggle-btn');
+            if(gdcBtn && !document.getElementById('gdc-panel').style.display.includes('block')) {
+                 gdcBtn.click();
+            }
+        }
+    })
+    .catch(() => {});
+}
 </script>
 @endpush

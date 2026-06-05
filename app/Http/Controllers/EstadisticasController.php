@@ -299,4 +299,147 @@ class EstadisticasController extends Controller
             'error'    => $error,
         ]);
     }
+
+    public function exportPendientes(Request $request)
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
+        if (session()->isStarted()) {
+            session()->save();
+        }
+
+        $branches = Branch::active()->orderBy('name')->get();
+        $totalBranchesCount = $branches->count();
+        $physicalCols = array_values(MatrizHomologacion::getPhysicalBranchColumns());
+
+        $branchesArr = [];
+        foreach ($branches as $branch) {
+            $col = MatrizHomologacion::resolveColumnName($branch->code);
+            if (in_array($col, $physicalCols, true)) {
+                $branchesArr[$branch->name] = [
+                    'conn' => strtolower($branch->code),
+                    'col'  => $col,
+                ];
+            }
+        }
+
+        $branchCols = array_column($branchesArr, 'col');
+        $sumParts   = array_map(fn($c) => "COALESCE(`{$c}`, 0)", $branchCols);
+        $sumExpr    = count($sumParts) > 0 ? implode(' + ', $sumParts) : '0';
+
+        $filename = 'pendientes_homologacion_' . now()->format('Y-m-d_His') . '.xls';
+
+        $headers = [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        // Obtenemos los campos adicionales activos
+        $activeFields = \App\Models\MatrizSyncCampo::where('is_active', true)
+            ->whereNotIn('campo', ['clave', 'descripcion', 'habilitado'])
+            ->orderBy('id')
+            ->get();
+
+        $callback = function () use ($sumExpr, $totalBranchesCount, $branchesArr, $branchCols, $activeFields) {
+            $out = fopen('php://output', 'w');
+
+            // 1. HTML Headers
+            fwrite($out, '<html xmlns:x="urn:schemas-microsoft-com:office:excel">');
+            fwrite($out, '<head><meta charset="utf-8"><style>.txt { mso-number-format:"\@"; }</style></head><body>');
+            fwrite($out, '<table border="1" style="font-family: Arial, sans-serif; font-size: 11px;">');
+            
+            // 2. Cabecera Table
+            fwrite($out, '<thead><tr>');
+            fwrite($out, '<th style="background:#b45309; color:#ffffff; font-weight:bold; padding:8px;">Código Maestro</th>');
+            fwrite($out, '<th style="background:#b45309; color:#ffffff; font-weight:bold; padding:8px;">Descripción Universal</th>');
+            
+            foreach ($activeFields as $f) {
+                fwrite($out, '<th style="background:#78350f; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars(ucwords(str_replace('_', ' ', $f->campo))) . '</th>');
+            }
+
+            foreach (array_keys($branchesArr) as $name) {
+                fwrite($out, '<th style="background:#b45309; color:#ffffff; font-weight:bold; padding:8px;">' . htmlspecialchars($name) . '</th>');
+            }
+            fwrite($out, '</tr></thead><tbody>');
+
+            $query = MatrizHomologacion::query()
+                ->where('habilitado', 1)
+                ->whereRaw("({$sumExpr}) < {$totalBranchesCount}");
+
+            $query->orderBy('clave');
+
+            $query->chunk(500, function ($rows) use ($out, $branchCols, $activeFields) {
+                foreach ($rows as $item) {
+                    fwrite($out, '<tr>');
+                    fwrite($out, '<td class="txt" style="vertical-align:middle;">' . htmlspecialchars((string)$item->clave) . '</td>');
+                    fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars((string)$item->descripcion) . '</td>');
+                    
+                    foreach ($activeFields as $f) {
+                        $val = $item->{$f->campo};
+                        if ($val === null) {
+                            $display = '';
+                        } elseif (is_numeric($val)) {
+                            $display = rtrim(rtrim((string)$val, '0'), '.');
+                        } else {
+                            $display = (string)$val;
+                        }
+                        fwrite($out, '<td style="vertical-align:middle;">' . htmlspecialchars($display) . '</td>');
+                    }
+
+                    foreach ($branchCols as $col) {
+                        $raw = $item->getRawOriginal($col);
+                        if ($raw === 1 || $raw === '1') {
+                            fwrite($out, '<td style="background-color:#d1fae5; color:#065f46; text-align:center; font-weight:bold;">ACTIVO</td>');
+                        } elseif ($raw === 0 || $raw === '0') {
+                            fwrite($out, '<td style="background-color:#fef3c7; color:#92400e; text-align:center;">INACTIVO</td>');
+                        } else {
+                            fwrite($out, '<td style="background-color:#fee2e2; color:#991b1b; text-align:center;">FALTA</td>');
+                        }
+                    }
+                    fwrite($out, '</tr>');
+                }
+            });
+
+            fwrite($out, '</tbody></table></body></html>');
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportPendientesBgStart(Request $request)
+    {
+        $jobId = uniqid('job_');
+        $exportsDir = storage_path('app/exports');
+        
+        if (!\Illuminate\Support\Facades\File::exists($exportsDir)) {
+            \Illuminate\Support\Facades\File::makeDirectory($exportsDir, 0755, true);
+        }
+
+        $jobData = [
+            'status' => 'processing',
+            'progress' => 0,
+            'total' => 0,
+            'processed' => 0,
+            'file_url' => null,
+            'module' => 'Pendientes Homologación',
+            'error' => null
+        ];
+
+        file_put_contents($exportsDir . '/' . $jobId . '.json', json_encode($jobData, JSON_UNESCAPED_UNICODE));
+
+        // Iniciar comando en segundo plano (asíncrono)
+        $php = PHP_BINARY;
+        $artisan = base_path('artisan');
+        $log = storage_path('logs/export_bg.log');
+
+        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:export-bg pendientes ' . escapeshellarg($jobId) . ' >> "' . $log . '" 2>&1';
+        pclose(popen($cmd, 'r'));
+
+        return response()->json([
+            'status' => 'started',
+            'job_id' => $jobId
+        ]);
+    }
 }

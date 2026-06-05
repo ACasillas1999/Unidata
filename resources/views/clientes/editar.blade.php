@@ -5,7 +5,7 @@
 
 @section('content')
 
-<div style="max-width: 1500px; margin: 0 auto 30px auto;">
+<div style="width: 100%; margin: 0 auto 30px auto;">
 
     {{-- Header --}}
     <div class="page-header shadow-premium" style="margin-bottom: 24px; padding: 20px 30px; background: var(--grad-surface); border-radius: var(--radius-xl); border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
@@ -72,20 +72,20 @@
                             @if($campos->where('campo','razon_social')->first()!== null)
                             <div style="grid-column: span 2;">
                                 <label class="modal-label">Razón Social *</label>
-                                <input type="text" name="razon_social" value="{{ old('razon_social', $cliente->razon_social) }}" maxlength="255" class="modal-input" required>
+                                <input type="text" name="razon_social" value="{{ old('razon_social', $cliente->razon_social) }}" {{ !($campos->where('campo','razon_social')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="255" class="modal-input" required>
                             </div>
                             @endif
                             @if($campos->where('campo','status')->first()!== null)
                             <div>
                                 <label class="modal-label">Estatus *</label>
-                                <select name="status" class="modal-input">
+                                <select name="status" class="modal-input" {{ !($campos->where('campo','status')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }} {{ !($campos->where('campo','status')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }} >
                                     <option value="A" {{ old('status', $cliente->status) === 'A' ? 'selected' : '' }}>Activo</option>
                                     <option value="I" {{ old('status', $cliente->status) === 'I' ? 'selected' : '' }}>Inactivo</option>
                                 </select>
                             </div>
                             @endif
                             @if($campos->where('campo','regimen_fiscal')->first()!== null)
-                            <div><label class="modal-label">Régimen Fiscal</label><input type="text" name="regimen_fiscal" value="{{ old('regimen_fiscal', $cliente->regimen_fiscal) }}" maxlength="3" class="modal-input"></div>
+                            <div><label class="modal-label">Régimen Fiscal</label><input type="text" name="regimen_fiscal" value="{{ old('regimen_fiscal', $cliente->regimen_fiscal) }}" {{ !($campos->where('campo','regimen_fiscal')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="3" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','fecha_alta')->first()!== null)
                             <div><label class="modal-label">Fecha de Alta</label><input type="date" name="fecha_alta" value="{{ old('fecha_alta', $cliente->fecha_alta?->format('Y-m-d')) }}" class="modal-input"></div>
@@ -102,25 +102,25 @@
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
                             @if($campos->where('campo','calle')->first()!== null)
-                            <div style="grid-column: span 2;"><label class="modal-label">Calle</label><input type="text" name="calle" value="{{ old('calle', $cliente->calle) }}" maxlength="70" class="modal-input"></div>
+                            <div style="grid-column: span 2;"><label class="modal-label">Calle</label><input type="text" name="calle" value="{{ old('calle', $cliente->calle) }}" {{ !($campos->where('campo','calle')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="70" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','exterior')->first()!== null)
-                            <div><label class="modal-label">No. Exterior</label><input type="text" name="exterior" value="{{ old('exterior', $cliente->exterior) }}" maxlength="10" class="modal-input"></div>
+                            <div><label class="modal-label">No. Exterior</label><input type="text" name="exterior" value="{{ old('exterior', $cliente->exterior) }}" {{ !($campos->where('campo','exterior')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="10" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','interior')->first()!== null)
-                            <div><label class="modal-label">No. Interior</label><input type="text" name="interior" value="{{ old('interior', $cliente->interior) }}" maxlength="10" class="modal-input"></div>
+                            <div><label class="modal-label">No. Interior</label><input type="text" name="interior" value="{{ old('interior', $cliente->interior) }}" {{ !($campos->where('campo','interior')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="10" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','colonia')->first()!== null)
-                            <div><label class="modal-label">Colonia</label><input type="text" name="colonia" value="{{ old('colonia', $cliente->colonia) }}" maxlength="60" class="modal-input"></div>
+                            <div><label class="modal-label">Colonia</label><input type="text" name="colonia" value="{{ old('colonia', $cliente->colonia) }}" {{ !($campos->where('campo','colonia')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="60" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','cod_postal')->first()!== null)
-                            <div><label class="modal-label">Código Postal</label><input type="number" name="cod_postal" value="{{ old('cod_postal', $cliente->cod_postal) }}" class="modal-input"></div>
+                            <div><label class="modal-label">Código Postal</label><input type="number" name="cod_postal" value="{{ old('cod_postal', $cliente->cod_postal) }}" {{ !($campos->where('campo','cod_postal')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','ciudad')->first()!== null)
-                            <div><label class="modal-label">Ciudad</label><input type="text" name="ciudad" value="{{ old('ciudad', $cliente->ciudad) }}" maxlength="4" class="modal-input"></div>
+                            <div><label class="modal-label">Ciudad</label><input type="text" name="ciudad" value="{{ old('ciudad', $cliente->ciudad) }}" {{ !($campos->where('campo','ciudad')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="4" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','municipio')->first()!== null)
-                            <div><label class="modal-label">Municipio</label><input type="text" name="municipio" value="{{ old('municipio', $cliente->municipio) }}" maxlength="30" class="modal-input"></div>
+                            <div><label class="modal-label">Municipio</label><input type="text" name="municipio" value="{{ old('municipio', $cliente->municipio) }}" {{ !($campos->where('campo','municipio')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="30" class="modal-input"></div>
                             @endif
                         </div>
                     </div>
@@ -134,10 +134,10 @@
                             Contacto
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
-                            @if($campos->where('campo','telefono1')->first()!== null)<div><label class="modal-label">Teléfono 1</label><input type="text" name="telefono1" value="{{ old('telefono1', $cliente->telefono1) }}" maxlength="15" class="modal-input"></div>@endif
-                            @if($campos->where('campo','telefono2')->first()!== null)<div><label class="modal-label">Teléfono 2</label><input type="text" name="telefono2" value="{{ old('telefono2', $cliente->telefono2) }}" maxlength="15" class="modal-input"></div>@endif
-                            @if($campos->where('campo','fax')->first()!== null)<div><label class="modal-label">Fax</label><input type="text" name="fax" value="{{ old('fax', $cliente->fax) }}" maxlength="15" class="modal-input"></div>@endif
-                            @if($campos->where('campo','representante')->first()!== null)<div><label class="modal-label">Representante</label><input type="text" name="representante" value="{{ old('representante', $cliente->representante) }}" maxlength="60" class="modal-input"></div>@endif
+                            @if($campos->where('campo','telefono1')->first()!== null)<div><label class="modal-label">Teléfono 1</label><input type="text" name="telefono1" value="{{ old('telefono1', $cliente->telefono1) }}" {{ !($campos->where('campo','telefono1')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
+                            @if($campos->where('campo','telefono2')->first()!== null)<div><label class="modal-label">Teléfono 2</label><input type="text" name="telefono2" value="{{ old('telefono2', $cliente->telefono2) }}" {{ !($campos->where('campo','telefono2')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
+                            @if($campos->where('campo','fax')->first()!== null)<div><label class="modal-label">Fax</label><input type="text" name="fax" value="{{ old('fax', $cliente->fax) }}" {{ !($campos->where('campo','fax')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
+                            @if($campos->where('campo','representante')->first()!== null)<div><label class="modal-label">Representante</label><input type="text" name="representante" value="{{ old('representante', $cliente->representante) }}" {{ !($campos->where('campo','representante')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="60" class="modal-input"></div>@endif
                         </div>
                     </div>
                     @endif
@@ -150,13 +150,13 @@
                             Crédito y Condiciones
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
-                            @if($campos->where('campo','vendedor')->first() !== null)<div><label class="modal-label">Vendedor</label><input type="text" name="vendedor" value="{{ old('vendedor', $cliente->vendedor) }}" maxlength="6" class="modal-input"></div>@endif
-                            @if($campos->where('campo','dias_pago')->first() !== null)<div><label class="modal-label">Días de Pago</label><input type="text" name="dias_pago" value="{{ old('dias_pago', $cliente->dias_pago) }}" maxlength="6" class="modal-input"></div>@endif
-                            @if($campos->where('campo','condicion_pago')->first() !== null)<div><label class="modal-label">Condición de Pago</label><input type="text" name="condicion_pago" value="{{ old('condicion_pago', $cliente->condicion_pago) }}" maxlength="4" class="modal-input"></div>@endif
-                            @if($campos->where('campo','dias_credito')->first() !== null)<div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', $cliente->dias_credito) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','limite_credito')->first() !== null)<div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', $cliente->limite_credito) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','saldo_actual')->first() !== null)<div><label class="modal-label">Saldo Actual</label><input type="number" step="0.01" name="saldo_actual" value="{{ old('saldo_actual', $cliente->saldo_actual) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','cta_contable')->first() !== null)<div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable', $cliente->cta_contable) }}" maxlength="14" class="modal-input"></div>@endif
+                            @if($campos->where('campo','vendedor')->first() !== null)<div><label class="modal-label">Vendedor</label><input type="text" name="vendedor" value="{{ old('vendedor', $cliente->vendedor) }}" {{ !($campos->where('campo','vendedor')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="6" class="modal-input"></div>@endif
+                            @if($campos->where('campo','dias_pago')->first() !== null)<div><label class="modal-label">Días de Pago</label><input type="text" name="dias_pago" value="{{ old('dias_pago', $cliente->dias_pago) }}" {{ !($campos->where('campo','dias_pago')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="6" class="modal-input"></div>@endif
+                            @if($campos->where('campo','condicion_pago')->first() !== null)<div><label class="modal-label">Condición de Pago</label><input type="text" name="condicion_pago" value="{{ old('condicion_pago', $cliente->condicion_pago) }}" {{ !($campos->where('campo','condicion_pago')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="4" class="modal-input"></div>@endif
+                            @if($campos->where('campo','dias_credito')->first() !== null)<div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', $cliente->dias_credito) }}" {{ !($campos->where('campo','dias_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','limite_credito')->first() !== null)<div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', $cliente->limite_credito) }}" {{ !($campos->where('campo','limite_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','saldo_actual')->first() !== null)<div><label class="modal-label">Saldo Actual</label><input type="number" step="0.01" name="saldo_actual" value="{{ old('saldo_actual', $cliente->saldo_actual) }}" {{ !($campos->where('campo','saldo_actual')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','cta_contable')->first() !== null)<div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable', $cliente->cta_contable) }}" {{ !($campos->where('campo','cta_contable')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="14" class="modal-input"></div>@endif
                         </div>
                     </div>
                     @endif
@@ -169,13 +169,13 @@
                             Control y Opciones Adicionales
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
-                            @if($campos->where('campo','documentos')->first() !== null)<div style="grid-column: span 2;"><label class="modal-label">Documentos</label><input type="text" name="documentos" value="{{ old('documentos', $cliente->documentos) }}" maxlength="255" class="modal-input"></div>@endif
-                            @if($campos->where('campo','codigo_contpaq')->first() !== null)<div><label class="modal-label">Código Contpaq</label><input type="number" name="codigo_contpaq" value="{{ old('codigo_contpaq', $cliente->codigo_contpaq) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','modificar_fpmpfac')->first() !== null)<div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', $cliente->modificar_fpmpfac) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','id_opcion_bloqueo')->first() !== null)<div><label class="modal-label">Opción Bloqueo</label><input type="number" name="id_opcion_bloqueo" value="{{ old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','sync')->first() !== null)<div><label class="modal-label">Sync</label><input type="number" name="sync" value="{{ old('sync', $cliente->sync) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','prefijo_descripcion')->first() !== null)<div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', $cliente->prefijo_descripcion) }}" class="modal-input"></div>@endif
-                            @if($campos->where('campo','id_sugar')->first() !== null)<div><label class="modal-label">ID Sugar</label><input type="text" name="id_sugar" value="{{ old('id_sugar', $cliente->id_sugar) }}" maxlength="36" class="modal-input"></div>@endif
+                            @if($campos->where('campo','documentos')->first() !== null)<div style="grid-column: span 2;"><label class="modal-label">Documentos</label><input type="text" name="documentos" value="{{ old('documentos', $cliente->documentos) }}" {{ !($campos->where('campo','documentos')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="255" class="modal-input"></div>@endif
+                            @if($campos->where('campo','codigo_contpaq')->first() !== null)<div><label class="modal-label">Código Contpaq</label><input type="number" name="codigo_contpaq" value="{{ old('codigo_contpaq', $cliente->codigo_contpaq) }}" {{ !($campos->where('campo','codigo_contpaq')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','modificar_fpmpfac')->first() !== null)<div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', $cliente->modificar_fpmpfac) }}" {{ !($campos->where('campo','modificar_fpmpfac')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','id_opcion_bloqueo')->first() !== null)<div><label class="modal-label">Opción Bloqueo</label><input type="number" name="id_opcion_bloqueo" value="{{ old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) }}" {{ !($campos->where('campo','id_opcion_bloqueo')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','sync')->first() !== null)<div><label class="modal-label">Sync</label><input type="number" name="sync" value="{{ old('sync', $cliente->sync) }}" {{ !($campos->where('campo','sync')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','prefijo_descripcion')->first() !== null)<div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', $cliente->prefijo_descripcion) }}" {{ !($campos->where('campo','prefijo_descripcion')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','id_sugar')->first() !== null)<div><label class="modal-label">ID Sugar</label><input type="text" name="id_sugar" value="{{ old('id_sugar', $cliente->id_sugar) }}" {{ !($campos->where('campo','id_sugar')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="36" class="modal-input"></div>@endif
                         </div>
                     </div>
                     @endif
