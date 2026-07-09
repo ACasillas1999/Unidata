@@ -123,6 +123,19 @@ return [
             'strict' => true,
         ],
 
+        'proteo_db' => [
+            'driver' => 'mysql',
+            'host' => env('DB_PROTEO_HOST', '127.0.0.1'),
+            'port' => env('DB_PROTEO_PORT', '3306'),
+            'database' => env('DB_PROTEO_DATABASE', 'proteo_db'),
+            'username' => env('DB_PROTEO_USERNAME', 'root'),
+            'password' => env('DB_PROTEO_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'db_master' => [
             'driver' => 'mysql',
             'url' => env('DB_MASTER_URL'),

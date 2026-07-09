@@ -70,13 +70,33 @@
                     @if($campos->where('campo','regimen_fiscal')->first()!== null)
                     <div>
                         <label class="modal-label">Régimen Fiscal</label>
-                        <input type="text" name="regimen_fiscal" value="{{ old('regimen_fiscal') }}" maxlength="3" class="modal-input">
+                        <select name="regimen_fiscal" class="modal-input">
+                            <option value="">Seleccione Régimen Fiscal...</option>
+                            @foreach($catalogs['regimenes'] as $key => $desc)
+                                <option value="{{ $key }}" {{ old('regimen_fiscal') == $key ? 'selected' : '' }}>
+                                    {{ $key }} - {{ $desc }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     @endif
                     @if($campos->where('campo','fecha_alta')->first()!== null)
                     <div>
                         <label class="modal-label">Fecha de Alta</label>
                         <input type="date" name="fecha_alta" value="{{ old('fecha_alta', now()->toDateString()) }}" class="modal-input">
+                    </div>
+                    @endif
+                    @if($campos->where('campo','giro_principal')->first()!== null)
+                    <div>
+                        <label class="modal-label">Giro Principal</label>
+                        <select name="giro_principal" class="modal-input">
+                            <option value="">Seleccione Giro Principal...</option>
+                            @foreach($catalogs['giros'] as $key => $desc)
+                                <option value="{{ $key }}" {{ old('giro_principal') == $key ? 'selected' : '' }}>
+                                    {{ $desc }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     @endif
                 </div>
@@ -109,10 +129,43 @@
                     <div><label class="modal-label">Código Postal</label><input type="number" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','ciudad')->first()!== null)
-                    <div><label class="modal-label">Ciudad</label><input type="text" name="ciudad" value="{{ old('ciudad') }}" maxlength="4" class="modal-input"></div>
+                    <div>
+                        <label class="modal-label">País (Ubicación)</label>
+                        <select name="ubicacion" id="pais-select" class="modal-input">
+                            <option value="">Seleccione País...</option>
+                            @foreach($catalogs['paises'] as $key => $name)
+                                <option value="{{ $key }}" {{ old('ubicacion') == $key ? 'selected' : '' }}>
+                                    {{ $name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="modal-label">Estado</label>
+                        <select id="estado-select" class="modal-input" disabled>
+                            <option value="">Seleccione Estado...</option>
+                            @foreach($catalogs['estados'] as $key => $name)
+                                <option value="{{ $key }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="modal-label">Ciudad</label>
+                        <select name="ciudad" id="ciudad-select" class="modal-input" disabled>
+                            <option value="">Seleccione Ciudad...</option>
+                            @foreach($catalogs['ciudades'] as $key => $c)
+                                <option value="{{ $key }}" {{ old('ciudad') == $key ? 'selected' : '' }}>
+                                    {{ $c['nombre'] }} ({{ $key }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','municipio')->first()!== null)
-                    <div><label class="modal-label">Municipio</label><input type="text" name="municipio" value="{{ old('municipio') }}" maxlength="30" class="modal-input"></div>
+                    <div>
+                        <label class="modal-label">Municipio</label>
+                        <input type="text" name="municipio" id="municipio-input" value="{{ old('municipio') }}" maxlength="30" class="modal-input">
+                    </div>
                     @endif
                 </div>
             </div>
@@ -196,7 +249,30 @@
                     <div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','id_opcion_bloqueo')->first() !== null)
-                    <div><label class="modal-label">Opción Bloqueo</label><input type="number" name="id_opcion_bloqueo" value="{{ old('id_opcion_bloqueo', 0) }}" class="modal-input"></div>
+                    <div>
+                        <label class="modal-label">Opción Bloqueo</label>
+                        <select name="id_opcion_bloqueo" class="modal-input">
+                            <option value="0" {{ old('id_opcion_bloqueo', 0) == 0 ? 'selected' : '' }}>Ninguno</option>
+                            @foreach($catalogs['bloqueos'] as $key => $desc)
+                                <option value="{{ $key }}" {{ old('id_opcion_bloqueo') == $key ? 'selected' : '' }}>
+                                    {{ $desc }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+                    @if($campos->where('campo','clasificacion')->first() !== null)
+                    <div>
+                        <label class="modal-label">Clasificación</label>
+                        <select name="clasificacion" class="modal-input">
+                            <option value="">Seleccione Clasificación...</option>
+                            @foreach($catalogs['clasificaciones'] as $key => $desc)
+                                <option value="{{ $key }}" {{ old('clasificacion') == $key ? 'selected' : '' }}>
+                                    {{ $desc }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','sync')->first() !== null)
                     <div><label class="modal-label">Sync</label><input type="number" name="sync" value="{{ old('sync', 0) }}" class="modal-input"></div>
@@ -227,6 +303,7 @@
 .modal-label { font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px; text-transform: uppercase; letter-spacing: 0.08em; }
 .modal-input { width:100%; background:var(--bg-root); border:1px solid var(--border); padding:12px 16px; border-radius:10px; color:white; font-size:14px; transition: all 0.2s; box-sizing: border-box; }
 .modal-input:focus { border-color:#818cf8; outline:none; box-shadow:0 0 0 4px rgba(99,102,241,0.15); }
+.modal-input option { background: #1a1d27; color: white; }
 .section-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 14px; padding: 28px; margin-bottom: 28px; }
 .section-card:last-of-type { margin-bottom: 0; }
 </style>
@@ -241,6 +318,123 @@ document.getElementById('form-crear-cliente').addEventListener('submit', functio
         didOpen: () => Swal.showLoading()
     });
 });
+
+const ciudadesMap = @json($catalogs['ciudades']);
+const paisSelect = document.getElementById('pais-select');
+const estadoSelect = document.getElementById('estado-select');
+const ciudadSelect = document.getElementById('ciudad-select');
+const municipioInput = document.getElementById('municipio-input');
+
+// Guardar opciones originales para filtrado
+const originalStates = Array.from(estadoSelect?.options || []).slice(1);
+const originalCities = Array.from(ciudadSelect?.options || []).slice(1);
+
+function updateStates() {
+    if (!paisSelect || !estadoSelect) return;
+    const selectedPais = paisSelect.value;
+    
+    estadoSelect.value = '';
+    estadoSelect.disabled = !selectedPais;
+    if (ciudadSelect) {
+        ciudadSelect.value = '';
+        ciudadSelect.disabled = true;
+    }
+    
+    if (!selectedPais) return;
+    
+    const allowedStates = new Set();
+    for (const code in ciudadesMap) {
+        if (ciudadesMap[code].pais === selectedPais) {
+            allowedStates.add(ciudadesMap[code].estado);
+        }
+    }
+    
+    estadoSelect.innerHTML = '<option value="">Seleccione Estado...</option>';
+    originalStates.forEach(opt => {
+        if (allowedStates.has(opt.value)) {
+            estadoSelect.appendChild(opt.cloneNode(true));
+        }
+    });
+}
+
+function updateCities() {
+    if (!estadoSelect || !ciudadSelect) return;
+    const selectedEstado = estadoSelect.value;
+    
+    ciudadSelect.value = '';
+    ciudadSelect.disabled = !selectedEstado;
+    
+    if (!selectedEstado) return;
+    
+    const allowedCities = new Set();
+    for (const code in ciudadesMap) {
+        if (ciudadesMap[code].estado === selectedEstado && ciudadesMap[code].pais === paisSelect.value) {
+            allowedCities.add(code);
+        }
+    }
+    
+    ciudadSelect.innerHTML = '<option value="">Seleccione Ciudad...</option>';
+    originalCities.forEach(opt => {
+        if (allowedCities.has(opt.value)) {
+            ciudadSelect.appendChild(opt.cloneNode(true));
+        }
+    });
+}
+
+paisSelect?.addEventListener('change', updateStates);
+estadoSelect?.addEventListener('change', updateCities);
+
+ciudadSelect?.addEventListener('change', function() {
+    const val = this.value;
+    if (val && ciudadesMap[val] && municipioInput) {
+        municipioInput.value = ciudadesMap[val].nombre.substring(0, 30);
+    }
+});
+
+// Trigger inicial por si hay old values
+if (paisSelect && paisSelect.value) {
+    const savedEstado = "{{ old('ciudad') ? (isset($catalogs['ciudades'][old('ciudad')]) ? $catalogs['ciudades'][old('ciudad')]['estado'] : '') : '' }}";
+    const savedCiudad = "{{ old('ciudad') }}";
+    
+    paisSelect.removeEventListener('change', updateStates);
+    estadoSelect.removeEventListener('change', updateCities);
+    
+    const selectedPais = paisSelect.value;
+    const allowedStates = new Set();
+    for (const code in ciudadesMap) {
+        if (ciudadesMap[code].pais === selectedPais) {
+            allowedStates.add(ciudadesMap[code].estado);
+        }
+    }
+    estadoSelect.innerHTML = '<option value="">Seleccione Estado...</option>';
+    originalStates.forEach(opt => {
+        if (allowedStates.has(opt.value)) {
+            estadoSelect.appendChild(opt.cloneNode(true));
+        }
+    });
+    estadoSelect.disabled = false;
+    estadoSelect.value = savedEstado;
+    
+    if (savedEstado) {
+        const allowedCities = new Set();
+        for (const code in ciudadesMap) {
+            if (ciudadesMap[code].estado === savedEstado && ciudadesMap[code].pais === selectedPais) {
+                allowedCities.add(code);
+            }
+        }
+        ciudadSelect.innerHTML = '<option value="">Seleccione Ciudad...</option>';
+        originalCities.forEach(opt => {
+            if (allowedCities.has(opt.value)) {
+                ciudadSelect.appendChild(opt.cloneNode(true));
+            }
+        });
+        ciudadSelect.disabled = false;
+        ciudadSelect.value = savedCiudad;
+    }
+    
+    paisSelect.addEventListener('change', updateStates);
+    estadoSelect.addEventListener('change', updateCities);
+}
 </script>
 @endpush
 

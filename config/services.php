@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'powersales' => [
+        'base_url' => env('PS_BASE_URL'),
+        'token'    => env('PS_TOKEN'),
+    ],
+
 ];

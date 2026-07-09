@@ -349,6 +349,49 @@
                             </ul>
                         </li>
 
+                        @php($psMenuOpen = request()->routeIs('powersales.*'))
+                        <li class="sidebar-dropdown {{ $psMenuOpen ? 'open' : '' }}">
+                            <button class="sidebar-dropdown-toggle sidebar-link"
+                                    id="nav-powersales-group"
+                                    type="button"
+                                    aria-expanded="{{ $psMenuOpen ? 'true' : 'false' }}"
+                                    aria-controls="sidebar-powersales-menu">
+                                <span class="sidebar-link-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                    </svg>
+                                </span>
+                                <span class="sidebar-link-label">PowerSales</span>
+                                <span class="sidebar-dropdown-arrow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </span>
+                            </button>
+                            <ul class="sidebar-dropdown-menu" id="sidebar-powersales-menu" @if(!$psMenuOpen) hidden @endif>
+                                <li>
+                                    <a href="{{ route('powersales.auditoria') }}"
+                                       class="sidebar-dropdown-link {{ request()->routeIs('powersales.auditoria') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Auditoría</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('powersales.mapeo') }}"
+                                       class="sidebar-dropdown-link {{ request()->routeIs('powersales.mapeo') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m0-18h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9m0-18v18"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Mapeo de Campos</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         @if(auth()->user()->hasPermission('modules.homologacion'))
                         <li>
                             <a href="{{ route('homologacion.index') }}"

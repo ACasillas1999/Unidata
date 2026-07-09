@@ -7,6 +7,8 @@ use App\Console\Commands\SyncDbMaster;
 use App\Models\MatrizHomologacion;
 use App\Models\DbMasterArticle;
 use App\Models\DbMasterSyncHistory;
+use App\Services\PowerSalesService;
+use App\Support\ArticuloFieldMap;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -14,6 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 class DBMasterController extends Controller
 {
+    public function __construct(
+        protected PowerSalesService $powerSales
+    ) {}
+
     /**
      * Obtiene el listado de sucursales activas y sus columnas correspondientes.
      */
@@ -179,5 +185,86 @@ class DBMasterController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Exporta el catalogo maestro con el mapeo de campos PowerSales aplicado.
+     * Genera un .xls (formato SpreadsheetML) con 2 hojas: Articulos y Listas de Precios,
+     * usando los nombres de campo PowerSales (SKU, Name, PL_Precio_Lista, etc.) como encabezado.
+     */
+    public function exportPowerSales()
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
+        $groups = $this->powerSales->mappingGroups();
+        $productCols   = $groups['articulo']['rows']->pluck('ps_field')->all();
+        $pricelistCols = $groups['pricelist']['rows']->pluck('ps_field')->all();
+
+        $filename = 'DB_Master_PowerSales_' . now()->format('Y-m-d_His') . '.xls';
+        $responseHeaders = [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $cell = function ($value): string {
+            if ($value === null || $value === '') {
+                return '<Cell/>';
+            }
+            $type = is_numeric($value) ? 'Number' : 'String';
+            $escaped = htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+            return "<Cell><Data ss:Type=\"{$type}\">{$escaped}</Data></Cell>";
+        };
+
+        $headerRow = function (array $cols) use ($cell): string {
+            $out = '<Row>';
+            foreach ($cols as $col) {
+                $out .= '<Cell><Data ss:Type="String">' . htmlspecialchars($col, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '</Data></Cell>';
+            }
+            return $out . '</Row>';
+        };
+
+        $callback = function () use ($productCols, $pricelistCols, $cell, $headerRow) {
+            echo '<?xml version="1.0"?>' . "\n";
+            echo '<?mso-application progid="Excel.Sheet"?>' . "\n";
+            echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
+
+            // Hoja 1: Articulos
+            echo '<Worksheet ss:Name="Articulos"><Table>';
+            echo $headerRow($productCols);
+            DbMasterArticle::query()->orderBy('clave')->chunk(500, function ($rows) use ($productCols, $cell) {
+                foreach ($rows as $article) {
+                    $branchData = ArticuloFieldMap::toBranchFormat($article->toArray());
+                    $payload    = $this->powerSales->buildArticuloPayload($branchData);
+                    echo '<Row>';
+                    foreach ($productCols as $col) {
+                        echo $cell($payload[$col] ?? null);
+                    }
+                    echo '</Row>';
+                }
+            });
+            echo '</Table></Worksheet>' . "\n";
+
+            // Hoja 2: Listas de Precios
+            echo '<Worksheet ss:Name="Listas de Precios"><Table>';
+            echo $headerRow(array_merge(['SKU'], $pricelistCols));
+            DbMasterArticle::query()->orderBy('clave')->chunk(500, function ($rows) use ($pricelistCols, $cell) {
+                foreach ($rows as $article) {
+                    $branchData = ArticuloFieldMap::toBranchFormat($article->toArray());
+                    $payload    = $this->powerSales->buildPriceListPayload($branchData);
+                    echo '<Row>';
+                    echo $cell($article->clave);
+                    foreach ($pricelistCols as $col) {
+                        echo $cell($payload[$col] ?? null);
+                    }
+                    echo '</Row>';
+                }
+            });
+            echo '</Table></Worksheet>' . "\n";
+
+            echo '</Workbook>';
+        };
+
+        return response()->stream($callback, 200, $responseHeaders);
     }
 }

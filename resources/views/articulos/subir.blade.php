@@ -27,10 +27,16 @@
                 <h3 class="card-title">1. Configuración de Carga</h3>
                 <p class="card-subtitle">Sube tu archivo y selecciona las preferencias</p>
             </div>
-            <a href="{{ route('articulos.historial') }}" class="btn btn--secondary shadow-premium" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px;">
-                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Ver Historial de Subidas
-            </a>
+            <div style="display: flex; gap: 8px;">
+                <a href="{{ route('articulos.subir.machote') }}" class="btn btn--secondary shadow-premium" style="background: rgba(16, 185, 129, 0.1); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Descargar Machote
+                </a>
+                <a href="{{ route('articulos.historial') }}" class="btn btn--secondary shadow-premium" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Ver Historial de Subidas
+                </a>
+            </div>
         </div>
         <div class="card-body">
             <div id="upload-container" class="glass" style="padding: 60px 40px; text-align: center; border: 2px dashed var(--border); border-radius: var(--radius-xl); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(255,255,255,0.01); position: relative; overflow: hidden;">
@@ -125,6 +131,28 @@
                         Ejecutar Actualización
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Mapeo de columnas CSV → BD --}}
+    <div id="colmap-container" class="card card--dark" style="display: none; border-color: rgba(99,102,241,0.3);">
+        <div class="card-header card-header--row" style="background: rgba(99,102,241,0.03);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 36px; height: 36px; background: var(--violet-bg); color: var(--violet-light); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2.5"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+                </div>
+                <div>
+                    <h3 class="card-title" style="color: var(--violet-light);">Mapeo de Columnas</h3>
+                    <p class="card-subtitle">Columnas detectadas en el CSV y su equivalente en BD</p>
+                </div>
+            </div>
+        </div>
+        <div class="card-body" style="padding: 16px 20px;">
+            <div id="colmap-pills" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            <div id="colmap-unrecognized" style="display: none; margin-top: 12px; padding: 10px 14px; background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.2); border-radius: 8px;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--rose); margin-right: 8px;">NO RECONOCIDAS:</span>
+                <span id="colmap-unrecognized-list" style="font-size: 11px; color: var(--text-muted);"></span>
             </div>
         </div>
     </div>
@@ -360,6 +388,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
             lastChangedCols = data.changed_cols || [];
             selectChangedBtn.style.display = (lastChangedCols.length > 0) ? 'flex' : 'none';
+
+            // ── Renderizar mapeo de columnas ──
+            const colmapContainer = document.getElementById('colmap-container');
+            const colmapPills = document.getElementById('colmap-pills');
+            const colmapUnrecognized = document.getElementById('colmap-unrecognized');
+            const colmapUnrecognizedList = document.getElementById('colmap-unrecognized-list');
+
+            colmapPills.innerHTML = '';
+            if (data.column_map && data.column_map.length > 0) {
+                data.column_map.forEach(col => {
+                    const isSelected = col.selected;
+                    const pill = document.createElement('div');
+                    pill.style.cssText = `
+                        display: inline-flex; align-items: center; gap: 6px;
+                        padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+                        border: 1px solid ${isSelected ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'};
+                        background: ${isSelected ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)'};
+                        color: ${isSelected ? 'var(--emerald)' : 'var(--text-muted)'};
+                    `;
+                    pill.innerHTML = `
+                        <span style="color:var(--text-muted); font-weight:400;">${col.csv}</span>
+                        <svg viewBox="0 0 24 24" fill="none" width="10" height="10" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <span style="font-family:monospace; font-size:10px;">${col.field}</span>
+                        ${isSelected ? '<svg viewBox="0 0 24 24" fill="none" width="10" height="10" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                    `;
+                    pill.title = isSelected ? 'Seleccionada para actualizar' : 'En CSV pero NO seleccionada (no se actualizará)';
+                    colmapPills.appendChild(pill);
+                });
+            }
+
+            if (data.unrecognized && data.unrecognized.length > 0) {
+                colmapUnrecognizedList.textContent = data.unrecognized.join(', ');
+                colmapUnrecognized.style.display = 'block';
+            } else {
+                colmapUnrecognized.style.display = 'none';
+            }
+
+            colmapContainer.style.display = 'block';
 
             const headerRow = document.getElementById('preview-header-row');
             const body = document.getElementById('preview-body');

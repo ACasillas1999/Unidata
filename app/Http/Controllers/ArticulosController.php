@@ -11,12 +11,14 @@ use Illuminate\View\View;
 use Throwable;
 
 use App\Services\BranchConnectionManager;
+use App\Services\PowerSalesService;
 use App\Models\DbMasterArticle;
 
 class ArticulosController extends Controller
 {
     public function __construct(
-        protected BranchConnectionManager $connectionManager
+        protected BranchConnectionManager $connectionManager,
+        protected PowerSalesService $powerSales
     ) {}
 
     /**
@@ -103,69 +105,7 @@ class ArticulosController extends Controller
             $normalize('ID_Impuesto_SAT') => 'id_impuesto_sat',
         ];
 
-        $branchFieldMap = [
-            'clave'               => 'Clave_Articulo',
-            'descripcion'         => 'Descripcion',
-            'unidad_medida'       => 'Unidad_Medida',
-            'linea'               => 'Linea',
-            'clasificacion'       => 'Clasificacion',
-            'area'                => 'Area',
-            'mn_usd'              => 'MN_USD',
-            'precio_lista'        => 'Precio_Lista',
-            'precio_venta'        => 'Precio_Venta',
-            'des_precio_venta'    => 'Desc_Precio_Venta',
-            'precio_especial'     => 'Precio_Especial',
-            'desc_precio_espec'   => 'Desc_Precio_Espec',
-            'precio4'             => 'Precio4',
-            'desc_precio4'        => 'Desc_Precio4',
-            'precio_minimo'       => 'Precio_Minimo',
-            'desc_precio_minimo'  => 'Desc_Precio_Minimo',
-            'precio_tope'         => 'PrecioTope',
-            'costo_venta'         => 'CostoVenta',
-            'porcetaje_descuento' => 'PorcentajeDescuento',
-            'desc_proveedor'      => 'Desc_Proveedor',
-            'articulo_kit'        => 'Articulo_Kit',
-            'articulo_serie'      => 'Articulo_Serie',
-            'margen_minimo'       => 'Margen_Minimo',
-            'color'               => 'Color',
-            'protocolo'           => 'Protocolo',
-            'idsat'               => 'IDSAT',
-            'habilitado'          => 'Habilitado',
-            // Nuevos campos
-            'clave_proveedor_1'   => 'Clave_Proveedor_1',
-            'costo_act_prov_1'    => 'Costo_Act_Prov_1',
-            'clave_prov_2'        => 'Clave_Prov_2',
-            'costo_act_prov_2'    => 'Costo_Act_Prov_2',
-            'clave_prov_3'        => 'Clave_Prov_3',
-            'costo_act_prov_3'    => 'Costo_Act_Prov_3',
-            'fecha_costo_act_p'   => 'Fecha_Costo_Act_P',
-            'inventario_maximo'   => 'Inventario_Maximo',
-            'inventario_minimo'   => 'Inventario_Minimo',
-            'punto_reorden'       => 'Punto_Reorden',
-            'existencia_teorica'  => 'Existencia_Teorica',
-            'existencia_fisica'   => 'Existencia_Fisica',
-            'costo_promedio'      => 'Costo_Promedio',
-            'costo_promedio_ant'  => 'Costo_Promedio_Ant',
-            'costo_ult_compra'    => 'Costo_Ult_Compra',
-            'fecha_ult_compra'    => 'Fecha_Ult_Compra',
-            'costo_compra_ant'    => 'Costo_Compra_Ant',
-            'fecha_compra_ant'    => 'Fecha_Compra_Ant',
-            'fecha_alta'          => 'Fecha_Alta',
-            'en_promocion'        => 'En_Promocion',
-            'critico'             => 'Critico',
-            'control_pedimentos'  => 'ControlPedimentos',
-            'id_impuesto_sat'     => 'IDImpuestoSAT',
-            'iva'                 => 'IVA',
-            'id_tipo_factor'      => 'IDTipoFactor',
-            'sustituto'           => 'Sustituto',
-            'sustituto1'          => 'Sustituto1',
-            'sustituto2'          => 'Sustituto2',
-            'articulo_conversion' => 'ArticuloConversion',
-            'conversion'          => 'Conversion',
-            'peso'                => 'Peso',
-            'ubicacion'           => 'Ubicacion',
-            'std_pack'            => 'StdPack',
-        ];
+        $branchFieldMap = \App\Support\ArticuloFieldMap::map();
 
         return [$normalize, $standardMapping, $branchFieldMap];
     }
@@ -384,6 +324,46 @@ class ArticulosController extends Controller
         ]);
     }
 
+    public function descargarMachote()
+    {
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="machote_articulos.csv"',
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        $columns = [
+            'Clave', 'Descripción', 'U.M.', 'Línea', 'Clasificación',
+            'Area', 'IVA', 'Ubicacion', 'Sustituto', 'MN/USD',
+            'P. Lista', 'P. Venta', 'Desc. P. Venta', 'P. Especial', 'Desc. P. Espec',
+            'Precio 4', 'Desc. Precio 4', 'Costo Venta', '% Descuento',
+            'Art. Kit', 'Art. Serie', 'Mg Mín', 'Color', 'Protocolo',
+            'IDSAT', 'ID_Impuesto_SAT', 'Estatus',
+        ];
+
+        $example = [
+            'ART001', 'EJEMPLO PRODUCTO XYZ', 'PZA', 'ELEC', 'ELECT',
+            '1', '16', 'A-01', '', '0',
+            '100.00', '90.00', '0', '85.00', '0',
+            '80.00', '0', '70.00', '0',
+            '0', '0', '20', '0', '0',
+            '43211501', 'IVA', 'ACTIVO',
+        ];
+
+        $callback = function () use ($columns, $example) {
+            $handle = fopen('php://output', 'w');
+            // BOM para Excel
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, $columns);
+            fputcsv($handle, $example);
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function procesarSubida(Request $request)
     {
         $request->validate([
@@ -416,10 +396,7 @@ class ArticulosController extends Controller
             // Mapear qué índice del CSV corresponde a qué campo de BD
             $headerMap = [];
             foreach ($headerOriginal as $index => $h) {
-                // Quitar BOM y caracteres raros
-                $h = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h);
                 $normH = $normalize($h);
-                
                 if (isset($standardMapping[$normH])) {
                     $headerMap[$index] = $standardMapping[$normH];
                 }
@@ -556,6 +533,9 @@ class ArticulosController extends Controller
                             }
                         }
                     }
+
+                    // Sync a PowerSales (solo campos que cambiaron en esta fila; ver storage/logs/powersales.log)
+                    $this->powerSales->syncArticulo(array_merge(['Clave_Articulo' => $clave], $updateDataBranch));
                 }
 
                 // Guardar auditoría si hubo cambios
@@ -609,11 +589,18 @@ class ArticulosController extends Controller
 
             $headerMap = [];
             foreach ($headerOriginal as $index => $h) {
-                $h = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h);
                 $normH = $normalize($h);
-                
                 if (isset($standardMapping[$normH])) {
                     $headerMap[$index] = $standardMapping[$normH];
+                }
+            }
+
+            // Columnas del CSV no reconocidas por el sistema
+            $unrecognized = [];
+            foreach ($headerOriginal as $index => $h) {
+                if (!isset($headerMap[$index])) {
+                    $display = trim(preg_replace('/[\x00-\x1F]/', '', $h));
+                    if ($display !== '') $unrecognized[] = $display;
                 }
             }
 
@@ -732,11 +719,34 @@ class ArticulosController extends Controller
             }
             fclose($handle);
 
+            // Construir mapa visible: header CSV → campo BD → label UI
+            $columnMap = [];
+            foreach ($headerMap as $index => $dbField) {
+                $csvHeader = trim(preg_replace('/[\x00-\x1F]/', '', $headerOriginal[$index] ?? ''));
+                if ($csvHeader === '') continue;
+                $uiLabel = $labelMap[$dbField] ?? $dbField;
+                $isSelected = false;
+                foreach ($standardMapping as $uiNorm => $mapped) {
+                    if ($mapped === $dbField && in_array($uiNorm, $colsUiNorm)) {
+                        $isSelected = true;
+                        break;
+                    }
+                }
+                $columnMap[] = [
+                    'csv'      => $csvHeader,
+                    'field'    => $dbField,
+                    'label'    => $uiLabel,
+                    'selected' => $isSelected,
+                ];
+            }
+
             return response()->json([
                 'success'      => true,
                 'diffs'        => $diffs,
                 'count'        => count($diffs),
-                'changed_cols' => array_keys($changedCols)
+                'changed_cols' => array_keys($changedCols),
+                'column_map'   => $columnMap,
+                'unrecognized' => $unrecognized,
             ]);
 
         } catch (Throwable $e) {
@@ -961,6 +971,9 @@ class ArticulosController extends Controller
                 }
             }
             $replLogger->info("--- FIN REPLICACIÓN ARTÍCULO: " . $data['clave'] . " ---");
+
+            // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
+            $this->powerSales->syncArticulo($branchData);
 
             // Log de auditoría
             \Illuminate\Support\Facades\DB::table('csv_historial_detalles')->insert([

@@ -54,6 +54,14 @@
                 <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Exportar Excel
             </a>
+            <a href="{{ route('db_master.export_powersales') }}" class="btn btn--secondary shadow-premium" title="Exporta con nombres de campo PowerSales, 2 hojas: Articulos y Listas de Precios" style="border: 1px solid rgba(59,130,246,0.3); background:rgba(59,130,246,0.1); color:#60a5fa; display:flex; align-items:center; gap:8px; text-decoration:none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;">
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                Exportar PowerSales
+            </a>
             <button onclick="openHistoryModal()" class="btn btn--ghost shadow-premium" style="border: 1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--text-secondary); display:flex; align-items:center; gap:8px;">
                 <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Historial

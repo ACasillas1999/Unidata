@@ -18,10 +18,16 @@
                 <p style="color: var(--text-secondary); margin:4px 0 0; font-size: 13px;">Elige qué campos se muestran en el formulario de alta y edición</p>
             </div>
         </div>
-        <a href="{{ route('clientes.index') }}" class="btn btn--ghost" style="border: 1px solid var(--border); padding: 10px 20px;">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Volver
-        </a>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ route('clientes.campos_sucursal') }}" class="btn btn--ghost" style="border: 1px solid rgba(245,158,11,0.4); color:#fbbf24; padding: 10px 18px; font-size: 13px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/></svg>
+                Campos por Sucursal
+            </a>
+            <a href="{{ route('clientes.index') }}" class="btn btn--ghost" style="border: 1px solid var(--border); padding: 10px 20px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Volver
+            </a>
+        </div>
     </div>
 
     @if(session('success'))

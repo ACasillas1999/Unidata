@@ -12,6 +12,7 @@ use App\Http\Controllers\DownloadsController;
 use App\Http\Controllers\DBMasterController;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PowerSalesController;
 use Illuminate\Support\Facades\Route;
 
 // Autenticación
@@ -37,6 +38,7 @@ Route::get('/articulos', [ArticulosController::class, 'index'])->name('articulos
 Route::get('/articulos/crear', [ArticulosController::class, 'crear'])->name('articulos.crear');
 Route::post('/articulos/crear', [ArticulosController::class, 'storeManual'])->name('articulos.storeManual');
 Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
+Route::get('/articulos/subir/machote', [ArticulosController::class, 'descargarMachote'])->name('articulos.subir.machote');
 Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');
 Route::get('/articulos/export', [ArticulosController::class, 'export'])->name('articulos.export');
 Route::post('/articulos/subir/preview', [ArticulosController::class, 'previewSubida'])->name('articulos.subir.preview');
@@ -68,6 +70,7 @@ Route::post('/homologacion/lineas/import',  [HomologacionLineasController::class
 // Módulo: DB Master
 Route::get('/db-master', [DBMasterController::class, 'index'])->name('db_master.index');
 Route::get('/db-master/export', [DBMasterController::class, 'export'])->name('db_master.export');
+Route::get('/db-master/export-powersales', [DBMasterController::class, 'exportPowerSales'])->name('db_master.export_powersales');
 Route::post('/db-master/item/{id}', [DBMasterController::class, 'updateManual'])->name('db_master.update_item');
 Route::post('/db-master/sync', [DBMasterController::class, 'sync'])->name('db_master.sync');
 Route::get('/db-master/sync/status', [DBMasterController::class, 'syncStatus'])->name('db_master.sync.status');
@@ -77,17 +80,25 @@ Route::get('/db-master/history', [DBMasterController::class, 'history'])->name('
 Route::get('/descargas', [DownloadsController::class, 'index'])->name('descargas.index');
 Route::delete('/descargas/{id}', [DownloadsController::class, 'destroy'])->name('descargas.destroy');
 // Módulo: Clientes
-Route::get('/clientes',                  [ClientesController::class, 'index'])->name('clientes.index');
-Route::get('/clientes/crear',            [ClientesController::class, 'create'])->name('clientes.create');
-Route::post('/clientes',                 [ClientesController::class, 'store'])->name('clientes.store');
-Route::get('/clientes/campos',           [ClientesController::class, 'campos'])->name('clientes.campos');
-Route::post('/clientes/campos',          [ClientesController::class, 'updateCampos'])->name('clientes.campos.update');
-Route::post('/clientes/sync',            [ClientesController::class, 'sync'])->name('clientes.sync');
-Route::get('/clientes/sync/status',      [ClientesController::class, 'syncStatus'])->name('clientes.sync.status');
-Route::get('/clientes/{rfc}/editar',     [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
-Route::put('/clientes/{rfc}',            [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '.+');
-Route::delete('/clientes/{rfc}',         [ClientesController::class, 'destroy'])->name('clientes.destroy')->where('rfc', '.+');
-Route::get('/clientes/{rfc}/estado',     [ClientesController::class, 'estadoSucursales'])->name('clientes.estado')->where('rfc', '.+');
+Route::get('/clientes',                                    [ClientesController::class, 'index'])->name('clientes.index');
+Route::get('/clientes/crear',                              [ClientesController::class, 'create'])->name('clientes.create');
+Route::post('/clientes',                                   [ClientesController::class, 'store'])->name('clientes.store');
+Route::get('/clientes/campos',                             [ClientesController::class, 'campos'])->name('clientes.campos');
+Route::post('/clientes/campos',                            [ClientesController::class, 'updateCampos'])->name('clientes.campos.update');
+Route::get('/clientes/campos-sucursal',                    [ClientesController::class, 'camposSucursal'])->name('clientes.campos_sucursal');
+Route::post('/clientes/campos-sucursal',                   [ClientesController::class, 'updateCamposSucursal'])->name('clientes.campos_sucursal.update');
+Route::post('/clientes/sync',                              [ClientesController::class, 'sync'])->name('clientes.sync');
+Route::get('/clientes/sync/status',                        [ClientesController::class, 'syncStatus'])->name('clientes.sync.status');
+Route::get('/clientes/{rfc}/editar',                       [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
+Route::put('/clientes/{rfc}',                              [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '.+');
+Route::delete('/clientes/{rfc}',                           [ClientesController::class, 'destroy'])->name('clientes.destroy')->where('rfc', '.+');
+Route::get('/clientes/{rfc}/estado',                       [ClientesController::class, 'estadoSucursales'])->name('clientes.estado')->where('rfc', '.+');
+Route::get('/clientes/{rfc}/sucursal/{branchId}',          [ClientesController::class, 'editSucursal'])->name('clientes.edit_sucursal')->where('rfc', '.+')->where('branchId', '[0-9]+');
+Route::put('/clientes/{rfc}/sucursal/{branchId}',          [ClientesController::class, 'updateSucursal'])->name('clientes.update_sucursal')->where('rfc', '.+')->where('branchId', '[0-9]+');
+
+// Módulo: PowerSales (auditoria de sync)
+Route::get('/powersales/auditoria', [PowerSalesController::class, 'index'])->name('powersales.auditoria');
+Route::get('/powersales/mapeo', [PowerSalesController::class, 'mapeo'])->name('powersales.mapeo');
 
 // Módulo: Proveedores
 Route::get('/proveedores', [ProveedoresController::class, 'index'])->name('proveedores.index');

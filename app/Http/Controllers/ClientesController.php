@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\ClienteCampo;
+use App\Models\ClienteCampoSucursal;
 use App\Models\ClienteMaestro;
 use App\Services\BranchConnectionManager;
+use App\Services\PowerSalesService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -13,7 +16,8 @@ use Throwable;
 class ClientesController extends Controller
 {
     public function __construct(
-        protected BranchConnectionManager $connectionManager
+        protected BranchConnectionManager $connectionManager,
+        protected PowerSalesService $powerSales
     ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -52,7 +56,8 @@ class ClientesController extends Controller
     {
         // Solo obtener campos configurados para Crear
         $campos = ClienteCampo::where('show_in_create', true)->orderBy('id')->get();
-        return view('clientes.crear', compact('campos'));
+        $catalogs = config('client_catalogs');
+        return view('clientes.crear', compact('campos', 'catalogs'));
     }
 
     public function store(Request $request)
@@ -118,6 +123,21 @@ class ClientesController extends Controller
                     ARRAY_FILTER_USE_KEY
                 );
 
+                // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
+                $codigoVendedorAsesor = (strtoupper($branch->name) === 'TAPATIA') ? 'EITSA' : strtoupper($branch->name);
+
+                // Regla estricta para Asesor y Vendedor
+                if (in_array('Asesor', $columnasReales)) {
+                    $dataFiltrada['Asesor'] = $codigoVendedorAsesor;
+                }
+                
+                if (in_array('Vendedor', $columnasReales)) {
+                    // Si el maestro dice TOP, se respeta TOP. Si no, va el nombre de la sucursal.
+                    $dataFiltrada['Vendedor'] = (strtoupper($dataMaestro['vendedor'] ?? '') === 'TOP') 
+                                              ? 'TOP' 
+                                              : $codigoVendedorAsesor;
+                }
+
                 // Calcular el siguiente ID local (Cliente no es auto-increment, lo gestiona el ERP)
                 if (in_array('Cliente', $columnasReales)) {
                     $maxCliente = $conn->table('clientes')->max('Cliente') ?? 0;
@@ -141,7 +161,8 @@ class ClientesController extends Controller
             }
         }
 
-
+        // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
+        $this->powerSales->syncCliente($this->toBranchFormat($dataMaestro));
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
         $total    = count($resultados);
@@ -182,7 +203,9 @@ class ClientesController extends Controller
         // Consultar estado en cada sucursal
         $estadoSucursales = $this->resolveEstadoSucursales($cliente);
 
-        return view('clientes.editar', compact('cliente', 'campos', 'estadoSucursales'));
+        $catalogs = config('client_catalogs');
+
+        return view('clientes.editar', compact('cliente', 'campos', 'estadoSucursales', 'catalogs'));
     }
 
     public function update(Request $request, string $rfc)
@@ -238,6 +261,21 @@ class ClientesController extends Controller
                         ARRAY_FILTER_USE_KEY
                     );
 
+                    // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
+                    $codigoVendedorAsesor = (strtoupper($branch->name) === 'TAPATIA') ? 'EITSA' : strtoupper($branch->name);
+
+                    // Regla estricta para Asesor y Vendedor
+                    if (in_array('Asesor', $columnasReales)) {
+                        $dataFiltrada['Asesor'] = $codigoVendedorAsesor;
+                    }
+                    
+                    if (in_array('Vendedor', $columnasReales)) {
+                        // Si el maestro dice TOP, se respeta TOP. Si no, va el nombre de la sucursal.
+                        $dataFiltrada['Vendedor'] = (strtoupper($dataMaestro['vendedor'] ?? '') === 'TOP') 
+                                                  ? 'TOP' 
+                                                  : $codigoVendedorAsesor;
+                    }
+
                     $conn->table('clientes')
                         ->where('Cliente', $found->Cliente)
                         ->update($dataFiltrada);
@@ -264,11 +302,21 @@ class ClientesController extends Controller
             }
         }
 
+        // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
+        $this->powerSales->syncCliente($dataBranch);
+
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
         $total    = count($resultados);
 
+        // Construir detalle de errores para diagnóstico
+        $errores = array_filter($resultados, fn($r) => $r['status'] === 'error');
+        $detalleError = '';
+        foreach ($errores as $err) {
+            $detalleError .= " | [{$err['sucursal']}]: {$err['message']}";
+        }
+
         return redirect()->route('clientes.edit', $rfc)
-            ->with('success', "Cliente actualizado en {$exitosos}/{$total} sucursales.")
+            ->with('success', "Cliente actualizado en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
             ->with('resultados', $resultados);
     }
 
@@ -355,6 +403,142 @@ class ClientesController extends Controller
 
         return redirect()->route('clientes.campos')
             ->with('success', 'Configuración de campos actualizada correctamente.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CAMPOS DE SUCURSAL (configuración)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function camposSucursal(): View
+    {
+        $campos = ClienteCampoSucursal::orderBy('orden')->orderBy('id')->get();
+        return view('clientes.campos_sucursal', compact('campos'));
+    }
+
+    public function updateCamposSucursal(Request $request)
+    {
+        $request->validate([
+            'campos'              => 'nullable|array',
+            'campos.*.campo'      => 'required|string|max:60',
+            'campos.*.label'      => 'required|string|max:100',
+            'campos.*.tipo'       => 'required|in:text,number,decimal,date,boolean',
+            'campos.*.orden'      => 'required|integer|min:0',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            $incomingCampos = collect($request->input('campos', []));
+            $editableSet    = collect($request->input('editables', []));
+
+            // Borrar todos y recrear (tabla pequeña, sin historial)
+            // Nota: TRUNCATE hace commit implícito en MySQL — usar DELETE en su lugar
+            ClienteCampoSucursal::query()->delete();
+
+            foreach ($incomingCampos as $idx => $row) {
+                ClienteCampoSucursal::create([
+                    'campo'    => trim($row['campo']),
+                    'label'    => trim($row['label']),
+                    'tipo'     => $row['tipo'],
+                    'editable' => $editableSet->contains(trim($row['campo'])),
+                    'orden'    => (int) $row['orden'],
+                ]);
+            }
+        });
+
+        return redirect()->route('clientes.campos_sucursal')
+            ->with('success', 'Configuración de campos de sucursal actualizada correctamente.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // EDICIÓN POR SUCURSAL
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function editSucursal(string $rfc, int $branchId): View
+    {
+        // Verificar que el cliente exista en el maestro
+        $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
+
+        // Obtener la sucursal por ID (evita problemas con códigos que contienen '/')
+        $branch = Branch::findOrFail($branchId);
+
+        // Conectar a la sucursal
+        $conn = $this->connectionManager->connect($branch->code);
+
+        // Buscar el cliente en la sucursal
+        $registro = null;
+        if ($cliente->id_global > 0) {
+            $registro = $conn->table('clientes')->where('IdGlobal', $cliente->id_global)->first();
+        }
+        if (!$registro) {
+            $registro = $conn->table('clientes')->where('RFC', $rfc)->first();
+        }
+
+        if (!$registro) {
+            abort(404, "El cliente {$rfc} no existe en la sucursal {$branch->name}.");
+        }
+
+        // Obtener columnas reales de esta sucursal
+        $columnasReales = $this->getBranchColumns($conn, 'clientes');
+
+        // Obtener campos configurados que existan en esta sucursal
+        $campos = ClienteCampoSucursal::orderBy('orden')->orderBy('id')->get()
+            ->filter(fn($c) => in_array($c->campo, $columnasReales))
+            ->values();
+
+        return view('clientes.editar_sucursal', compact(
+            'cliente', 'branch', 'registro', 'campos'
+        ));
+    }
+
+    public function updateSucursal(Request $request, string $rfc, int $branchId)
+    {
+        $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
+        $branch  = Branch::findOrFail($branchId);
+
+        // Conectar a la sucursal
+        $conn = $this->connectionManager->connect($branch->code);
+
+        // Encontrar el registro
+        $found = null;
+        if ($cliente->id_global > 0) {
+            $found = $conn->table('clientes')->where('IdGlobal', $cliente->id_global)->first();
+        }
+        if (!$found) {
+            $found = $conn->table('clientes')->where('RFC', $rfc)->first();
+        }
+        if (!$found) {
+            return back()->withErrors(['No se encontró el cliente en la sucursal.']);
+        }
+
+        // Solo actualizar campos configurados como editables y que existan en la sucursal
+        $columnasReales = $this->getBranchColumns($conn, 'clientes');
+        $camposEditables = ClienteCampoSucursal::where('editable', true)
+            ->orderBy('orden')
+            ->get()
+            ->filter(fn($c) => in_array($c->campo, $columnasReales));
+
+        $dataUpdate = [];
+        foreach ($camposEditables as $campo) {
+            $key = $campo->campo;
+            if ($request->has($key)) {
+                $val = $request->input($key);
+                $dataUpdate[$key] = match($campo->tipo) {
+                    'number'  => (int) $val,
+                    'decimal' => (float) $val,
+                    'boolean' => (int) (bool) $val,
+                    default   => (string) $val,
+                };
+            }
+        }
+
+        if (!empty($dataUpdate)) {
+            $conn->table('clientes')
+                ->where('Cliente', $found->Cliente)
+                ->update($dataUpdate);
+        }
+
+        return redirect()
+            ->route('clientes.edit_sucursal', ['rfc' => $rfc, 'branchId' => $branchId])
+            ->with('success', "Campos actualizados correctamente en la sucursal {$branch->name}.");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -573,49 +757,49 @@ class ClientesController extends Controller
     private function toBranchFormat(array $data): array
     {
         return [
-            'IdGlobal'          => $data['id_global'],
-            'RFC'               => $data['rfc'],
-            'Razon_Social'      => $data['razon_social'],
-            'Calle'             => $data['calle'],
-            'Exterior'          => $data['exterior'],
-            'Interior'          => $data['interior'],
-            'Colonia'           => $data['colonia'],
-            'Cod_Postal'        => $data['cod_postal'],
-            'Ciudad'            => $data['ciudad'],
-            'Municipio'         => $data['municipio'],
-            'Telefono1'         => $data['telefono1'],
-            'Telfono2'          => $data['telefono2'],   // typo real en la BD: "Telfono2"
-            'Telefono3'         => $data['telefono3'],
-            'Fax'               => $data['fax'],
-            'Vendedor'          => $data['vendedor'],
-            'Documentos'        => $data['documentos'],
-            'Dias_Pago'         => $data['dias_pago'],
-            'Dias_Revision'     => $data['dias_revision'],
-            'Condicion_Pago'    => $data['condicion_pago'],
-            'Dias_Credito'      => $data['dias_credito'],
-            'Limite_Credito'    => $data['limite_credito'],
-            'OtorgoCreditO'     => $data['otorgo_credito'],
-            'Saldo_Actual'       => $data['saldo_actual'] ?? 0,
-            'Status'            => $data['status'],
-            'Cta_Contable'      => $data['cta_contable'],
-            'Fecha_Alta'        => $data['fecha_alta'],
-            'Representante'     => $data['representante'],
-            'Addenda'           => $data['addenda'],
-            'IdRegIdTrib'       => $data['id_reg_id_trib'],
-            'RegimenFiscal'     => $data['regimen_fiscal'],
-            'Anticipos'         => $data['anticipos'],
-            'CodigoContpaq'     => $data['codigo_contpaq'],
-            'Clasificacion'     => $data['clasificacion'],
-            'ModificarFPMPFac'  => $data['modificar_fpmpfac'],
-            'Identificador'     => $data['identificador'],
-            'IdOpcionBloqueo'   => $data['id_opcion_bloqueo'],
-            'ObservacionesCaja' => $data['observaciones_caja'],
-            'Sync'              => $data['sync'],
-            'PrefijoDescripcion'=> $data['prefijo_descripcion'],
-            'IdSugar'           => $data['id_sugar'],
-            'GiroPrincipal'     => $data['giro_principal'],
-            'Asesor'            => $data['asesor'],
-            'Ubicacion'         => $data['ubicacion'],
+            'IdGlobal'          => $data['id_global'] ?? 0,
+            'RFC'               => $data['rfc'] ?? '',
+            'Razon_Social'      => $data['razon_social'] ?? '',
+            'Calle'             => $data['calle'] ?? '',
+            'Exterior'          => $data['exterior'] ?? '',
+            'Interior'          => $data['interior'] ?? '',
+            'Colonia'           => $data['colonia'] ?? '',
+            'Cod_Postal'        => $data['cod_postal'] ?? 0,
+            'Ciudad'            => $data['ciudad'] ?? '',
+            'Municipio'         => $data['municipio'] ?? '',
+            'Telefono1'         => $data['telefono1'] ?? '',
+            'Telfono2'          => $data['telefono2'] ?? '',   // typo real en la BD: "Telfono2"
+            'Telefono3'         => $data['telefono3'] ?? '',
+            'Fax'               => $data['fax'] ?? '',
+            'Vendedor'          => $data['vendedor'] ?? '',
+            'Documentos'        => $data['documentos'] ?? '',
+            'Dias_Pago'         => $data['dias_pago'] ?? '',
+            'Dias_Revision'     => $data['dias_revision'] ?? '',
+            'Condicion_Pago'    => $data['condicion_pago'] ?? '',
+            'Dias_Credito'      => $data['dias_credito'] ?? 0,
+            'Limite_Credito'    => $data['limite_credito'] ?? 0,
+            'OtorgoCreditO'     => $data['otorgo_credito'] ?? 0,
+            'Saldo_Actual'      => $data['saldo_actual'] ?? 0,
+            'Status'            => $data['status'] ?? 'A',
+            'Cta_Contable'      => $data['cta_contable'] ?? '',
+            'Fecha_Alta'        => $data['fecha_alta'] ?? now()->toDateString(),
+            'Representante'     => $data['representante'] ?? '',
+            'Addenda'           => $data['addenda'] ?? '',
+            'IdRegIdTrib'       => $data['id_reg_id_trib'] ?? '',
+            'RegimenFiscal'     => $data['regimen_fiscal'] ?? '',
+            'Anticipos'         => $data['anticipos'] ?? 'D',
+            'CodigoContpaq'     => $data['codigo_contpaq'] ?? 0,
+            'Clasificacion'     => $data['clasificacion'] ?? 0,
+            'ModificarFPMPFac'  => $data['modificar_fpmpfac'] ?? 0,
+            'Identificador'     => $data['identificador'] ?? '',
+            'IdOpcionBloqueo'   => $data['id_opcion_bloqueo'] ?? 0,
+            'ObservacionesCaja' => $data['observaciones_caja'] ?? '',
+            'Sync'              => $data['sync'] ?? 0,
+            'PrefijoDescripcion'=> $data['prefijo_descripcion'] ?? 0,
+            'IdSugar'           => $data['id_sugar'] ?? '',
+            'GiroPrincipal'     => $data['giro_principal'] ?? 0,
+            'Asesor'            => $data['asesor'] ?? '',
+            'Ubicacion'         => $data['ubicacion'] ?? '',
         ];
     }
 
@@ -648,6 +832,7 @@ class ClientesController extends Controller
                 }
 
                 $estado[] = [
+                    'id'        => $branch->id,
                     'code'      => $branch->code,
                     'name'      => $branch->name,
                     'found'     => (bool) $found,
@@ -658,6 +843,7 @@ class ClientesController extends Controller
                 ];
             } catch (Throwable $e) {
                 $estado[] = [
+                    'id'      => $branch->id,
                     'code'    => $branch->code,
                     'name'    => $branch->name,
                     'found'   => false,
