@@ -188,9 +188,14 @@ class DBMasterController extends Controller
     }
 
     /**
-     * Exporta el catalogo maestro con el mapeo de campos PowerSales aplicado.
-     * Genera un .xls (formato SpreadsheetML) con 2 hojas: Articulos y Listas de Precios,
+     * Exporta el catalogo maestro con el mapeo de campos PowerSales aplicado, en CSV.
+     * Una sola tabla: columnas de Articulos + Listas de Precios juntas (mismo SKU por fila),
      * usando los nombres de campo PowerSales (SKU, Name, PL_Precio_Lista, etc.) como encabezado.
+     *
+     * CSV no tiene "tipo de celda" como XLS, asi que para evitar que Excel convierta
+     * codigos largos (SKU, ClaveSat, etc.) a notacion cientifica o les recorte ceros a la
+     * izquierda, esos valores se envuelven en ="valor" (truco estandar: Excel lo evalua
+     * como formula de texto en vez de auto-detectar numero).
      */
     public function exportPowerSales()
     {
@@ -200,78 +205,56 @@ class DBMasterController extends Controller
         $groups = $this->powerSales->mappingGroups();
         $productCols   = $groups['articulo']['rows']->pluck('ps_field')->all();
         $pricelistCols = $groups['pricelist']['rows']->pluck('ps_field')->all();
-
-        $filename = 'DB_Master_PowerSales_' . now()->format('Y-m-d_His') . '.xls';
-        $responseHeaders = [
-            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
+        $allCols       = array_merge($productCols, $pricelistCols);
 
         // Solo estos campos son montos/cantidades reales. Todo lo demas (SKU, ProductCode,
-        // ClaveSat, CategoryId, etc.) se exporta como texto aunque sean solo digitos, para que
-        // Excel no los convierta a notacion cientifica ni les recorte ceros a la izquierda.
+        // ClaveSat, CategoryId, etc.) se fuerza a texto aunque sean solo digitos.
         $numericFields = [
             'Cost', 'UnitsPerBox', 'CasePerPallet', 'ConversionFactor', 'LoyaltyPct',
             'PL_Precio_Lista', 'PL_Precio_Venta', 'PL_Precio_Especial', 'PL_Precio4',
         ];
 
-        $cell = function ($value, ?string $col = null) use ($numericFields): string {
+        $filename = 'DB_Master_PowerSales_' . now()->format('Y-m-d_His') . '.csv';
+        $responseHeaders = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $formatCell = function ($value, string $col) use ($numericFields) {
             if ($value === null || $value === '') {
-                return '<Cell/>';
+                return '';
             }
-            $type = ($col !== null && in_array($col, $numericFields, true) && is_numeric($value))
-                ? 'Number' : 'String';
-            $escaped = htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
-            return "<Cell><Data ss:Type=\"{$type}\">{$escaped}</Data></Cell>";
+            $isForcedNumeric = in_array($col, $numericFields, true) && is_numeric($value);
+            if (!$isForcedNumeric && is_numeric($value)) {
+                // Codigo que parece numero (SKU, ClaveSat, etc.): forzar texto en Excel.
+                return '="' . str_replace('"', '""', (string) $value) . '"';
+            }
+            return $value;
         };
 
-        $headerRow = function (array $cols) use ($cell): string {
-            $out = '<Row>';
-            foreach ($cols as $col) {
-                $out .= '<Cell><Data ss:Type="String">' . htmlspecialchars($col, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '</Data></Cell>';
-            }
-            return $out . '</Row>';
-        };
+        $callback = function () use ($allCols, $productCols, $pricelistCols, $formatCell) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8 para Excel
 
-        $callback = function () use ($productCols, $pricelistCols, $cell, $headerRow) {
-            echo '<?xml version="1.0"?>' . "\n";
-            echo '<?mso-application progid="Excel.Sheet"?>' . "\n";
-            echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
+            fputcsv($out, $allCols);
 
-            // Hoja 1: Articulos
-            echo '<Worksheet ss:Name="Articulos"><Table>';
-            echo $headerRow($productCols);
-            DbMasterArticle::query()->orderBy('clave')->chunk(500, function ($rows) use ($productCols, $cell) {
+            DbMasterArticle::query()->orderBy('clave')->chunk(500, function ($rows) use ($out, $allCols, $productCols, $pricelistCols, $formatCell) {
                 foreach ($rows as $article) {
                     $branchData = ArticuloFieldMap::toBranchFormat($article->toArray());
-                    $payload    = $this->powerSales->buildArticuloPayload($branchData);
-                    echo '<Row>';
-                    foreach ($productCols as $col) {
-                        echo $cell($payload[$col] ?? null);
+                    $payload    = array_merge(
+                        $this->powerSales->buildArticuloPayload($branchData),
+                        $this->powerSales->buildPriceListPayload($branchData)
+                    );
+
+                    $line = [];
+                    foreach ($allCols as $col) {
+                        $line[] = $formatCell($payload[$col] ?? null, $col);
                     }
-                    echo '</Row>';
+                    fputcsv($out, $line);
                 }
             });
-            echo '</Table></Worksheet>' . "\n";
 
-            // Hoja 2: Listas de Precios
-            echo '<Worksheet ss:Name="Listas de Precios"><Table>';
-            echo $headerRow(array_merge(['SKU'], $pricelistCols));
-            DbMasterArticle::query()->orderBy('clave')->chunk(500, function ($rows) use ($pricelistCols, $cell) {
-                foreach ($rows as $article) {
-                    $branchData = ArticuloFieldMap::toBranchFormat($article->toArray());
-                    $payload    = $this->powerSales->buildPriceListPayload($branchData);
-                    echo '<Row>';
-                    echo $cell($article->clave);
-                    foreach ($pricelistCols as $col) {
-                        echo $cell($payload[$col] ?? null);
-                    }
-                    echo '</Row>';
-                }
-            });
-            echo '</Table></Worksheet>' . "\n";
-
-            echo '</Workbook>';
+            fclose($out);
         };
 
         return response()->stream($callback, 200, $responseHeaders);
