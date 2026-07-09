@@ -63,12 +63,36 @@ class PowerSalesService
         $groups['articuloalm']['rows'] = $this->mappingRows('articuloalm');
         $groups['cliente']['rows']     = $this->mappingRows('cliente');
 
+        // Campos "automaticos" que Proteo calcula por logica propia y por eso NUNCA
+        // viven en field_mapping (ni siquiera aparecen como fila). Se agregan aqui
+        // solo para que la vista de mapeo no los muestre como "sin mapear".
+        foreach ($this->articuloAutoRules() as $auto) {
+            $groups['articulo']['rows']->push($auto);
+        }
+
         return $groups;
     }
 
     protected function isPriceListField(string $psField): bool
     {
         return str_starts_with($psField, 'PL_');
+    }
+
+    /**
+     * Filas sinteticas (no vienen de la BD) que describen campos con logica automatica
+     * hardcodeada en Proteo. Usadas para mostrar en /powersales/mapeo y para calcular
+     * el valor real en buildArticuloPayload().
+     */
+    protected function articuloAutoRules(): array
+    {
+        return [
+            (object) [
+                'ps_field'    => 'BrandId',
+                'erp_column'  => null,
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — primeros 5 caracteres del SKU',
+            ],
+        ];
     }
 
     /**
@@ -100,7 +124,17 @@ class PowerSalesService
      */
     public function buildArticuloPayload(array $branchData): array
     {
-        return $this->buildPayload('articulo', $branchData, fn ($f) => !$this->isPriceListField($f));
+        $payload = $this->buildPayload('articulo', $branchData, fn ($f) => !$this->isPriceListField($f));
+
+        // BrandId es requerido en PowerSales pero no vive en field_mapping (regla
+        // automatica de Proteo: primeros 5 caracteres del SKU). Sin esto, PowerSales
+        // lo defaultea a 0 y el producto no aparece filtrado por marca.
+        $sku = $branchData['Clave_Articulo'] ?? null;
+        if ($sku !== null && $sku !== '') {
+            $payload['BrandId'] = mb_substr((string) $sku, 0, 5);
+        }
+
+        return $payload;
     }
 
     /**
@@ -112,14 +146,11 @@ class PowerSalesService
         return $this->buildPayload('articulo', $branchData, fn ($f) => $this->isPriceListField($f));
     }
 
-    protected function post(string $entity, string $endpoint, array $source, string $refLabel, ?callable $psFieldFilter = null): void
+    protected function post(string $entity, string $endpoint, array $payload, string $refLabel): void
     {
         $logger = $this->logger();
-        $payload = [];
 
         try {
-            $payload = $this->buildPayload($entity, $source, $psFieldFilter);
-
             if (empty($payload)) {
                 $logger->warning("PowerSales {$endpoint} [{$refLabel}]: payload vacio, no se envia (revisar field_mapping).");
                 $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'Payload vacio (revisar field_mapping).');
@@ -174,7 +205,14 @@ class PowerSalesService
     public function syncArticulo(array $branchData): void
     {
         $ref = $branchData['Clave_Articulo'] ?? 'sin-clave';
-        $this->post('articulo', '/products', $branchData, (string) $ref, fn ($f) => !$this->isPriceListField($f));
+        try {
+            $payload = $this->buildArticuloPayload($branchData);
+        } catch (Throwable $e) {
+            $this->logger()->error("PowerSales /products [{$ref}] EXCEPCION armando payload: " . $e->getMessage());
+            $this->saveAudit('articulo', '/products', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
+            return;
+        }
+        $this->post('articulo', '/products', $payload, (string) $ref);
     }
 
     /**
@@ -184,6 +222,13 @@ class PowerSalesService
     public function syncCliente(array $branchData): void
     {
         $ref = $branchData['RFC'] ?? 'sin-rfc';
-        $this->post('cliente', '/customers', $branchData, (string) $ref);
+        try {
+            $payload = $this->buildPayload('cliente', $branchData);
+        } catch (Throwable $e) {
+            $this->logger()->error("PowerSales /customers [{$ref}] EXCEPCION armando payload: " . $e->getMessage());
+            $this->saveAudit('cliente', '/customers', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
+            return;
+        }
+        $this->post('cliente', '/customers', $payload, (string) $ref);
     }
 }

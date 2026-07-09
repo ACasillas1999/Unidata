@@ -68,12 +68,19 @@
             </thead>
             <tbody>
                 @forelse($group['rows'] as $f)
-                <tr class="ps-field-row" data-field="{{ strtolower($f->ps_field . ' ' . $f->erp_column . ' ' . $f->fixed_value) }}" style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                @php($isAuto = isset($f->auto_note))
+                <tr class="ps-field-row" data-field="{{ strtolower($f->ps_field . ' ' . $f->erp_column . ' ' . $f->fixed_value) }}" style="border-bottom: 1px solid rgba(255,255,255,0.04); {{ $isAuto ? 'background: rgba(245,158,11,0.04);' : '' }}">
                     <td style="padding: 10px 20px; font-family: monospace; font-size: 12.5px; font-weight: 700; color: white; white-space: nowrap;">{{ $f->ps_field }}</td>
-                    <td style="padding: 10px 20px; font-family: monospace; font-size: 12px; color: #60a5fa; white-space: nowrap;">{{ $f->erp_column ?? '—' }}</td>
-                    <td style="padding: 10px 20px; font-family: monospace; font-size: 12px; color: #a78bfa; white-space: nowrap;">{{ $f->fixed_value ?? '—' }}</td>
+                    @if($isAuto)
+                        <td colspan="2" style="padding: 10px 20px; font-size: 12px; color: #fbbf24;">🔒 {{ $f->auto_note }}</td>
+                    @else
+                        <td style="padding: 10px 20px; font-family: monospace; font-size: 12px; color: #60a5fa; white-space: nowrap;">{{ $f->erp_column ?? '—' }}</td>
+                        <td style="padding: 10px 20px; font-family: monospace; font-size: 12px; color: #a78bfa; white-space: nowrap;">{{ $f->fixed_value ?? '—' }}</td>
+                    @endif
                     <td style="padding: 10px 20px; text-align: center; white-space: nowrap;">
-                        @if($f->erp_column || $f->fixed_value)
+                        @if($isAuto)
+                            <span style="color: var(--amber, #fbbf24); font-size: 11px; font-weight: 700;">Automático</span>
+                        @elseif($f->erp_column || $f->fixed_value)
                             <span style="color: var(--emerald); font-size: 11px; font-weight: 700;">Mapeado</span>
                         @else
                             <span style="color: var(--text-muted); font-size: 11px;">Sin mapear</span>

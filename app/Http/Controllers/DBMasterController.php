@@ -207,11 +207,20 @@ class DBMasterController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
-        $cell = function ($value): string {
+        // Solo estos campos son montos/cantidades reales. Todo lo demas (SKU, ProductCode,
+        // ClaveSat, CategoryId, etc.) se exporta como texto aunque sean solo digitos, para que
+        // Excel no los convierta a notacion cientifica ni les recorte ceros a la izquierda.
+        $numericFields = [
+            'Cost', 'UnitsPerBox', 'CasePerPallet', 'ConversionFactor', 'LoyaltyPct',
+            'PL_Precio_Lista', 'PL_Precio_Venta', 'PL_Precio_Especial', 'PL_Precio4',
+        ];
+
+        $cell = function ($value, ?string $col = null) use ($numericFields): string {
             if ($value === null || $value === '') {
                 return '<Cell/>';
             }
-            $type = is_numeric($value) ? 'Number' : 'String';
+            $type = ($col !== null && in_array($col, $numericFields, true) && is_numeric($value))
+                ? 'Number' : 'String';
             $escaped = htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
             return "<Cell><Data ss:Type=\"{$type}\">{$escaped}</Data></Cell>";
         };
