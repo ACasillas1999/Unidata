@@ -302,6 +302,16 @@
                                     </a>
                                 </li>
                                 @endif
+
+                                <li>
+                                    <a href="{{ route('inventario.index') }}"
+                                       class="sidebar-dropdown-link {{ request()->routeIs('inventario.*') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9a2 2 0 0 0-2 2v9"/><path d="M3 9v10a2 2 0 0 0 2 2h9"/><rect x="12" y="2" width="10" height="10" rx="2"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Inventario</span>
+                                    </a>
+                                </li>
                             </ul>
                         </li>
                         @endif

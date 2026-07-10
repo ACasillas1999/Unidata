@@ -7,6 +7,7 @@ use App\Console\Commands\SyncDbMaster;
 use App\Models\MatrizHomologacion;
 use App\Models\DbMasterArticle;
 use App\Models\DbMasterSyncHistory;
+use App\Services\BranchConnectionManager;
 use App\Services\PowerSalesService;
 use App\Support\ArticuloFieldMap;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ use Illuminate\Support\Facades\DB;
 class DBMasterController extends Controller
 {
     public function __construct(
-        protected PowerSalesService $powerSales
+        protected PowerSalesService $powerSales,
+        protected BranchConnectionManager $connectionManager
     ) {}
 
     /**
@@ -94,6 +96,97 @@ class DBMasterController extends Controller
             'per_page' => $perPage,
             'branches' => $branches,
         ]);
+    }
+
+    /**
+     * Actualiza un articulo del Maestro (edicion manual desde el modal), replica el
+     * cambio a todas las sucursales activas y sincroniza a PowerSales.
+     */
+    public function updateManual(Request $request, $id)
+    {
+        $article = DbMasterArticle::find($id);
+        if (!$article) {
+            return response()->json(['success' => false, 'message' => 'Artículo no encontrado.'], 404);
+        }
+
+        $data = $request->validate([
+            'descripcion'         => 'nullable|string|max:200',
+            'linea'               => 'required|string|max:4',
+            'clasificacion'       => 'required|string|max:6',
+            'area'                => 'required|integer',
+            'unidad_medida'       => 'required|string|max:4',
+            'color'               => 'nullable|boolean',
+            'protocolo'           => 'nullable|boolean',
+            'articulo_kit'        => 'nullable|boolean',
+            'articulo_serie'      => 'nullable|boolean',
+            'habilitado'          => 'nullable|boolean',
+            'mn_usd'              => 'nullable|boolean',
+            'precio_lista'        => 'nullable|numeric',
+            'precio_venta'        => 'nullable|numeric',
+            'des_precio_venta'    => 'nullable|numeric',
+            'precio_especial'     => 'nullable|numeric',
+            'desc_precio_espec'   => 'nullable|numeric',
+            'precio4'             => 'nullable|numeric',
+            'desc_precio4'        => 'nullable|numeric',
+            'precio_minimo'       => 'nullable|numeric',
+            'desc_precio_minimo'  => 'nullable|numeric',
+            'precio_tope'         => 'nullable|numeric',
+            'margen_minimo'       => 'nullable|numeric',
+            'costo_venta'         => 'nullable|numeric',
+            'costo_promedio'      => 'nullable|numeric',
+            'costo_promedio_ant'  => 'nullable|numeric',
+            'inventario_maximo'   => 'nullable|numeric',
+            'inventario_minimo'   => 'nullable|numeric',
+            'punto_reorden'       => 'nullable|numeric',
+            'ubicacion'           => 'nullable|string|max:10',
+            'peso'                => 'nullable|numeric',
+            'std_pack'            => 'nullable|numeric',
+            'costo_ult_compra'    => 'nullable|numeric',
+            'fecha_ult_compra'    => 'nullable|date',
+            'costo_compra_ant'    => 'nullable|numeric',
+            'idsat'               => 'nullable|string|max:25',
+            'id_impuesto_sat'     => 'nullable|string|max:3',
+            'iva'                 => 'nullable|numeric',
+            'sustituto'           => 'nullable|string',
+            'sustituto1'          => 'nullable|string',
+            'sustituto2'          => 'nullable|string',
+            'en_promocion'        => 'nullable|boolean',
+            'critico'             => 'nullable|boolean',
+            'control_pedimentos'  => 'nullable|boolean',
+        ]);
+
+        try {
+            $article->update($data);
+
+            // Replicar a sucursales activas (misma logica que ArticulosController::procesarSubida)
+            $branchData = ArticuloFieldMap::toBranchFormat(array_merge(['clave' => $article->clave], $data));
+            $branches   = $this->connectionManager->getActiveBranches();
+            $branchErrors = [];
+
+            foreach ($branches as $branch) {
+                try {
+                    $conn = $this->connectionManager->connect($branch->code);
+                    $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($branchData);
+                } catch (\Throwable $e) {
+                    $branchErrors[] = "{$branch->name}: {$e->getMessage()}";
+                }
+            }
+
+            // Sync a PowerSales con el articulo ya actualizado completo (no solo los campos editados)
+            $fullBranchData = ArticuloFieldMap::toBranchFormat($article->fresh()->toArray());
+            $this->powerSales->syncArticulo($fullBranchData);
+            $this->powerSales->syncPriceListHeaders();
+            $this->powerSales->syncArticuloPriceListDetails($fullBranchData);
+
+            $message = 'Artículo actualizado en Maestro y replicado a sucursales.';
+            if (!empty($branchErrors)) {
+                $message .= ' Errores: ' . implode(' | ', $branchErrors);
+            }
+
+            return response()->json(['success' => true, 'message' => $message]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

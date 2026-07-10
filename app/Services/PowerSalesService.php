@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -146,6 +147,16 @@ class PowerSalesService
         return $this->buildPayload('articulo', $branchData, fn ($f) => $this->isPriceListField($f));
     }
 
+    /**
+     * Payload de inventario (entity=articuloalm) a partir de una fila de la tabla `articuloalm`
+     * de sucursal (ya viene en PascalCase real, ej. Clave_Articulo, Almacen, Existencia_Fisica).
+     * Publico para reutilizar en exportaciones (ej. InventarioController).
+     */
+    public function buildInventarioPayload(array $source): array
+    {
+        return $this->buildPayload('articuloalm', $source);
+    }
+
     protected function post(string $entity, string $endpoint, array $payload, string $refLabel): void
     {
         $logger = $this->logger();
@@ -173,6 +184,40 @@ class PowerSalesService
         } catch (Throwable $e) {
             $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $e->getMessage());
             $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'EXCEPCION: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Igual que post() pero para endpoints que reciben varias filas en un solo POST
+     * (ej. /pricelists, /pricelistsdetails), donde $rows ya viene armado como lista de dicts.
+     */
+    protected function postBatch(string $entity, string $endpoint, array $rows, string $refLabel): void
+    {
+        $logger = $this->logger();
+
+        try {
+            if (empty($rows)) {
+                $logger->warning("PowerSales {$endpoint} [{$refLabel}]: sin filas, no se envia.");
+                $this->saveAudit($entity, $endpoint, $refLabel, [], false, null, 'Sin filas para enviar.');
+                return;
+            }
+
+            $logger->info("PowerSales {$endpoint} [{$refLabel}] payload enviado: " . json_encode($rows));
+
+            $response = Http::withToken($this->token())
+                ->timeout(15)
+                ->post($this->baseUrl() . $endpoint, ['data' => $rows]);
+
+            if ($response->successful()) {
+                $logger->info("PowerSales {$endpoint} [{$refLabel}] OK. Body: " . $response->body());
+            } else {
+                $logger->error("PowerSales {$endpoint} [{$refLabel}] FALLO {$response->status()}: {$response->body()}");
+            }
+
+            $this->saveAudit($entity, $endpoint, $refLabel, $rows, $response->successful(), $response->status(), $response->body());
+        } catch (Throwable $e) {
+            $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $e->getMessage());
+            $this->saveAudit($entity, $endpoint, $refLabel, $rows, false, null, 'EXCEPCION: ' . $e->getMessage());
         }
     }
 
@@ -213,6 +258,92 @@ class PowerSalesService
             return;
         }
         $this->post('articulo', '/products', $payload, (string) $ref);
+    }
+
+    /**
+     * Headers de las 4 listas de precio que PowerSales espera en /pricelists.
+     * Nombres fijos (no vienen de field_mapping): Precio_Lista, Precio_Venta, Precio_Especial, Precio4.
+     */
+    protected function priceListDefinitions(): array
+    {
+        return [
+            ['Name' => 'Precio_Lista',    'IsActive' => 1, 'IsDefault' => 0, 'PriceListNumber' => 'Precio_Lista'],
+            ['Name' => 'Precio_Venta',    'IsActive' => 1, 'IsDefault' => 0, 'PriceListNumber' => 'Precio_Venta'],
+            ['Name' => 'Precio_Especial', 'IsActive' => 1, 'IsDefault' => 0, 'PriceListNumber' => 'Precio_Especial'],
+            ['Name' => 'Precio4',         'IsActive' => 1, 'IsDefault' => 0, 'PriceListNumber' => 'Precio4'],
+        ];
+    }
+
+    /**
+     * Registra las 4 listas de precio en PowerSales (POST /pricelists). Se cachea 1 dia
+     * para no re-enviar en cada alta/edicion de articulo (los headers casi nunca cambian).
+     * No lanza excepciones.
+     */
+    public function syncPriceListHeaders(): void
+    {
+        $cacheKey = 'powersales_pricelists_registered';
+
+        try {
+            if (Cache::has($cacheKey)) {
+                return;
+            }
+        } catch (Throwable $e) {
+            $this->logger()->error("PowerSales /pricelists: no se pudo leer cache: " . $e->getMessage());
+        }
+
+        $this->postBatch('pricelist', '/pricelists', $this->priceListDefinitions(), 'headers');
+
+        try {
+            Cache::put($cacheKey, true, now()->addDay());
+        } catch (Throwable $e) {
+            $this->logger()->error("PowerSales /pricelists: no se pudo guardar cache: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Envia a /pricelistsdetails el precio de este articulo en cada lista mapeada (PL_*).
+     * $branchData: array en formato sucursal (PascalCase), ej. Clave_Articulo, Precio_Lista...
+     * Cost sale siempre de Costo_Ult_Compra (misma columna para las 4 listas, no configurable).
+     * No lanza excepciones.
+     */
+    public function syncArticuloPriceListDetails(array $branchData): void
+    {
+        $sku = $branchData['Clave_Articulo'] ?? null;
+        if ($sku === null || $sku === '') {
+            return;
+        }
+
+        try {
+            $cost = $branchData['Costo_Ult_Compra'] ?? null;
+
+            $rows = [];
+            foreach ($this->mappingRows('articulo') as $row) {
+                if (!$this->isPriceListField($row->ps_field)) {
+                    continue;
+                }
+                if ($row->erp_column === null || $row->erp_column === '' || !array_key_exists($row->erp_column, $branchData)) {
+                    continue;
+                }
+                $price = $branchData[$row->erp_column];
+                if ($price === null || $price === '') {
+                    continue;
+                }
+
+                $rows[] = [
+                    'ProductId'   => $sku,
+                    'PriceListId' => substr($row->ps_field, 3), // quita el prefijo "PL_"
+                    'Cost'        => $cost,
+                    'Price'       => $price,
+                    'IsActive'    => 1,
+                ];
+            }
+        } catch (Throwable $e) {
+            $this->logger()->error("PowerSales /pricelistsdetails [{$sku}] EXCEPCION armando payload: " . $e->getMessage());
+            $this->saveAudit('pricelist', '/pricelistsdetails', (string) $sku, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
+            return;
+        }
+
+        $this->postBatch('pricelist', '/pricelistsdetails', $rows, (string) $sku);
     }
 
     /**

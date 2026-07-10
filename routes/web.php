@@ -13,6 +13,7 @@ use App\Http\Controllers\DBMasterController;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PowerSalesController;
+use App\Http\Controllers\InventarioController;
 use Illuminate\Support\Facades\Route;
 
 // Autenticación
@@ -37,6 +38,8 @@ Route::post('/estadisticas/export-pendientes/bg', [EstadisticasController::class
 Route::get('/articulos', [ArticulosController::class, 'index'])->name('articulos.index');
 Route::get('/articulos/crear', [ArticulosController::class, 'crear'])->name('articulos.crear');
 Route::post('/articulos/crear', [ArticulosController::class, 'storeManual'])->name('articulos.storeManual');
+Route::get('/articulos/inventario', [InventarioController::class, 'index'])->name('inventario.index');
+Route::get('/articulos/inventario/export', [InventarioController::class, 'export'])->name('inventario.export');
 Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
 Route::get('/articulos/subir/machote', [ArticulosController::class, 'descargarMachote'])->name('articulos.subir.machote');
 Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');

@@ -535,7 +535,10 @@ class ArticulosController extends Controller
                     }
 
                     // Sync a PowerSales (solo campos que cambiaron en esta fila; ver storage/logs/powersales.log)
-                    $this->powerSales->syncArticulo(array_merge(['Clave_Articulo' => $clave], $updateDataBranch));
+                    $branchDataPs = array_merge(['Clave_Articulo' => $clave], $updateDataBranch);
+                    $this->powerSales->syncArticulo($branchDataPs);
+                    $this->powerSales->syncPriceListHeaders();
+                    $this->powerSales->syncArticuloPriceListDetails($branchDataPs);
                 }
 
                 // Guardar auditoría si hubo cambios
@@ -974,6 +977,8 @@ class ArticulosController extends Controller
 
             // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
             $this->powerSales->syncArticulo($branchData);
+            $this->powerSales->syncPriceListHeaders();
+            $this->powerSales->syncArticuloPriceListDetails($branchData);
 
             // Log de auditoría
             \Illuminate\Support\Facades\DB::table('csv_historial_detalles')->insert([
