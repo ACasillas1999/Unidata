@@ -111,10 +111,10 @@ class DBMasterController extends Controller
 
         $data = $request->validate([
             'descripcion'         => 'nullable|string|max:200',
-            'linea'               => 'required|string|max:4',
-            'clasificacion'       => 'required|string|max:6',
-            'area'                => 'required|integer',
-            'unidad_medida'       => 'required|string|max:4',
+            'linea'               => 'sometimes|required|string|max:4',
+            'clasificacion'       => 'sometimes|required|string|max:6',
+            'area'                => 'sometimes|required|integer',
+            'unidad_medida'       => 'sometimes|required|string|max:4',
             'color'               => 'nullable|boolean',
             'protocolo'           => 'nullable|boolean',
             'articulo_kit'        => 'nullable|boolean',
@@ -161,14 +161,15 @@ class DBMasterController extends Controller
             // Replicar a sucursales activas (misma logica que ArticulosController::procesarSubida)
             $branchData = ArticuloFieldMap::toBranchFormat(array_merge(['clave' => $article->clave], $data));
             $branches   = $this->connectionManager->getActiveBranches();
-            $branchErrors = [];
+            $branchResults = [];
 
             foreach ($branches as $branch) {
                 try {
                     $conn = $this->connectionManager->connect($branch->code);
                     $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($branchData);
+                    $branchResults[] = "✓ {$branch->name}";
                 } catch (\Throwable $e) {
-                    $branchErrors[] = "{$branch->name}: {$e->getMessage()}";
+                    $branchResults[] = "✗ {$branch->name}: " . $this->friendlyDbError($e);
                 }
             }
 
@@ -178,15 +179,30 @@ class DBMasterController extends Controller
             $this->powerSales->syncPriceListHeaders();
             $this->powerSales->syncArticuloPriceListDetails($fullBranchData);
 
-            $message = 'Artículo actualizado en Maestro y replicado a sucursales.';
-            if (!empty($branchErrors)) {
-                $message .= ' Errores: ' . implode(' | ', $branchErrors);
-            }
+            $message = 'Artículo actualizado en Maestro. Detalle de sucursales: ' . implode(' | ', $branchResults);
 
-            return response()->json(['success' => true, 'message' => $message]);
+            return response()->json(['success' => true, 'message' => $message, 'branch_results' => $branchResults]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Convierte un error de BD (con SQL y datos completos) en un mensaje corto y legible.
+     */
+    private function friendlyDbError(\Throwable $e): string
+    {
+        $msg = $e->getMessage();
+
+        if (str_contains($msg, 'command denied')) {
+            return 'sin permisos de escritura (usuario de solo lectura)';
+        }
+        if (preg_match("/Column '([^']+)' cannot be null/i", $msg, $m)) {
+            return "el campo '{$m[1]}' no admite nulos en esta sucursal";
+        }
+
+        $pos = strpos($msg, '(Connection:');
+        return $pos !== false ? trim(substr($msg, 0, $pos)) : $msg;
     }
 
     /**
