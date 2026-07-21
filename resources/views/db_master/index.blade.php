@@ -431,7 +431,10 @@ function switchModalTab(event, tabId) {
 
 function openEditModal(row) {
     console.log("Opening edit modal for:", row);
-    
+
+    // Guardamos los valores originales para luego enviar solo lo que el usuario realmente cambie
+    window.editOriginalData = row;
+
     // Set Header
     document.getElementById('modal-clave-badge').textContent = row.clave;
     
@@ -501,43 +504,63 @@ function closeEditModal() {
 }
 
 // Form Submission handling
-document.getElementById('edit-article-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    
-    // Convert checkboxes to values
-    const checks = ['articulo_kit', 'articulo_serie', 'habilitado', 'en_promocion', 'critico', 'control_pedimentos'];
-    checks.forEach(c => {
-        formData.set(c, document.getElementById('edit-' + c).checked ? 1 : 0);
-    });
+// NOTA: el form del modal se define mas abajo en el DOM (fuera de este <script>),
+// por eso el listener se registra dentro de DOMContentLoaded, cuando ya existe.
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('edit-article-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        let formData = new FormData(this);
 
-    Swal.fire({
-        title: 'Guardando cambios...',
-        text: 'Se actualizará el Maestro y se replicará a todas las sucursales.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
+        // Convert checkboxes to values
+        const checks = ['articulo_kit', 'articulo_serie', 'habilitado', 'en_promocion', 'critico', 'control_pedimentos'];
+        checks.forEach(c => {
+            formData.set(c, document.getElementById('edit-' + c).checked ? 1 : 0);
+        });
 
-    const articleId = document.getElementById('edit-article-id').value;
-    fetch('/db-master/item/' + articleId, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
-        },
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
-        } else {
-            Swal.fire('Error', data.message || 'Error desconocido', 'error');
+        // Enviar solo los campos que realmente cambiaron respecto al valor original,
+        // para no pisar en sucursales/maestro campos que el usuario no tocó.
+        const original = window.editOriginalData || {};
+        const diffData = new FormData();
+        diffData.append('id', formData.get('id'));
+        for (const [key, value] of formData.entries()) {
+            if (key === 'id') continue;
+            const originalValue = original[key] ?? '';
+            if (String(value) !== String(originalValue)) {
+                diffData.append(key, value);
+            }
         }
-    })
-    .catch(err => {
-        console.error(err);
-        Swal.fire('Error', 'Fallo en la comunicación con el servidor', 'error');
+        formData = diffData;
+
+        closeEditModal();
+
+        Swal.fire({
+            title: 'Guardando cambios...',
+            text: 'Se actualizará el Maestro y se replicará a todas las sucursales.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        const articleId = document.getElementById('edit-article-id').value;
+        fetch('/db-master/item/' + articleId, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Error', data.message || 'Error desconocido', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('Error', 'Fallo en la comunicación con el servidor', 'error');
+        });
     });
 });
 

@@ -404,6 +404,12 @@ class ArticulosController extends Controller
 
             $updatedCount = 0;
             $branchesMap = $this->connectionManager->getActiveBranches()->pluck('name', 'code')->toArray();
+            $branchStats = [];
+            foreach ($branchesSelected as $suc) {
+                if (isset($branchesMap[$suc])) {
+                    $branchStats[$suc] = ['ok' => 0, 'fail' => 0, 'errors' => []];
+                }
+            }
 
             // ── INICIAR REGISTRO DE HISTORIAL ──
             $historialId = DB::table('csv_historial')->insertGetId([
@@ -509,27 +515,35 @@ class ArticulosController extends Controller
                 if (!empty($updateDataBranch)) {
                     foreach ($branchesSelected as $suc) {
                         if (isset($branchesMap[$suc])) {
-                            $connection = $this->connectionManager->connect($suc);
-                            
-                            $sucCurrent = $connection->table('articulo')->where('Clave_Articulo', $clave)->first();
-                            if ($sucCurrent) {
-                                foreach ($updateDataBranch as $fieldPascal => $newVal) {
-                                    $oldVal = $sucCurrent->{$fieldPascal} ?? null;
-                                    if ((string)$oldVal !== (string)$newVal) {
-                                        $auditEntries[] = [
-                                            'historial_id' => $historialId,
-                                            'clave' => $clave,
-                                            'columna' => $fieldPascal,
-                                            'valor_anterior' => (string)$oldVal,
-                                            'valor_nuevo' => (string)$newVal,
-                                            'sucursal' => $suc
-                                        ];
+                            try {
+                                $connection = $this->connectionManager->connect($suc);
+
+                                $sucCurrent = $connection->table('articulo')->where('Clave_Articulo', $clave)->first();
+                                if ($sucCurrent) {
+                                    foreach ($updateDataBranch as $fieldPascal => $newVal) {
+                                        $oldVal = $sucCurrent->{$fieldPascal} ?? null;
+                                        if ((string)$oldVal !== (string)$newVal) {
+                                            $auditEntries[] = [
+                                                'historial_id' => $historialId,
+                                                'clave' => $clave,
+                                                'columna' => $fieldPascal,
+                                                'valor_anterior' => (string)$oldVal,
+                                                'valor_nuevo' => (string)$newVal,
+                                                'sucursal' => $suc
+                                            ];
+                                        }
                                     }
+                                    // Actualizar Sucursal
+                                    $connection->table('articulo')
+                                        ->where('Clave_Articulo', $clave)
+                                        ->update($updateDataBranch);
                                 }
-                                // Actualizar Sucursal
-                                $connection->table('articulo')
-                                    ->where('Clave_Articulo', $clave)
-                                    ->update($updateDataBranch);
+                                $branchStats[$suc]['ok']++;
+                            } catch (Throwable $e) {
+                                $branchStats[$suc]['fail']++;
+                                if (count($branchStats[$suc]['errors']) < 3) {
+                                    $branchStats[$suc]['errors'][] = "{$clave}: " . $this->friendlyDbError($e);
+                                }
                             }
                         }
                     }
@@ -555,9 +569,20 @@ class ArticulosController extends Controller
                 ->where('id', $historialId)
                 ->update(['articulos_afectados' => $updatedCount]);
 
+            $branchDetail = [];
+            foreach ($branchStats as $suc => $stats) {
+                $nombre = $branchesMap[$suc] ?? $suc;
+                $line = "{$nombre}: {$stats['ok']} ok";
+                if ($stats['fail'] > 0) {
+                    $line .= ", {$stats['fail']} con error (" . implode('; ', $stats['errors']) . ($stats['fail'] > count($stats['errors']) ? '; ...' : '') . ')';
+                }
+                $branchDetail[] = $line;
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro y " . count($branchesSelected) . " sucursales."
+                'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail),
+                'branch_stats' => $branchStats
             ]);
 
         } catch (Throwable $e) {
@@ -1002,5 +1027,23 @@ class ArticulosController extends Controller
             \Illuminate\Support\Facades\DB::rollBack();
             return redirect()->back()->withInput()->with('error', 'Error al crear el artículo: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Convierte un error de BD (con SQL y datos completos) en un mensaje corto y legible.
+     */
+    private function friendlyDbError(Throwable $e): string
+    {
+        $msg = $e->getMessage();
+
+        if (str_contains($msg, 'command denied')) {
+            return 'sin permisos de escritura (usuario de solo lectura)';
+        }
+        if (preg_match("/Column '([^']+)' cannot be null/i", $msg, $m)) {
+            return "el campo '{$m[1]}' no admite nulos en esta sucursal";
+        }
+
+        $pos = strpos($msg, '(Connection:');
+        return $pos !== false ? trim(substr($msg, 0, $pos)) : $msg;
     }
 }
