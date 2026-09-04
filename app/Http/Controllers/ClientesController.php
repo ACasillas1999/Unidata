@@ -30,6 +30,18 @@ class ClientesController extends Controller
         $perPage = (int) $request->input('per_page', 50);
         if (!in_array($perPage, [50, 100, 250, 500])) $perPage = 50;
 
+        $sort = strtolower($request->input('sort', 'razon_social'));
+        $dir  = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $sortMap = [
+            'rfc'          => 'rfc',
+            'razon_social' => 'razon_social',
+            'status'       => 'status',
+            'created_at'   => 'created_at',
+        ];
+
+        $orderCol = $sortMap[$sort] ?? 'razon_social';
+
         $query = ClienteMaestro::query();
 
         if ($search !== '') {
@@ -39,10 +51,12 @@ class ClientesController extends Controller
             });
         }
 
-        $clientes = $query->whereNotNull('rfc')->where('rfc', '!=', '')->orderBy('razon_social')->paginate($perPage)->withQueryString();
+        $clientes = $query->whereNotNull('rfc')->where('rfc', '!=', '')->orderBy($orderCol, $dir)->paginate($perPage)->withQueryString();
 
         return view('clientes.index', [
             'search'   => $search,
+            'sort'     => $sort,
+            'dir'      => $dir,
             'clientes' => $clientes,
             'per_page' => $perPage,
         ]);

@@ -77,7 +77,7 @@
 </div>
 
 {{-- Tabla --}}
-<div class="card" id="cli-card" style="margin-top:20px; overflow:hidden;">
+<div class="card" id="cli-card" style="margin-top:20px; overflow:visible;">
     <div class="card-header card-header--row">
         <div>
             <h2 class="card-title">Catálogo de Clientes</h2>
@@ -103,20 +103,56 @@
         </div>
     </div>
 
-    <div id="cli-table-wrap" style="overflow:auto; max-height:70vh; background:#0b0f1a;">
+    <div id="cli-table-wrap" style="overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; width: 100%; max-width: 100%; position:relative; background: #0b0f1a;">
         <table class="data-table" style="border-collapse:separate; border-spacing:0; width:100%;">
-            <thead style="position:sticky; top:0; z-index:10;">
+            <thead>
                 <tr>
                     <th style="min-width:90px; background:#1a1f2e;">ID Global</th>
-                    <th class="sticky-col-1" style="min-width:140px; background:#1a1f2e; position:sticky; left:0; z-index:11;">RFC</th>
-                    <th class="sticky-col-2" style="min-width:280px; background:#1a1f2e; position:sticky; left:140px; z-index:11;">Razón Social</th>
+                    <th class="sticky-col-1" style="min-width:140px; background:#1a1f2e; position:sticky !important; left:0; z-index:11;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'rfc', 'dir' => ($sort === 'rfc' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            RFC
+                            @if($sort === 'rfc')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="min-width:280px; background:#1a1f2e;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'razon_social', 'dir' => ($sort === 'razon_social' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            Razón Social
+                            @if($sort === 'razon_social')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
                     <th style="min-width:130px; background:#1a1f2e;">Teléfono</th>
                     <th style="min-width:100px; background:#1a1f2e;">Ciudad</th>
                     <th style="min-width:120px; background:#1a1f2e;">Cta. Contable</th>
                     <th style="min-width:100px; background:#1a1f2e;">Cond. Pago</th>
                     <th style="min-width:110px; background:#1a1f2e; text-align:right;">Límite Crédito</th>
-                    <th style="min-width:100px; background:#1a1f2e;">Fecha Alta</th>
-                    <th style="min-width:90px; background:#1a1f2e; text-align:center;">Estatus</th>
+                    <th style="min-width:100px; background:#1a1f2e;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'dir' => ($sort === 'created_at' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            Fecha Alta
+                            @if($sort === 'created_at')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="min-width:90px; background:#1a1f2e; text-align:center;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'status', 'dir' => ($sort === 'status' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:center;">
+                            Estatus
+                            @if($sort === 'status')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
                     <th style="min-width:90px; background:#1a1f2e; text-align:center;">Acciones</th>
                 </tr>
             </thead>
@@ -129,7 +165,7 @@
                         <td class="sticky-col-1" style="position:sticky; left:0; background:#0f172a; border-right:1px solid rgba(255,255,255,0.05); font-family:'JetBrains Mono',monospace; font-size:11px; color:#a78bfa; white-space:nowrap;">
                             {{ $c->rfc }}
                         </td>
-                        <td class="sticky-col-2" style="position:sticky; left:140px; background:#0f172a; border-right:1px solid rgba(255,255,255,0.05); font-weight:600; white-space:nowrap;">
+                        <td style="font-weight:600; white-space:nowrap;">
                             {{ $c->razon_social }}
                         </td>
                         <td style="font-size:12px; color:var(--text-muted);">{{ $c->telefono1 ?: '—' }}</td>

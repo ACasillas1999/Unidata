@@ -57,6 +57,7 @@
 .modal-label { font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px; text-transform: uppercase; letter-spacing: 0.08em; }
 .modal-input { width:100%; background:var(--bg-root); border:1px solid var(--border); padding:14px 16px; border-radius:12px; color:white; font-size:14px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
 .modal-input:focus { border-color:var(--violet); outline:none; box-shadow:0 0 0 5px rgba(139,92,246,0.15); background: rgba(139,92,246,0.08); }
+select.modal-input option { background-color: #1a1d27 !important; color: #ffffff !important; padding: 10px; }
 .section-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 16px; padding: 35px; margin-bottom: 40px; transition: all 0.3s ease; }
 .section-card:hover { border-color: rgba(139,92,246,0.4); background: rgba(255,255,255,0.045); transform: translateY(-2px); }
 </style>
@@ -72,35 +73,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const porcPVInput = document.getElementById('porcentaje_pv');
     const precioVentaInput = document.getElementById('precio_venta');
     const desVentaFinalInput = document.getElementById('des_precio_venta');
+    const descProvInput = document.getElementById('desc_proveedor');
+    const precioTopeInput = document.getElementById('precio_tope');
 
     function calculatePrices() {
         const lista = parseFloat(precioListaInput.value) || 0;
         const d4 = parseFloat(descP4Input.value) || 0;
         const dEsp = parseFloat(descEspInput.value) || 0;
         const pPV = parseFloat(porcPVInput.value) || 0;
+        const dProv = parseFloat(descProvInput ? descProvInput.value : 0) || 0;
 
         // 1. Precio 4 = Precio_Lista * (100 - Desc_Precio4) / 100
         const p4 = lista * (100 - d4) / 100;
-        precio4Input.value = p4.toFixed(4);
+        if (precio4Input) precio4Input.value = p4.toFixed(4);
 
         // 2. Precio Especial = Precio_Lista * (100 - Desc_Precio_Esp) / 100
         const pEsp = lista * (100 - dEsp) / 100;
-        precioEspInput.value = pEsp.toFixed(4);
+        if (precioEspInput) precioEspInput.value = pEsp.toFixed(4);
 
         // 3. Precio Venta = Precio_Especial * (1 + Porcentaje_PV / 100)
         const pVenta = pEsp * (1 + pPV / 100);
-        precioVentaInput.value = pVenta.toFixed(4);
+        if (precioVentaInput) precioVentaInput.value = pVenta.toFixed(4);
 
         // 4. Descuento Precio Venta = 100 - Precio_Venta / Precio_Lista * 100
         if (lista > 0) {
             const dVentaFinal = 100 - (pVenta / lista * 100);
-            desVentaFinalInput.value = dVentaFinal.toFixed(2);
+            if (desVentaFinalInput) desVentaFinalInput.value = dVentaFinal.toFixed(2);
         } else {
-            desVentaFinalInput.value = "0.00";
+            if (desVentaFinalInput) desVentaFinalInput.value = "0.00";
         }
+
+        // 5. Precio Tope = Precio_Lista * (100 - Desc_Proveedor) / 100
+        const pTope = lista * (100 - dProv) / 100;
+        if (precioTopeInput) precioTopeInput.value = pTope.toFixed(4);
     }
 
-    [precioListaInput, descP4Input, descEspInput, porcPVInput].forEach(el => {
+    [precioListaInput, descP4Input, descEspInput, porcPVInput, descProvInput].forEach(el => {
         if (el) el.addEventListener('input', calculatePrices);
     });
 

@@ -123,14 +123,22 @@ class HomologacionController extends Controller
                 }
             }
 
-            // ── Ordenamiento: por cobertura DESC ─────────────────────────
-            // Paginación dinámica
+            // ── Ordenamiento ─────────────────────────────────────────────
+            $sort = strtolower($request->input('sort', 'clave'));
+            $dir  = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
             $perPage = (int) $request->input('per_page', 50);
             if (!in_array($perPage, [50, 100, 250, 500])) $perPage = 50;
 
+            if ($sort === 'cobertura') {
+                $query->orderByRaw("({$sumExpr}) {$dir}");
+            } elseif ($sort === 'descripcion') {
+                $query->orderBy('descripcion', $dir);
+            } else {
+                $query->orderBy('clave', $dir);
+            }
+
             $paginator = $query
-                ->orderByRaw("({$sumExpr}) DESC")
-                ->orderBy('clave')
                 ->paginate($perPage)
                 ->withQueryString();
 

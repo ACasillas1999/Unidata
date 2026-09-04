@@ -1,43 +1,18 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'DB Master')
 @section('breadcrumb', 'DB Master')
 
 @section('content')
 
-<style>
-/* Desactivar scroll de page-content para que la tabla maneje su propio scroll */
-.page-content {
-    overflow: hidden !important;
-    padding-bottom: 0 !important;
-    display: flex;
-    flex-direction: column;
-}
-#db-master-table-card {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-#table-inner-wrap {
-    overflow-y: auto !important;
-    overflow-x: auto !important;
-    height: calc(100vh - 200px);
-    min-height: 200px;
-}
-</style>
-
-{{-- Wrapper --}}
-<div style="flex-shrink: 0; overflow-x: auto;">
 
 
-    <div class="page-header shadow-premium" style="margin-bottom: 12px; padding: 14px 20px; background: var(--grad-surface); border-radius: var(--radius-xl); border: 1px solid var(--glass-border); position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center;">
-        {{-- Efecto decorativo de fondo --}}
-        <div style="position:absolute; top:-50px; right:-50px; width:150px; height:150px; background:var(--emerald); filter:blur(100px); opacity:0.1; pointer-events:none;"></div>
-        
-        <div class="page-header-content" style="display: flex; gap: 16px; align-items: center; z-index: 1;">
-            <div class="page-header-icon shadow-premium" style="background: var(--emerald-bg); border: 1px solid rgba(16,185,129,0.3); color: var(--emerald);">
+
+
+
+    <div class="page-header">
+        <div class="page-header-content">
+            <div class="page-header-icon" style="background: var(--emerald-bg); border: 1px solid rgba(16,185,129,0.3); color: var(--emerald);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <ellipse cx="12" cy="5" rx="9" ry="3"/>
                     <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
@@ -45,29 +20,29 @@
                 </svg>
             </div>
             <div>
-                <h1 class="page-title" style="letter-spacing: -0.01em; margin:0;">DB Master</h1>
-                <p class="page-subtitle" style="color: var(--text-secondary); margin:4px 0 0;">Catálogo Maestro Independiente</p>
+                <h1 class="page-title">DB Master</h1>
+                <p class="page-subtitle">Catálogo Maestro Independiente</p>
             </div>
         </div>
-        <div class="page-header-actions" style="display:flex;gap:12px;align-items:center; z-index: 1;">
-            <a href="{{ route('db_master.export') }}" class="btn btn--secondary shadow-premium" style="border: 1px solid rgba(16,185,129,0.3); background:rgba(16,185,129,0.1); color:var(--emerald); display:flex; align-items:center; gap:8px; text-decoration:none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <div class="page-header-actions">
+            <a href="{{ route('db_master.export') }}" class="btn btn--secondary btn--sm shadow-premium" style="border: 1px solid rgba(16,185,129,0.3); background:rgba(16,185,129,0.1); color:var(--emerald);">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Exportar Excel
             </a>
-            <a href="{{ route('db_master.export_powersales') }}" class="btn btn--secondary shadow-premium" title="Exporta con nombres de campo PowerSales, 2 hojas: Articulos y Listas de Precios" style="border: 1px solid rgba(59,130,246,0.3); background:rgba(59,130,246,0.1); color:#60a5fa; display:flex; align-items:center; gap:8px; text-decoration:none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5">
+            <a href="{{ route('db_master.export_powersales') }}" class="btn btn--secondary btn--sm shadow-premium" title="Exporta con nombres de campo PowerSales, 2 hojas: Articulos y Listas de Precios" style="border: 1px solid rgba(59,130,246,0.3); background:rgba(59,130,246,0.1); color:#60a5fa;">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                     <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
                     <line x1="12" y1="22.08" x2="12" y2="12"/>
                 </svg>
                 Exportar PowerSales
             </a>
-            <button onclick="openHistoryModal()" class="btn btn--ghost shadow-premium" style="border: 1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--text-secondary); display:flex; align-items:center; gap:8px;">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <button onclick="openHistoryModal()" class="btn btn--ghost btn--sm shadow-premium">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Historial
             </button>
-            <button onclick="startSyncMaster()" class="btn btn--primary shadow-premium" style="background:var(--emerald); border:none; color:white; display:flex; align-items:center; gap:8px;">
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            <button onclick="startSyncMaster()" class="btn btn--primary btn--sm shadow-premium" style="background:var(--emerald); border-color:var(--emerald); color:white;">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
                 Sincronizar Maestro
             </button>
         </div>
@@ -107,10 +82,9 @@
     </div>
     @endif
 
-</div>{{-- /end wrapper --}}
 
-{{-- â”€â”€ RESULTS TABLE (Intelligent Grid) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
-<div class="glass-card shadow-premium" id="db-master-table-card" style="display: flex; flex-direction: column; margin-bottom: 0;">
+{{-- RESULTS TABLE --}}
+<div class="card shadow-premium" id="db-master-table-card" style="margin-top:20px; overflow:visible;">
     <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <div style="display:flex; align-items:center; gap:10px;">
             <h2 style="font-size: 13px; font-weight: 800; color: var(--text-primary); margin:0;">Catálogo Universal</h2>
@@ -136,22 +110,112 @@
         </div>
     </div>
 
-    <div class="table-responsive-wide" id="table-inner-wrap" style="background: rgba(0,0,0,0.1); max-height: 600px; overflow-y: auto;">
+    <div class="table-responsive-wide" id="table-inner-wrap" style="overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; width: 100%; max-width: 100%; position:relative; background: rgba(0,0,0,0.1);">
         <table class="data-table table-wide" style="width: 100%; border-collapse: separate; border-spacing: 0;">
-            <thead style="position: sticky; top: 0; z-index: 20;">
+            <thead>
                 <tr style="background: var(--bg-card-2);">
-                    <th class="sticky-col" style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 120px; left: 0; z-index: 21; background: var(--bg-card-2);">clave</th>
-                    <th class="sticky-col-2" style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 250px; left: 120px; z-index: 21; background: var(--bg-card-2);">descripcion</th>
-                    <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">unidad_medida</th>
-                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">linea</th>
-                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">clasificacion</th>
-                    <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">area</th>
+                    <th class="sticky-col" style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 120px; position: sticky !important; left: 0; z-index: 11; background: var(--bg-card-2);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'clave', 'dir' => ($sort === 'clave' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            clave
+                            @if($sort === 'clave')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 250px;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'descripcion', 'dir' => ($sort === 'descripcion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            descripcion
+                            @if($sort === 'descripcion')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'unidad_medida', 'dir' => ($sort === 'unidad_medida' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            unidad_medida
+                            @if($sort === 'unidad_medida')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'linea', 'dir' => ($sort === 'linea' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            linea
+                            @if($sort === 'linea')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'clasificacion', 'dir' => ($sort === 'clasificacion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            clasificacion
+                            @if($sort === 'clasificacion')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'area', 'dir' => ($sort === 'area' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            area
+                            @if($sort === 'area')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
                     <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">habilitado</th>
                     {{-- Precios --}}
-                    <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">precio_lista</th>
-                    <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--emerald); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">precio_venta</th>
-                    <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">des_precio_venta</th>
-                    <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">precio_especial</th>
+                    <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_lista', 'dir' => ($sort === 'precio_lista' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            precio_lista
+                            @if($sort === 'precio_lista')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--emerald); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_venta', 'dir' => ($sort === 'precio_venta' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            precio_venta
+                            @if($sort === 'precio_venta')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'des_precio_venta', 'dir' => ($sort === 'des_precio_venta' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            des_precio_venta
+                            @if($sort === 'des_precio_venta')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_especial', 'dir' => ($sort === 'precio_especial' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            precio_especial
+                            @if($sort === 'precio_especial')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
                     <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">desc_precio_espec</th>
                     <th style="padding: 14px 20px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">precio4</th>
                     <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">desc_precio4</th>
@@ -195,8 +259,8 @@
             <tbody>
                 @forelse($articles as $row)
                     <tr style="transition: background 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-                        <td class="sticky-col" style="padding: 12px 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--emerald); font-weight: 600; border-bottom: 1px solid var(--border-light); white-space: nowrap; left: 0; background: var(--bg-card); z-index: 5;">{{ $row->clave }}</td>
-                        <td class="sticky-col-2" style="padding: 12px 20px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--border-light); min-width: 250px; left: 120px; background: var(--bg-card); z-index: 5;">{{ $row->descripcion }}</td>
+                        <td class="sticky-col" style="padding: 12px 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--emerald); font-weight: 600; border-bottom: 1px solid var(--border-light); white-space: nowrap; position: sticky !important; left: 0; background: var(--bg-card); z-index: 5;">{{ $row->clave }}</td>
+                        <td style="padding: 12px 20px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--border-light); min-width: 250px;">{{ $row->descripcion }}</td>
                         <td style="padding: 12px 20px; text-align: center; font-size: 12px; color: var(--text-secondary); border-bottom: 1px solid var(--border-light);">{{ $row->unidad_medida }}</td>
                         <td style="padding: 12px 20px; text-align: left; font-size: 11px; color: var(--text-secondary); border-bottom: 1px solid var(--border-light);">{{ $row->linea }}</td>
                         <td style="padding: 12px 20px; text-align: left; font-size: 11px; color: var(--text-secondary); border-bottom: 1px solid var(--border-light);">{{ $row->clasificacion }}</td>
@@ -564,16 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function adjustTableHeight() {
-    const wrap = document.getElementById('table-inner-wrap');
-    const card = document.getElementById('db-master-table-card');
-    if (!wrap || !card) return;
-    const cardTop = card.getBoundingClientRect().top;
-    const available = window.innerHeight - cardTop - 64; 
-    wrap.style.height = Math.max(250, available) + 'px';
-}
-document.addEventListener('DOMContentLoaded', adjustTableHeight);
-window.addEventListener('resize', adjustTableHeight);
+
 </script>
 
 {{-- â”€â”€ EDIT MODAL HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}

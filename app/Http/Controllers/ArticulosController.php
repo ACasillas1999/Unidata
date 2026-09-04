@@ -117,6 +117,27 @@ class ArticulosController extends Controller
         $perPage  = (int) $request->input('per_page', 50);
         if (!in_array($perPage, [50, 100, 250, 500])) $perPage = 50;
 
+        $sort = strtolower($request->input('sort', 'clave'));
+        $dir  = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $sortMap = [
+            'clave'            => 'Clave_Articulo',
+            'descripcion'      => 'Descripcion',
+            'unidad_medida'    => 'Unidad_Medida',
+            'linea'            => 'Linea',
+            'clasificacion'    => 'Clasificacion',
+            'area'             => 'Area',
+            'precio_lista'     => 'Precio_Lista',
+            'precio_venta'     => 'Precio_Venta',
+            'des_precio_venta' => 'Desc_Precio_Venta',
+            'precio_especial'  => 'Precio_Especial',
+            'precio4'          => 'Precio4',
+            'costo_venta'      => 'CostoVenta',
+            'costo_promedio'   => 'Costo_Promedio',
+        ];
+
+        $orderCol = $sortMap[$sort] ?? 'Clave_Articulo';
+
         // Obtener lista de sucursales activas dinámicamente
         $branches = $this->connectionManager->getActiveBranches();
         $branchesMap = $branches->pluck('name', 'code')->toArray();
@@ -158,7 +179,7 @@ class ArticulosController extends Controller
             }
 
             // Paginación directa en el motor SQL de la sucursal conectada
-            $articles = $query->orderBy('Clave_Articulo', 'asc')
+            $articles = $query->orderBy($orderCol, $dir)
                               ->paginate($perPage)
                               ->withQueryString();
 
@@ -170,6 +191,8 @@ class ArticulosController extends Controller
             'branches' => $branchesMap,
             'sucursal' => $sucursal,
             'search'   => $search,
+            'sort'     => $sort,
+            'dir'      => $dir,
             'articles' => $articles,
             'error'    => $error,
             'per_page' => $perPage,
@@ -908,7 +931,8 @@ class ArticulosController extends Controller
 
     public function crear(): \Illuminate\View\View
     {
-        return view('articulos.crear');
+        $branches = $this->connectionManager->getActiveBranches();
+        return view('articulos.crear', compact('branches'));
     }
 
     /**
@@ -931,23 +955,36 @@ class ArticulosController extends Controller
             'desc_precio_espec'   => 'nullable|numeric',
             'precio4'             => 'nullable|numeric',
             'desc_precio4'        => 'nullable|numeric',
+            'desc_proveedor'      => 'nullable|numeric',
+            'precio_tope'         => 'nullable|numeric',
             'costo_venta'         => 'nullable|numeric',
             'porcetaje_descuento' => 'nullable|numeric',
             'articulo_kit'        => 'nullable|boolean',
             'articulo_serie'      => 'nullable|boolean',
             'margen_minimo'       => 'nullable|numeric',
-            'color'               => 'nullable|boolean',
+            'color'               => 'nullable|integer|between:0,9',
+            'color_branch'        => 'nullable|array',
+            'color_branch.*'      => 'nullable|integer|between:0,9',
             'protocolo'           => 'nullable|boolean',
             'idsat'               => 'nullable|string|max:25',
             'id_impuesto_sat'     => 'nullable|string|max:3',
+            'iva'                 => 'nullable|numeric',
+            'id_tipo_factor'      => 'nullable|string|max:10',
             'habilitado'          => 'required|boolean',
         ]);
 
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
 
-            // Automatización de campos
-            $data['fecha_alta'] = now()->toDateString();
+            // Automatización de campos fijos
+            $data['fecha_alta']      = now()->toDateString();
+            $data['id_impuesto_sat'] = '002';
+            $data['iva']             = 16;
+            $data['id_tipo_factor']  = 'Tasa';
+
+            // Extraer color_branch del array $data antes de crear en db_master
+            $colorBranchMap = $data['color_branch'] ?? [];
+            unset($data['color_branch']);
 
             // 1. Crear en DB Master
             $master = \App\Models\DbMasterArticle::create($data);
@@ -990,7 +1027,12 @@ class ArticulosController extends Controller
                     $conn = $this->connectionManager->connect($branch->code);
                     $replLogger->info("Sucursal {$branch->name}: Conexión exitosa.");
                     
-                    $conn->table('articulo')->insert($branchData);
+                    $localBranchData = $branchData;
+                    if (isset($colorBranchMap[$branch->code]) && $colorBranchMap[$branch->code] !== '' && $colorBranchMap[$branch->code] !== null) {
+                        $localBranchData['Color'] = (int) $colorBranchMap[$branch->code];
+                    }
+
+                    $conn->table('articulo')->insert($localBranchData);
                     $replLogger->info("Sucursal {$branch->name}: Inserción exitosa.");
                 } catch (\Throwable $e) {
                     $errorMsg = "Error en sucursal {$branch->name}: " . $e->getMessage();

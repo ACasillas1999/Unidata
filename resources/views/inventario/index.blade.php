@@ -5,41 +5,6 @@
 
 @section('content')
 
-<style>
-/* Igual patron que db_master: el propio contenedor de tabla maneja su scroll,
-   no la pagina completa, asi la tabla ancha no rompe el layout. */
-.page-content {
-    overflow: hidden !important;
-    padding-bottom: 0 !important;
-    display: flex;
-    flex-direction: column;
-}
-#inv-table-card {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-#inv-table-wrap {
-    overflow-y: auto !important;
-    overflow-x: auto !important;
-    flex: 1;
-    min-height: 200px;
-}
-#inv-pagination {
-    flex-shrink: 0;
-    overflow-x: auto;
-}
-#inv-pagination .pagination {
-    flex-wrap: wrap;
-    row-gap: 6px;
-    justify-content: flex-end;
-}
-</style>
-
-<div style="flex-shrink: 0;">
-
 <div class="page-header">
     <div class="page-header-content">
         <div class="page-header-icon" style="background:#f0f9ff; color:#0ea5e9;">
@@ -53,54 +18,44 @@
             <p class="page-subtitle">Existencia real por almacén, consultada directo a cada base de datos</p>
         </div>
     </div>
-</div>
-
-<div class="card">
-    <div class="card-body" style="padding:16px 20px">
-        <form method="GET" action="{{ route('inventario.index') }}" id="inv-form" class="homo-filter-bar">
-            <input type="hidden" name="per_page" value="{{ request('per_page', 50) }}">
-
-            <div class="search-input-wrap" style="flex:1;min-width:200px">
-                <span class="search-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                </span>
-                <input
-                    type="text"
-                    name="q"
-                    value="{{ $search }}"
-                    placeholder="Buscar por código o descripción…"
-                    class="search-input"
-                    autocomplete="off"
-                >
-            </div>
-
-            <div class="homo-filter-row">
-                <select name="sucursal" class="form-select" onchange="this.form.submit()">
-                    @foreach($branchesMap as $key => $label)
-                        <option value="{{ $key }}" @selected($sucursal === $key)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div style="display:flex;gap:8px;flex-shrink:0">
-                <button type="submit" class="btn btn--primary btn--sm">Buscar</button>
-                <a href="{{ route('inventario.index') }}" class="btn btn--ghost btn--sm">Limpiar</a>
-            </div>
-        </form>
+    <div class="page-header-actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:4px;">Exportar (Mapeo PowerSales):</span>
+        <a href="{{ route('inventario.export', ['sucursal' => $sucursal]) }}" class="btn btn--sm shadow-premium" style="background:rgba(16,185,129,0.1); color:var(--emerald); border:1px solid rgba(16,185,129,0.3);">
+            <svg style="margin-right:4px;" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Esta sucursal ({{ $branchesMap[$sucursal] ?? $sucursal }})
+        </a>
+        <a href="{{ route('inventario.export', ['sucursal' => 'todas']) }}" class="btn btn--sm shadow-premium" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+            <svg style="margin-right:4px;" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Todas las sucursales
+        </a>
     </div>
 </div>
 
-<div class="card" style="margin-top:12px; padding:14px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-    <span style="font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Exportar (mapeo PowerSales):</span>
-    <a href="{{ route('inventario.export', ['sucursal' => $sucursal]) }}" class="btn btn--sm shadow-premium" style="background:rgba(16,185,129,0.1); color:var(--emerald); border:1px solid rgba(16,185,129,0.3);">
-        <svg style="margin-right:4px;" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Esta sucursal ({{ $branchesMap[$sucursal] ?? $sucursal }})
-    </a>
-    <a href="{{ route('inventario.export', ['sucursal' => 'todas']) }}" class="btn btn--sm shadow-premium" style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
-        <svg style="margin-right:4px;" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Todas las sucursales
-    </a>
-</div>
+<form method="GET" action="{{ route('inventario.index') }}" style="margin-top: 20px; flex-shrink: 0;">
+    <input type="hidden" name="per_page" value="{{ request('per_page', 50) }}">
+
+    <div class="glass-card shadow-premium" style="padding: 12px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border: 1px solid var(--border); background: var(--bg-card);">
+        <div class="search-input-wrap" style="flex:1; min-width:250px; margin: 0; display:flex; align-items:center; background:var(--bg-root); border-radius:8px; border:1px solid var(--border); overflow:hidden;">
+            <span class="search-icon" style="padding: 0 12px; color:var(--text-muted); display:flex; align-items:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </span>
+            <input type="text" name="q" value="{{ $search }}" placeholder="Buscar por código o descripción…" class="search-input" autocomplete="off" style="width: 100%; border:none; background:transparent; padding:9px 12px 9px 0; color:white; outline:none; font-size:13px; font-weight:600;">
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px;">
+            <select name="sucursal" class="form-select" onchange="this.form.submit()" style="background:var(--bg-root); border:1px solid var(--border); color:white; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+                @foreach($branchesMap as $key => $label)
+                    <option value="{{ $key }}" @selected($sucursal === $key) style="background:#1a1d27; color:white;">{{ $label }}</option>
+                @endforeach
+            </select>
+
+            <button type="submit" class="btn btn--primary btn--sm shadow-premium" style="background:var(--grad-premium); border-color:transparent; color:white; padding:8px 18px; font-size:13px; font-weight:700;">Buscar</button>
+            @if($search)
+                <a href="{{ route('inventario.index') }}" class="btn btn--ghost btn--sm" style="font-size:13px;">Limpiar</a>
+            @endif
+        </div>
+    </div>
+</form>
 
 @if($error)
 <div class="alert alert--error" style="margin-top: 12px;">
@@ -114,34 +69,122 @@
 </div>
 @endif
 
-</div>
-
-<div class="card" id="inv-table-card" style="margin-top:12px;">
-    <div class="card-header card-header--row" style="flex-shrink:0;">
+<div class="card" id="inv-table-card" style="margin-top:20px; overflow:visible;">
+    <div class="card-header card-header--row">
         <div>
             <h2 class="card-title">Existencia en {{ $branchesMap[$sucursal] ?? 'Base de datos' }}</h2>
         </div>
     </div>
-    <div id="inv-table-wrap">
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead style="position: sticky; top: 0; z-index: 5; background: var(--bg-card, #0f172a);">
+    <div id="inv-table-wrap" style="overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; width: 100%; max-width: 100%; position:relative; background: #0b0f1a;">
+    <table class="data-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+        <thead>
             <tr style="background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border);">
-                <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Clave</th>
-                <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Descripción</th>
-                <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Almacén</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Ex. Física</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Ex. Teórica</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Apartado</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Pend. Entrega</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Mín.</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Máx.</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">Reorden</th>
+                <th class="sticky-col-1" style="min-width: 140px; background: #1a1f2e; position: sticky !important; left: 0; z-index: 11; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'clave', 'dir' => ($sort === 'clave' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        Clave
+                        @if($sort === 'clave')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap; min-width: 250px;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'descripcion', 'dir' => ($sort === 'descripcion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        Descripción
+                        @if($sort === 'descripcion')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'almacen', 'dir' => ($sort === 'almacen' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        Almacén
+                        @if($sort === 'almacen')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'existencia_fisica', 'dir' => ($sort === 'existencia_fisica' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Ex. Física
+                        @if($sort === 'existencia_fisica')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'existencia_teorica', 'dir' => ($sort === 'existencia_teorica' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Ex. Teórica
+                        @if($sort === 'existencia_teorica')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'apartado', 'dir' => ($sort === 'apartado' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Apartado
+                        @if($sort === 'apartado')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'pendiente_entrega', 'dir' => ($sort === 'pendiente_entrega' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Pend. Entrega
+                        @if($sort === 'pendiente_entrega')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'minimo', 'dir' => ($sort === 'minimo' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Mín.
+                        @if($sort === 'minimo')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'maximo', 'dir' => ($sort === 'maximo' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Máx.
+                        @if($sort === 'maximo')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; white-space:nowrap;">
+                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'reorden', 'dir' => ($sort === 'reorden' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;">
+                        Reorden
+                        @if($sort === 'reorden')
+                            <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                        @else
+                            <span style="opacity:0.3; font-size:10px;">↕</span>
+                        @endif
+                    </a>
+                </th>
             </tr>
         </thead>
         <tbody>
             @forelse($items as $row)
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight:600; color:var(--emerald); white-space:nowrap;">{{ $row->Clave_Articulo }}</td>
+                <td class="sticky-col-1 td--code" style="position: sticky !important; left: 0; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05); padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight:600; color:var(--emerald); white-space:nowrap;">{{ $row->Clave_Articulo }}</td>
                 <td style="padding: 10px 16px; font-size: 13px; white-space:nowrap;">{{ $row->descripcion }}</td>
                 <td style="padding: 10px 16px; white-space:nowrap; font-size: 13px;">
                     <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color:var(--text-muted);">{{ $row->Almacen }}</span>
@@ -167,4 +210,11 @@
         {{ $items->links() }}
     </div>
 </div>
+
+<style>
+.sticky-col-1 {
+    position: sticky !important;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
+</style>
 @endsection

@@ -43,6 +43,24 @@ class InventarioController extends Controller
             $sucursal = $branches->first()?->code ?? '';
         }
 
+        $sort  = strtolower($request->input('sort', 'clave'));
+        $dir   = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $sortMap = [
+            'clave'             => 'a.Clave_Articulo',
+            'descripcion'       => 'art.Descripcion',
+            'almacen'           => 'a.Almacen',
+            'existencia_fisica' => 'a.Existencia_Fisica',
+            'existencia_teorica'=> 'a.Existencia_Teorica',
+            'apartado'          => 'a.Apartado',
+            'pendiente_entrega' => 'a.PendienteDeEntrega',
+            'minimo'            => 'a.Inventario_Minimo',
+            'maximo'            => 'a.Inventario_Maximo',
+            'reorden'           => 'a.Punto_Reorden',
+        ];
+
+        $orderCol = $sortMap[$sort] ?? 'a.Clave_Articulo';
+
         $error = null;
         $items = new Paginator([], $perPage);
 
@@ -63,7 +81,7 @@ class InventarioController extends Controller
                 });
             }
 
-            $items = $query->orderBy('a.Clave_Articulo')
+            $items = $query->orderBy($orderCol, $dir)
                 ->paginate($perPage)
                 ->withQueryString();
         } catch (Throwable $e) {
@@ -75,6 +93,8 @@ class InventarioController extends Controller
             'branchesMap' => $branchesMap,
             'sucursal'    => $sucursal,
             'search'      => $search,
+            'sort'        => $sort,
+            'dir'         => $dir,
             'error'       => $error,
             'per_page'    => $perPage,
         ]);

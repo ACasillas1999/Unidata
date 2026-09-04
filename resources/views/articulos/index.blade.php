@@ -74,7 +74,7 @@
 @endif
 
     {{-- Table Card --}}
-    <div class="card" id="branch-catalog-card" style="margin-top:20px; overflow:hidden;">
+    <div class="card" id="branch-catalog-card" style="margin-top:20px; overflow:visible;">
         <div class="card-header card-header--row">
             <div>
                 <h2 class="card-title">Catálogo en {{ $branches[$sucursal] ?? 'Base de datos' }}</h2>
@@ -102,25 +102,124 @@
         </div>
 
         {{-- High Density Scroll Container --}}
-        <div id="table-inner-wrap" style="overflow:auto; max-height: 70vh; position:relative; background: #0b0f1a;">
+        <div id="table-inner-wrap" style="overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; width: 100%; max-width: 100%; position:relative; background: #0b0f1a;">
             <table class="data-table" style="border-collapse: separate; border-spacing: 0; width: 100%;">
-                <thead style="position: sticky; top: 0; z-index: 10;">
+                <thead>
                     <tr>
-                        <th class="sticky-col-1" style="min-width: 140px; background: #1a1f2e; left: 0; z-index: 11;">Clave_Articulo</th>
-                        <th class="sticky-col-2" style="min-width: 300px; background: #1a1f2e; left: 140px; z-index: 11;">Descripcion</th>
+                        <th class="sticky-col-1" style="min-width: 140px; background: #1a1f2e; left: 0; z-index: 11;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'clave', 'dir' => ($sort === 'clave' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Clave_Articulo
+                                @if($sort === 'clave')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 300px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'descripcion', 'dir' => ($sort === 'descripcion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Descripcion
+                                @if($sort === 'descripcion')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
                         {{-- General --}}
-                        <th style="min-width: 80px;">Unidad_Medida</th>
-                        <th style="min-width: 100px;">Linea</th>
-                        <th style="min-width: 100px;">Clasificacion</th>
-                        <th style="min-width: 60px;">Area</th>
+                        <th style="min-width: 80px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'unidad_medida', 'dir' => ($sort === 'unidad_medida' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Unidad_Medida
+                                @if($sort === 'unidad_medida')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 100px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'linea', 'dir' => ($sort === 'linea' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Linea
+                                @if($sort === 'linea')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 100px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'clasificacion', 'dir' => ($sort === 'clasificacion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Clasificacion
+                                @if($sort === 'clasificacion')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 60px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'area', 'dir' => ($sort === 'area' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Area
+                                @if($sort === 'area')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
                         <th style="min-width: 100px;">Habilitado</th>
                         {{-- Precios --}}
-                        <th style="min-width: 120px;">Precio_Lista</th>
-                        <th style="min-width: 120px; color:var(--emerald);">Precio_Venta</th>
-                        <th style="min-width: 120px;">Desc_Precio_Venta</th>
-                        <th style="min-width: 120px;">Precio_Especial</th>
+                        <th style="min-width: 120px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_lista', 'dir' => ($sort === 'precio_lista' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Precio_Lista
+                                @if($sort === 'precio_lista')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 120px; color:var(--emerald);">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_venta', 'dir' => ($sort === 'precio_venta' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Precio_Venta
+                                @if($sort === 'precio_venta')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 120px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'des_precio_venta', 'dir' => ($sort === 'des_precio_venta' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Desc_Precio_Venta
+                                @if($sort === 'des_precio_venta')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
+                        <th style="min-width: 120px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_especial', 'dir' => ($sort === 'precio_especial' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Precio_Especial
+                                @if($sort === 'precio_especial')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
                         <th style="min-width: 120px;">Desc_Precio_Espec</th>
-                        <th style="min-width: 120px;">Precio4</th>
+                        <th style="min-width: 120px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio4', 'dir' => ($sort === 'precio4' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Precio4
+                                @if($sort === 'precio4')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
                         <th style="min-width: 120px;">Desc_Precio4</th>
                         <th style="min-width: 120px;">Precio_Minimo</th>
                         <th style="min-width: 120px;">Desc_Precio_Minimo</th>
@@ -144,9 +243,27 @@
                         <th style="min-width: 80px;">Articulo_Kit</th>
                         <th style="min-width: 80px;">Articulo_Serie</th>
                         {{-- Costos --}}
-                        <th style="min-width: 120px; color:var(--amber);">CostoVenta</th>
+                        <th style="min-width: 120px; color:var(--amber);">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'costo_venta', 'dir' => ($sort === 'costo_venta' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                CostoVenta
+                                @if($sort === 'costo_venta')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
                         <th style="min-width: 120px;">PorcentajeDescuento</th>
-                        <th style="min-width: 120px;">Costo_Promedio</th>
+                        <th style="min-width: 120px;">
+                            <a href="{{ request()->fullUrlWithQuery(['sort' => 'costo_promedio', 'dir' => ($sort === 'costo_promedio' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                                Costo_Promedio
+                                @if($sort === 'costo_promedio')
+                                    <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                                @else
+                                    <span style="opacity:0.3; font-size:10px;">↕</span>
+                                @endif
+                            </a>
+                        </th>
                         <th style="min-width: 120px;">Costo_Promedio_Ant</th>
                         <th style="min-width: 120px;">Costo_Ult_Compra</th>
                         <th style="min-width: 120px;">Fecha_Ult_Compra</th>
@@ -171,7 +288,7 @@
                     @forelse($articles as $row)
                         <tr>
                             <td class="sticky-col-1 td--code" style="left: 0; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05);">{{ $row->Clave_Articulo }}</td>
-                            <td class="sticky-col-2 td--desc" style="left: 140px; background: #0f172a; border-right: 1px solid rgba(255,255,255,0.05);">{{ $row->Descripcion }}</td>
+                            <td class="td--desc">{{ $row->Descripcion }}</td>
                             {{-- General --}}
                             <td style="text-align: center;">{{ $row->Unidad_Medida }}</td>
                             <td>{{ $row->Linea }}</td>
@@ -253,7 +370,7 @@
 </div>
 
 <style>
-.sticky-col-1, .sticky-col-2 {
+.sticky-col-1 {
     position: sticky !important;
     box-shadow: 2px 0 5px rgba(0,0,0,0.3);
 }
@@ -277,17 +394,6 @@
 }
 </style>
 
-<script>
-function adjustTableHeight() {
-    const wrap = document.getElementById('table-inner-wrap');
-    const card = document.getElementById('branch-catalog-card');
-    if (!wrap || !card) return;
-    const cardTop = card.getBoundingClientRect().top;
-    const available = window.innerHeight - cardTop - 100; 
-    wrap.style.height = Math.max(300, available) + 'px';
-}
-document.addEventListener('DOMContentLoaded', adjustTableHeight);
-window.addEventListener('resize', adjustTableHeight);
-</script>
+
 
 @endsection

@@ -48,6 +48,27 @@ class DBMasterController extends Controller
             $perPage = 50;
         }
 
+        $sort = strtolower($request->input('sort', 'clave'));
+        $dir  = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        $sortMap = [
+            'clave'            => 'clave',
+            'descripcion'      => 'descripcion',
+            'unidad_medida'    => 'unidad_medida',
+            'linea'            => 'linea',
+            'clasificacion'    => 'clasificacion',
+            'area'             => 'area',
+            'precio_lista'     => 'precio_lista',
+            'precio_venta'     => 'precio_venta',
+            'des_precio_venta' => 'des_precio_venta',
+            'precio_especial'  => 'precio_especial',
+            'precio4'          => 'precio4',
+            'costo_venta'      => 'costo_venta',
+            'costo_promedio'   => 'costo_promedio',
+        ];
+
+        $orderCol = $sortMap[$sort] ?? 'clave';
+
         $error    = null;
         $articles = new LengthAwarePaginator([], 0, $perPage);
         $stats    = ['universo' => 0, 'last_sync' => 'Nunca'];
@@ -64,7 +85,7 @@ class DBMasterController extends Controller
                 });
             }
 
-            $query->orderBy('clave');
+            $query->orderBy($orderCol, $dir);
             $paginator = $query->paginate($perPage)->withQueryString();
 
             $paginator->getCollection()->transform(function ($item) use ($branches) {
@@ -92,6 +113,8 @@ class DBMasterController extends Controller
             'articles' => $articles,
             'error'    => $error,
             'search'   => $search,
+            'sort'     => $sort,
+            'dir'      => $dir,
             'stats'    => $stats,
             'per_page' => $perPage,
             'branches' => $branches,

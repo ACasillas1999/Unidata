@@ -30,15 +30,13 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            overflow: hidden;
+            overflow-y: auto;     /* TODA la parte de la derecha se desplaza junta completa */
+            overflow-x: hidden;   /* Mantiene el Sidebar de la izquierda 100% fijo */
         }
 
         .page-content {
             flex: 1;
-            min-height: 0;
-            overflow-y: auto;     /* default: scroll for regular pages */
-            overflow-x: auto;
-            padding: 24px 28px 0;
+            padding: 24px 28px 24px;
             display: flex;
             flex-direction: column;
         }

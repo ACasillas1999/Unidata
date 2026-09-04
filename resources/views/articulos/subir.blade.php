@@ -158,7 +158,7 @@
     </div>
 
     {{-- Previsualización --}}
-    <div id="preview-container" class="card card--dark" style="display: none; height: 500px; display: flex; flex-direction: column; border-color: var(--amber-border); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);">
+    <div id="preview-container" class="card card--dark" style="display: none; display: flex; flex-direction: column; border-color: var(--amber-border); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);">
         <div class="card-header card-header--row" style="background: rgba(245,158,11,0.03);">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 36px; height: 36px; background: var(--amber-bg); color: var(--amber); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
@@ -177,7 +177,7 @@
                 <button onclick="document.getElementById('preview-container').style.display = 'none'" class="btn btn--ghost" style="padding: 6px 12px; font-size: 11px;">Ocultar</button>
             </div>
         </div>
-        <div class="card-body" style="flex: 1; overflow: auto; padding: 0;">
+        <div class="card-body" style="flex: 1; overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
             <div class="table-wrap">
                 <table class="data-table" id="preview-table">
                     <thead>

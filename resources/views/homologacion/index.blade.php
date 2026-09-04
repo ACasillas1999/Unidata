@@ -5,27 +5,7 @@
 
 @section('content')
 
-<style>
-/* Homologacion: desactivar scroll de page-content para que la tabla maneje su propio scroll */
-.page-content {
-    overflow: hidden !important;
-    padding-bottom: 0 !important;
-    display: flex;
-    flex-direction: column;
-}
-#homo-table-card {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-#table-inner-wrap {
-    overflow-y: auto !important;
-    overflow-x: auto !important;
-    height: calc(100vh - 270px);
-    min-height: 200px;
-}
+
 
 /* Columnas Pegajosas (Sticky) */
 .data-table { border-collapse: separate !important; }
@@ -294,12 +274,30 @@
         </div>
     </div>
 
-    <div class="table-wrap" id="table-inner-wrap" style="background: rgba(0,0,0,0.1);">
+    <div class="table-wrap" id="table-inner-wrap" style="overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; width: 100%; max-width: 100%; position:relative; background: rgba(0,0,0,0.1);">
         <table class="data-table" id="homo-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
-            <thead style="position: sticky; top: 0; z-index: 10;">
+            <thead>
                 <tr style="background: var(--bg-card-2);">
-                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">Código Maestro</th>
-                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 250px;">Descripción</th>
+                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'clave', 'dir' => ($sort === 'clave' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            Código Maestro
+                            @if($sort === 'clave')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
+                    <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 250px;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'descripcion', 'dir' => ($sort === 'descripcion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                            Descripción
+                            @if($sort === 'descripcion')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @else
+                                <span style="opacity:0.3; font-size:10px;">↕</span>
+                            @endif
+                        </a>
+                    </th>
                     @foreach($branches as $name => $info)
                         <th style="padding: 14px 20px; text-align: center; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">{{ $name }}</th>
                     @endforeach

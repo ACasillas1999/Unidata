@@ -36,8 +36,12 @@
             <input type="text" name="unidad_medida" value="{{ old('unidad_medida', 'PZ') }}" required maxlength="4" class="modal-input">
         </div>
         <div class="form-group">
-            <label class="modal-label">ID Color</label>
-            <input type="number" name="color" value="{{ old('color', 0) }}" class="modal-input">
+            <label class="modal-label">ID Color (Base)</label>
+            <select name="color" class="modal-input">
+                @for($i = 0; $i <= 9; $i++)
+                    <option value="{{ $i }}" {{ old('color', 0) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                @endfor
+            </select>
         </div>
         <div class="form-group" style="display: flex; align-items: center; padding-top: 24px;">
             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);">
@@ -46,6 +50,31 @@
             </label>
         </div>
     </div>
+
+    @if(isset($branches) && $branches->count() > 0)
+    <div style="margin-top: 24px; padding: 20px; background: rgba(139,92,246,0.05); border-radius: 12px; border: 1px solid rgba(139,92,246,0.2);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--violet)" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span style="font-size: 13px; font-weight: 800; color: white; letter-spacing: 0.05em; text-transform: uppercase;">Color Específico por Sucursal</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">Seleccionar para anular el Color Base</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;">
+            @foreach($branches as $branch)
+            <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                <label class="modal-label" style="margin-bottom: 6px; color: var(--violet-light);">{{ $branch->name }}</label>
+                <select name="color_branch[{{ $branch->code }}]" class="modal-input" style="padding: 8px 12px; font-size: 13px;">
+                    <option value="" {{ old('color_branch.' . $branch->code) === null || old('color_branch.' . $branch->code) === '' ? 'selected' : '' }}>Usar Color Base</option>
+                    @for($i = 0; $i <= 9; $i++)
+                        <option value="{{ $i }}" {{ old('color_branch.' . $branch->code) !== null && old('color_branch.' . $branch->code) !== '' && old('color_branch.' . $branch->code) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                    @endfor
+                </select>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 32px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
         <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
@@ -134,7 +163,7 @@
         <!-- FILA 4: PRECIO VENTA -->
         <div class="form-group">
             <label class="modal-label">Porcentaje PV (%)</label>
-            <input type="number" step="0.01" id="porcentaje_pv" name="porcentaje_pv" value="{{ old('porcentaje_pv', 0) }}" class="modal-input">
+            <input type="number" step="0.01" id="porcentaje_pv" name="porcentaje_pv" value="{{ old('porcentaje_pv', 5.27) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Venta</label>
@@ -144,6 +173,18 @@
             <label class="modal-label">Desc. Venta Final (%)</label>
             <input type="number" step="0.01" id="des_precio_venta" name="des_precio_venta" value="{{ old('des_precio_venta', 0) }}" class="modal-input" readonly style="background: rgba(16,185,129,0.1); border-color: var(--emerald); color: var(--emerald); font-weight: bold; cursor: not-allowed;">
         </div>
+
+        <!-- FILA 5: PRECIO TOPE (PROVEEDOR) -->
+        <div class="form-group">
+            <label class="modal-label">Desc. Proveedor (%)</label>
+            <input type="number" step="0.01" id="desc_proveedor" name="desc_proveedor" value="{{ old('desc_proveedor', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Precio Tope (Resultado)</label>
+            <input type="number" step="0.0001" id="precio_tope" name="precio_tope" value="{{ old('precio_tope', 0) }}" class="modal-input" readonly style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--rose); font-weight: bold; cursor: not-allowed;">
+        </div>
+        <div class="form-group"></div>
+        <div class="form-group"></div>
     </div>
 </div>
 
@@ -204,11 +245,15 @@
         </div>
         <div class="form-group">
             <label class="modal-label">ID Impuesto SAT</label>
-            <input type="text" name="id_impuesto_sat" value="{{ old('id_impuesto_sat') }}" maxlength="3" class="modal-input" placeholder="002">
+            <input type="text" name="id_impuesto_sat" value="002" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1); font-weight: bold; color: var(--emerald);">
         </div>
         <div class="form-group">
             <label class="modal-label">IVA (%)</label>
-            <input type="number" step="0.01" name="iva" value="{{ old('iva', 16) }}" class="modal-input">
+            <input type="number" step="0.01" name="iva" value="16" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1); font-weight: bold; color: var(--emerald);">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Tipo Factor SAT</label>
+            <input type="text" name="id_tipo_factor" value="Tasa" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1); font-weight: bold; color: var(--emerald);">
         </div>
         <div class="form-group">
             <label class="modal-label">Sustituto Principal</label>
