@@ -5,8 +5,7 @@
 
 @section('content')
 
-
-
+<style>
 /* Columnas Pegajosas (Sticky) */
 .data-table { border-collapse: separate !important; }
 .data-table th, .data-table td { white-space: nowrap; }
@@ -279,20 +278,20 @@
             <thead>
                 <tr style="background: var(--bg-card-2);">
                     <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border);">
-                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'clave', 'dir' => ($sort === 'clave' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'clave', 'dir' => (($sort ?? 'clave') === 'clave' && ($dir ?? 'asc') === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
                             Código Maestro
-                            @if($sort === 'clave')
-                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @if(($sort ?? 'clave') === 'clave')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ ($dir ?? 'asc') === 'asc' ? '↑' : '↓' }}</span>
                             @else
                                 <span style="opacity:0.3; font-size:10px;">↕</span>
                             @endif
                         </a>
                     </th>
                     <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); min-width: 250px;">
-                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'descripcion', 'dir' => ($sort === 'descripcion' && $dir === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'descripcion', 'dir' => (($sort ?? 'clave') === 'descripcion' && ($dir ?? 'asc') === 'asc') ? 'desc' : 'asc']) }}" style="color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
                             Descripción
-                            @if($sort === 'descripcion')
-                                <span style="color:var(--emerald); font-weight:bold;">{{ $dir === 'asc' ? '↑' : '↓' }}</span>
+                            @if(($sort ?? 'clave') === 'descripcion')
+                                <span style="color:var(--emerald); font-weight:bold;">{{ ($dir ?? 'asc') === 'asc' ? '↑' : '↓' }}</span>
                             @else
                                 <span style="opacity:0.3; font-size:10px;">↕</span>
                             @endif

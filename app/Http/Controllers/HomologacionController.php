@@ -44,8 +44,11 @@ class HomologacionController extends Controller
         $cobertura   = $request->string('cobertura')->toString();   // preset: todas|ninguna|incompleta|solo_una
         $tienEn      = array_filter((array) $request->input('tiene_en', []));  // cols donde DEBE estar activo
         $faltaEn     = array_filter((array) $request->input('falta_en', []));  // cols donde debe FALTAR (null)
+        $sort        = strtolower($request->input('sort', 'clave'));
+        $dir         = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
         $error       = null;
         $stats       = [];
+        $branches    = [];
 
         try {
             $branches = $this->getDynamicBranches();
@@ -124,9 +127,6 @@ class HomologacionController extends Controller
             }
 
             // ── Ordenamiento ─────────────────────────────────────────────
-            $sort = strtolower($request->input('sort', 'clave'));
-            $dir  = strtolower($request->input('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-
             $perPage = (int) $request->input('per_page', 50);
             if (!in_array($perPage, [50, 100, 250, 500])) $perPage = 50;
 
@@ -188,6 +188,8 @@ class HomologacionController extends Controller
             'branches'   => $branches,
             'stats'      => $stats,
             'per_page'   => $perPage ?? 50,
+            'sort'       => $sort,
+            'dir'        => $dir,
         ]);
     }
 

@@ -69,7 +69,7 @@
         </div>
     </form>
 
-    {{-- â”€â”€ ALERTS (Success/Errores) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
+    {{-- ALERTS (Success/Errores) --}}
     @if(session('success'))
     <div class="alert alert--success shadow-premium" style="margin-bottom:16px; border-left: 4px solid #10b981; padding: 12px 16px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 6px;">
         <strong>¡Éxito!</strong> {{ session('success') }}
@@ -340,7 +340,7 @@
     @endif
 </div>
 
-{{-- â”€â”€ HISTORY MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
+
 <div id="history-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(2,6,23,0.85); backdrop-filter:blur(8px); align-items:center; justify-content:center;">
     <div class="glass-card shadow-premium" style="width:90%; max-width:600px; padding:0; overflow:hidden; border:1px solid rgba(16,185,129,0.3);">
         <div style="padding:20px 24px; background:rgba(16,185,129,0.1); border-bottom:1px solid rgba(16,185,129,0.2); display:flex; justify-content:space-between; align-items:center;">
@@ -528,6 +528,19 @@ function openEditModal(row) {
     document.getElementById('edit-precio_minimo').value = row.precio_minimo || 0;
     document.getElementById('edit-desc_precio_minimo').value = row.desc_precio_minimo || 0;
     document.getElementById('edit-precio_tope').value = row.precio_tope || 0;
+
+    document.getElementById('edit-desc_proveedor').value = row.desc_proveedor || 0;
+    const pListaInit = parseFloat(row.precio_lista) || 0;
+    const dProvInit = parseFloat(row.desc_proveedor) || 0;
+    const resDescProvEl = document.getElementById('edit-resultado_desc_proveedor');
+    if (resDescProvEl) resDescProvEl.value = (pListaInit * (100 - dProvInit) / 100).toFixed(4);
+
+    let porcDescVal = row.porcetaje_descuento || 0;
+    if (!porcDescVal && (row.precio_lista > 0) && (row.precio_tope > 0)) {
+        porcDescVal = (100 - (row.precio_tope / row.precio_lista * 100)).toFixed(2);
+    }
+    document.getElementById('edit-porcetaje_descuento').value = porcDescVal || 0;
+
     document.getElementById('edit-margen_minimo').value = row.margen_minimo || 0;
     document.getElementById('edit-costo_venta').value = row.costo_venta || 0;
     document.getElementById('edit-costo_promedio').value = row.costo_promedio || 0;
@@ -571,6 +584,47 @@ function closeEditModal() {
 // NOTA: el form del modal se define mas abajo en el DOM (fuera de este <script>),
 // por eso el listener se registra dentro de DOMContentLoaded, cuando ya existe.
 document.addEventListener('DOMContentLoaded', function() {
+    const editDescProv = document.getElementById('edit-desc_proveedor');
+    const editResDescProv = document.getElementById('edit-resultado_desc_proveedor');
+    const editPrecioTope = document.getElementById('edit-precio_tope');
+    const editPrecioLista = document.getElementById('edit-precio_lista');
+    const editPorcDesc = document.getElementById('edit-porcetaje_descuento');
+
+    function updateResDescProv() {
+        if (!editPrecioLista || !editDescProv || !editResDescProv) return;
+        const pLista = parseFloat(editPrecioLista.value) || 0;
+        const dProv = parseFloat(editDescProv.value) || 0;
+        editResDescProv.value = (pLista * (100 - dProv) / 100).toFixed(4);
+    }
+
+    if (editDescProv) editDescProv.addEventListener('input', updateResDescProv);
+
+    if (editPorcDesc && editPrecioTope && editPrecioLista) {
+        editPorcDesc.addEventListener('input', function() {
+            const pLista = parseFloat(editPrecioLista.value) || 0;
+            const pDesc = parseFloat(this.value) || 0;
+            const pTope = pLista * (100 - pDesc) / 100;
+            editPrecioTope.value = pTope.toFixed(4);
+        });
+
+        editPrecioTope.addEventListener('input', function() {
+            const pLista = parseFloat(editPrecioLista.value) || 0;
+            const pTope = parseFloat(this.value) || 0;
+            if (pLista > 0) {
+                const pDesc = (100 - (pTope / pLista * 100)).toFixed(2);
+                editPorcDesc.value = pDesc;
+            }
+        });
+
+        editPrecioLista.addEventListener('input', function() {
+            const pLista = parseFloat(this.value) || 0;
+            const pDesc = parseFloat(editPorcDesc.value) || 0;
+            const pTope = pLista * (100 - pDesc) / 100;
+            editPrecioTope.value = pTope.toFixed(4);
+            updateResDescProv();
+        });
+    }
+
     document.getElementById('edit-article-form').addEventListener('submit', function(e) {
         e.preventDefault();
         let formData = new FormData(this);
@@ -631,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
-{{-- â”€â”€ EDIT MODAL HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ --}}
+{{--EDIT MODAL HTML --}}
 <div id="edit-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(2,6,23,0.85); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding: 20px;">
     <div class="glass-card shadow-premium" style="width:100%; max-width:950px; padding:0; overflow:hidden; border:1px solid rgba(139,92,246,0.3);">
         <div style="padding:16px 24px; background:rgba(139,92,246,0.1); border-bottom:1px solid rgba(139,92,246,0.2); display:flex; justify-content:space-between; align-items:center;">
@@ -757,6 +811,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="form-group">
                             <label class="modal-label">Precio Tope</label>
                             <input type="number" step="0.0001" name="precio_tope" id="edit-precio_tope" class="modal-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="modal-label">Desc. Proveedor (%)</label>
+                            <input type="number" step="0.01" name="desc_proveedor" id="edit-desc_proveedor" class="modal-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="modal-label">Precio Proveedor (Resultado)</label>
+                            <input type="number" step="0.0001" id="edit-resultado_desc_proveedor" readonly class="modal-input readonly">
+                        </div>
+                        <div class="form-group">
+                            <label class="modal-label">Porcentaje Descuento (%)</label>
+                            <input type="number" step="0.01" name="porcetaje_descuento" id="edit-porcetaje_descuento" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Margen Mínimo (%)</label>

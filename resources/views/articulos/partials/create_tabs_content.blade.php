@@ -174,15 +174,61 @@
             <input type="number" step="0.01" id="des_precio_venta" name="des_precio_venta" value="{{ old('des_precio_venta', 0) }}" class="modal-input" readonly style="background: rgba(16,185,129,0.1); border-color: var(--emerald); color: var(--emerald); font-weight: bold; cursor: not-allowed;">
         </div>
 
-        <!-- FILA 5: PRECIO TOPE (PROVEEDOR) -->
+        <!-- FILA 5: PRECIO TOPE Y DESCUENTOS (PROVEEDOR) -->
         <div class="form-group">
             <label class="modal-label">Desc. Proveedor (%)</label>
             <input type="number" step="0.01" id="desc_proveedor" name="desc_proveedor" value="{{ old('desc_proveedor', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
-            <label class="modal-label">Precio Tope (Resultado)</label>
-            <input type="number" step="0.0001" id="precio_tope" name="precio_tope" value="{{ old('precio_tope', 0) }}" class="modal-input" readonly style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--rose); font-weight: bold; cursor: not-allowed;">
+            <label class="modal-label">Precio Proveedor (Resultado)</label>
+            <input type="number" step="0.0001" id="resultado_desc_proveedor" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
         </div>
+        <div class="form-group">
+            <label class="modal-label">Porcentaje Descuento (%)</label>
+            <input type="number" step="0.01" id="porcetaje_descuento" name="porcetaje_descuento" value="{{ old('porcetaje_descuento', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Precio Tope</label>
+            <input type="number" step="0.0001" id="precio_tope" name="precio_tope" value="{{ old('precio_tope', 0) }}" class="modal-input" style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--rose); font-weight: bold;">
+        </div>
+
+        <!-- FILA 6: PRECIO MÍNIMO -->
+        <div class="form-group">
+            <label class="modal-label">Desc. Mínimo (%)</label>
+            <input type="number" step="0.01" id="desc_precio_minimo" name="desc_precio_minimo" value="{{ old('desc_precio_minimo', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Precio Mínimo</label>
+            <input type="number" step="0.0001" id="precio_minimo" name="precio_minimo" value="{{ old('precio_minimo', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group"></div>
+        <div class="form-group"></div>
+
+        <!-- HISTÓRICOS DE COMPRAS Y COSTOS -->
+        <div class="form-group" style="grid-column: span 4; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 10px; padding-top: 15px;">
+            <label style="color:var(--amber); font-size:11px; font-weight:800; text-transform:uppercase;">Histórico de Compras y Costos</label>
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Costo Promedio</label>
+            <input type="number" step="0.0001" name="costo_promedio" value="{{ old('costo_promedio', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Costo Promedio Ant.</label>
+            <input type="number" step="0.0001" name="costo_promedio_ant" value="{{ old('costo_promedio_ant', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Costo Últ. Compra</label>
+            <input type="number" step="0.0001" name="costo_ult_compra" value="{{ old('costo_ult_compra', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Fecha Últ. Compra</label>
+            <input type="date" name="fecha_ult_compra" value="{{ old('fecha_ult_compra') }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Costo Compra Ant.</label>
+            <input type="number" step="0.0001" name="costo_compra_ant" value="{{ old('costo_compra_ant', 0) }}" class="modal-input">
+        </div>
+        <div class="form-group"></div>
         <div class="form-group"></div>
         <div class="form-group"></div>
     </div>
@@ -260,8 +306,12 @@
             <input type="text" name="sustituto" value="{{ old('sustituto') }}" class="modal-input">
         </div>
         <div class="form-group">
-            <label class="modal-label">Sustituto Adicional</label>
+            <label class="modal-label">Sustituto Adicional 1</label>
             <input type="text" name="sustituto1" value="{{ old('sustituto1') }}" class="modal-input">
+        </div>
+        <div class="form-group">
+            <label class="modal-label">Sustituto Adicional 2</label>
+            <input type="text" name="sustituto2" value="{{ old('sustituto2') }}" class="modal-input">
         </div>
         <div class="form-group">
             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding-top: 25px;">

@@ -154,6 +154,8 @@ class DBMasterController extends Controller
             'precio_minimo'       => 'nullable|numeric',
             'desc_precio_minimo'  => 'nullable|numeric',
             'precio_tope'         => 'nullable|numeric',
+            'desc_proveedor'      => 'nullable|numeric',
+            'porcetaje_descuento' => 'nullable|numeric',
             'margen_minimo'       => 'nullable|numeric',
             'costo_venta'         => 'nullable|numeric',
             'costo_promedio'      => 'nullable|numeric',

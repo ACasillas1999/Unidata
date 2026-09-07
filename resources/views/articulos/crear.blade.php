@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const precioVentaInput = document.getElementById('precio_venta');
     const desVentaFinalInput = document.getElementById('des_precio_venta');
     const descProvInput = document.getElementById('desc_proveedor');
+    const resDescProvInput = document.getElementById('resultado_desc_proveedor');
+    const porcDescInput = document.getElementById('porcetaje_descuento');
     const precioTopeInput = document.getElementById('precio_tope');
 
     function calculatePrices() {
@@ -81,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const d4 = parseFloat(descP4Input.value) || 0;
         const dEsp = parseFloat(descEspInput.value) || 0;
         const pPV = parseFloat(porcPVInput.value) || 0;
+        const pDesc = parseFloat(porcDescInput ? porcDescInput.value : 0) || 0;
         const dProv = parseFloat(descProvInput ? descProvInput.value : 0) || 0;
 
         // 1. Precio 4 = Precio_Lista * (100 - Desc_Precio4) / 100
@@ -103,14 +106,29 @@ document.addEventListener('DOMContentLoaded', function() {
             if (desVentaFinalInput) desVentaFinalInput.value = "0.00";
         }
 
-        // 5. Precio Tope = Precio_Lista * (100 - Desc_Proveedor) / 100
-        const pTope = lista * (100 - dProv) / 100;
+        // 5. Precio Proveedor (Resultado) = Precio_Lista * (100 - Desc_Proveedor) / 100
+        const resProv = lista * (100 - dProv) / 100;
+        if (resDescProvInput) resDescProvInput.value = resProv.toFixed(4);
+
+        // 6. Precio Tope = Precio_Lista * (100 - PorcentajeDescuento) / 100
+        const pTope = lista * (100 - pDesc) / 100;
         if (precioTopeInput) precioTopeInput.value = pTope.toFixed(4);
     }
 
-    [precioListaInput, descP4Input, descEspInput, porcPVInput, descProvInput].forEach(el => {
+    [precioListaInput, descP4Input, descEspInput, porcPVInput, porcDescInput, descProvInput].forEach(el => {
         if (el) el.addEventListener('input', calculatePrices);
     });
+
+    if (precioTopeInput) {
+        precioTopeInput.addEventListener('input', function() {
+            const lista = parseFloat(precioListaInput.value) || 0;
+            const pTope = parseFloat(this.value) || 0;
+            if (lista > 0) {
+                const pDesc = (100 - (pTope / lista * 100)).toFixed(2);
+                if (porcDescInput) porcDescInput.value = pDesc;
+            }
+        });
+    }
 
     // Ejecutar cálculo inicial
     calculatePrices();
