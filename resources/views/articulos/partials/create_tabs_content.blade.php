@@ -67,7 +67,7 @@
                 <select name="color_branch[{{ $branch->code }}]" class="modal-input" style="padding: 8px 12px; font-size: 13px;">
                     <option value="" {{ old('color_branch.' . $branch->code) === null || old('color_branch.' . $branch->code) === '' ? 'selected' : '' }}>Usar Color Base</option>
                     @for($i = 0; $i <= 9; $i++)
-                        <option value="{{ $i }}" {{ old('color_branch.' . $branch->code) !== null && old('color_branch.' . $branch->code) !== '' && old('color_branch.' . $branch->code) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                        <option value="{{ $i }}" {{ old('color_branch.' . $branch->code) !== null && old('color_branch.' . $branch->code) !== '' && (string)old('color_branch.' . $branch->code) === (string)$i ? 'selected' : '' }}>{{ $i }}</option>
                     @endfor
                 </select>
             </div>
@@ -143,7 +143,7 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Precio 4 (Resultado)</label>
-            <input type="number" step="0.0001" id="precio4" name="precio4" value="{{ old('precio4', 0) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+            <input type="number" step="0.01" id="precio4" name="precio4" value="{{ old('precio4', 0) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
         </div>
         <div class="form-group"></div>
         <div class="form-group"></div>
@@ -155,7 +155,7 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Especial</label>
-            <input type="number" step="0.0001" id="precio_especial" name="precio_especial" value="{{ old('precio_especial', 0) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+            <input type="number" step="0.01" id="precio_especial" name="precio_especial" value="{{ old('precio_especial', 0) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
         </div>
         <div class="form-group"></div>
         <div class="form-group"></div>
@@ -167,7 +167,7 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Venta</label>
-            <input type="number" step="0.0001" id="precio_venta" name="precio_venta" value="{{ old('precio_venta', 0) }}" class="modal-input" readonly style="background: var(--grad-premium); border:none; font-weight: bold; cursor: not-allowed;">
+            <input type="number" step="0.01" id="precio_venta" name="precio_venta" value="{{ old('precio_venta', 0) }}" class="modal-input" readonly style="background: var(--grad-premium); border:none; font-weight: bold; cursor: not-allowed;">
         </div>
         <div class="form-group" style="grid-column: span 2;">
             <label class="modal-label">Desc. Venta Final (%)</label>
@@ -180,57 +180,17 @@
             <input type="number" step="0.01" id="desc_proveedor" name="desc_proveedor" value="{{ old('desc_proveedor', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
-            <label class="modal-label">Precio Proveedor (Resultado)</label>
-            <input type="number" step="0.0001" id="resultado_desc_proveedor" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+            <label class="modal-label">Precio Proveedor (Gerente)</label>
+            <input type="number" step="0.01" id="resultado_desc_proveedor" name="precio_gerente" value="{{ old('precio_gerente', 0) }}" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
         </div>
         <div class="form-group">
-            <label class="modal-label">Porcentaje Descuento (%)</label>
+            <label class="modal-label">Porcentaje Descuento (Pricing)</label>
             <input type="number" step="0.01" id="porcetaje_descuento" name="porcetaje_descuento" value="{{ old('porcetaje_descuento', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Tope</label>
-            <input type="number" step="0.0001" id="precio_tope" name="precio_tope" value="{{ old('precio_tope', 0) }}" class="modal-input" style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--rose); font-weight: bold;">
+            <input type="number" step="0.01" id="precio_tope" name="precio_tope" value="{{ old('precio_tope', 0) }}" class="modal-input" style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--rose); font-weight: bold;">
         </div>
-
-        <!-- FILA 6: PRECIO MÍNIMO -->
-        <div class="form-group">
-            <label class="modal-label">Desc. Mínimo (%)</label>
-            <input type="number" step="0.01" id="desc_precio_minimo" name="desc_precio_minimo" value="{{ old('desc_precio_minimo', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Precio Mínimo</label>
-            <input type="number" step="0.0001" id="precio_minimo" name="precio_minimo" value="{{ old('precio_minimo', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group"></div>
-        <div class="form-group"></div>
-
-        <!-- HISTÓRICOS DE COMPRAS Y COSTOS -->
-        <div class="form-group" style="grid-column: span 4; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 10px; padding-top: 15px;">
-            <label style="color:var(--amber); font-size:11px; font-weight:800; text-transform:uppercase;">Histórico de Compras y Costos</label>
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Costo Promedio</label>
-            <input type="number" step="0.0001" name="costo_promedio" value="{{ old('costo_promedio', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Costo Promedio Ant.</label>
-            <input type="number" step="0.0001" name="costo_promedio_ant" value="{{ old('costo_promedio_ant', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Costo Últ. Compra</label>
-            <input type="number" step="0.0001" name="costo_ult_compra" value="{{ old('costo_ult_compra', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Fecha Últ. Compra</label>
-            <input type="date" name="fecha_ult_compra" value="{{ old('fecha_ult_compra') }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Costo Compra Ant.</label>
-            <input type="number" step="0.0001" name="costo_compra_ant" value="{{ old('costo_compra_ant', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group"></div>
-        <div class="form-group"></div>
-        <div class="form-group"></div>
     </div>
 </div>
 
@@ -246,18 +206,6 @@
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
-        <div class="form-group">
-            <label class="modal-label">Inv. Máximo</label>
-            <input type="number" step="0.01" name="inventario_maximo" value="{{ old('inventario_maximo', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Inv. Mínimo</label>
-            <input type="number" step="0.01" name="inventario_minimo" value="{{ old('inventario_minimo', 0) }}" class="modal-input">
-        </div>
-        <div class="form-group">
-            <label class="modal-label">Punto de Reorden</label>
-            <input type="number" step="0.01" name="punto_reorden" value="{{ old('punto_reorden', 0) }}" class="modal-input">
-        </div>
         <div class="form-group">
             <label class="modal-label">Ubicación (Almacén)</label>
             <input type="text" name="ubicacion" value="{{ old('ubicacion') }}" class="modal-input" placeholder="Ej: A-12-B">
@@ -322,10 +270,6 @@
     </div>
 
     <div style="display: flex; flex-wrap: wrap; gap: 24px; margin-top: 32px; padding: 20px; background: rgba(244,63,94,0.05); border-radius: 12px; border: 1px solid rgba(244,63,94,0.15);">
-        <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-            <input type="checkbox" name="en_promocion" value="1" {{ old('en_promocion') == '1' ? 'checked' : '' }} style="width:18px; height:18px; accent-color: var(--rose);">
-            <span style="font-size: 13px; font-weight: 700; color: white;">Vigencia en Promoción</span>
-        </label>
         <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
             <input type="checkbox" name="control_pedimentos" value="1" {{ old('control_pedimentos') == '1' ? 'checked' : '' }} style="width:18px; height:18px; accent-color: var(--rose);">
             <span style="font-size: 13px; font-weight: 700; color: white;">Requiere Control Pedimentos</span>

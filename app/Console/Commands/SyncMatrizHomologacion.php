@@ -63,6 +63,7 @@ class SyncMatrizHomologacion extends Command
             'costo_venta'         => 'CostoVenta',
             'porcetaje_descuento' => 'PorcentajeDescuento',
             'desc_proveedor'      => 'Desc_Proveedor',
+            'precio_gerente'      => 'Precio_gerente',
             'articulo_kit'        => 'Articulo_Kit',
             'margen_minimo'       => 'Margen_Minimo',
             'articulo_serie'      => 'Articulo_Serie',

@@ -59,17 +59,26 @@ class ArticulosController extends Controller
             $normalize('Precio_Venta')    => 'precio_venta',
             $normalize('Precio Venta')    => 'precio_venta',
             $normalize('Desc. P. Venta')  => 'des_precio_venta',
+            $normalize('Desc. P. Venta (Auto)') => 'des_precio_venta',
+            $normalize('Desc. P. Venta (Calculado)') => 'des_precio_venta',
             $normalize('% Desc. V')       => 'des_precio_venta',
             $normalize('Desc_Precio_Venta') => 'des_precio_venta',
             $normalize('P. Especial')     => 'precio_especial',
+            $normalize('P. Especial (Auto)') => 'precio_especial',
+            $normalize('P. Especial (Calculado)') => 'precio_especial',
             $normalize('P. Espec.')       => 'precio_especial',
             $normalize('Precio_Especial') => 'precio_especial',
             $normalize('Precio Especial') => 'precio_especial',
+            $normalize('Precio Especial (Auto)') => 'precio_especial',
+            $normalize('Precio Especial (Calculado)') => 'precio_especial',
             $normalize('Desc. P. Espec')  => 'desc_precio_espec',
             $normalize('% Desc. E')       => 'desc_precio_espec',
             $normalize('Desc_Precio_Espec') => 'desc_precio_espec',
             $normalize('Precio 4')        => 'precio4',
+            $normalize('Precio 4 (Auto)') => 'precio4',
+            $normalize('Precio 4 (Calculado)') => 'precio4',
             $normalize('Precio4')         => 'precio4',
+            $normalize('Precio4 (Auto)')  => 'precio4',
             $normalize('Desc. Precio 4')  => 'desc_precio4',
             $normalize('% Desc. 4')       => 'desc_precio4',
             $normalize('Desc_Precio4')    => 'desc_precio4',
@@ -101,8 +110,37 @@ class ArticulosController extends Controller
             $normalize('Ubicacion')       => 'ubicacion',
             $normalize('Sustituto')       => 'sustituto',
             $normalize('Sustituto1')      => 'sustituto1',
+            $normalize('Sustituto 1')     => 'sustituto1',
+            $normalize('Sustituto_1')     => 'sustituto1',
             $normalize('Sustituto2')      => 'sustituto2',
+            $normalize('Sustituto 2')     => 'sustituto2',
+            $normalize('Sustituto_2')     => 'sustituto2',
             $normalize('ID_Impuesto_SAT') => 'id_impuesto_sat',
+            $normalize('Desc. Proveedor') => 'desc_proveedor',
+            $normalize('Desc_Proveedor')  => 'desc_proveedor',
+            $normalize('Desc Prov')       => 'desc_proveedor',
+            $normalize('% Desc. Prov')    => 'desc_proveedor',
+            $normalize('Precio Gerente')  => 'precio_gerente',
+            $normalize('Precio Gerente (Auto)') => 'precio_gerente',
+            $normalize('Precio Gerente (Calculado)') => 'precio_gerente',
+            $normalize('Precio_Gerente')  => 'precio_gerente',
+            $normalize('Resultado Desc Proveedor') => 'precio_gerente',
+            $normalize('resultado_desc_proveedor') => 'precio_gerente',
+            $normalize('Precio Tope')     => 'precio_tope',
+            $normalize('Precio Tope (Auto)') => 'precio_tope',
+            $normalize('Precio Tope (Calculado)') => 'precio_tope',
+            $normalize('PrecioTope')      => 'precio_tope',
+            $normalize('Precio_Tope')     => 'precio_tope',
+            $normalize('Peso')            => 'peso',
+            $normalize('Std Pack')        => 'std_pack',
+            $normalize('StdPack')         => 'std_pack',
+            $normalize('Std_Pack')        => 'std_pack',
+            $normalize('Empaque')         => 'std_pack',
+            $normalize('Crítico')         => 'critico',
+            $normalize('Critico')         => 'critico',
+            $normalize('Control Pedimentos') => 'control_pedimentos',
+            $normalize('Control_Pedimentos') => 'control_pedimentos',
+            $normalize('Pedimentos')      => 'control_pedimentos',
         ];
 
         $branchFieldMap = \App\Support\ArticuloFieldMap::map();
@@ -347,11 +385,19 @@ class ArticulosController extends Controller
         ]);
     }
 
-    public function descargarMachote()
+    public function descargarMachote(Request $request)
     {
+        $tipo = $request->input('tipo', 'con_datos'); // vacio | con_datos | catalogo
+
+        $filename = match($tipo) {
+            'vacio'    => 'machote_articulos_vacio.csv',
+            'catalogo' => 'machote_articulos_catalogo_maestro.csv',
+            default    => 'machote_articulos_con_datos.csv',
+        };
+
         $headers = [
             'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="machote_articulos.csv"',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Pragma'              => 'no-cache',
             'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
             'Expires'             => '0',
@@ -359,28 +405,94 @@ class ArticulosController extends Controller
 
         $columns = [
             'Clave', 'Descripción', 'U.M.', 'Línea', 'Clasificación',
-            'Area', 'IVA', 'Ubicacion', 'Sustituto', 'MN/USD',
-            'P. Lista', 'P. Venta', 'Desc. P. Venta', 'P. Especial', 'Desc. P. Espec',
-            'Precio 4', 'Desc. Precio 4', 'Costo Venta', '% Descuento',
+            'Area', 'IVA', 'Ubicacion', 'Sustituto', 'Sustituto 1', 'Sustituto 2', 'MN/USD',
+            'P. Lista', 'P. Venta', 'Desc. P. Venta (Auto)', 'P. Especial (Auto)', 'Desc. P. Espec',
+            'Precio 4 (Auto)', 'Desc. Precio 4', 'Desc. Proveedor', 'Precio Gerente (Auto)', '% Descuento', 'Precio Tope (Auto)', 'Costo Venta',
             'Art. Kit', 'Art. Serie', 'Mg Mín', 'Color', 'Protocolo',
-            'IDSAT', 'ID_Impuesto_SAT', 'Estatus',
+            'IDSAT', 'ID_Impuesto_SAT', 'Peso', 'Std Pack', 'Crítico', 'Control Pedimentos', 'Estatus',
         ];
 
-        $example = [
-            'ART001', 'EJEMPLO PRODUCTO XYZ', 'PZA', 'ELEC', 'ELECT',
-            '1', '16', 'A-01', '', '0',
-            '100.00', '90.00', '0', '85.00', '0',
-            '80.00', '0', '70.00', '0',
-            '0', '0', '20', '0', '0',
-            '43211501', 'IVA', 'ACTIVO',
-        ];
-
-        $callback = function () use ($columns, $example) {
+        $callback = function () use ($columns, $tipo) {
             $handle = fopen('php://output', 'w');
-            // BOM para Excel
+            // UTF-8 BOM para apertura nativa en Excel sin problemas de acentos
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, $columns);
-            fputcsv($handle, $example);
+
+            if ($tipo === 'vacio') {
+                fclose($handle);
+                return;
+            }
+
+            if ($tipo === 'catalogo') {
+                // Exportar catálogo maestro formateado a 2 decimales en todos los precios
+                $articles = DbMasterArticle::take(1000)->get();
+                foreach ($articles as $art) {
+                    $pLista = (float)($art->precio_lista ?? 0);
+                    $dProv  = (float)($art->desc_proveedor ?? 0);
+                    $pGerente = round($pLista * (100 - $dProv) / 100, 2);
+
+                    $row = [
+                        $art->clave,
+                        $art->descripcion,
+                        $art->unidad_medida,
+                        $art->linea,
+                        $art->clasificacion,
+                        $art->area ?? 1,
+                        number_format((float)($art->iva ?? 16), 2, '.', ''),
+                        $art->ubicacion ?? 'GENERAL',
+                        $art->sustituto ?? '0',
+                        $art->sustituto1 ?? '0',
+                        $art->sustituto2 ?? '0',
+                        $art->mn_usd ?? 0,
+                        number_format($pLista, 2, '.', ''),
+                        number_format((float)($art->precio_venta ?? 0), 2, '.', ''),
+                        number_format((float)($art->des_precio_venta ?? 0), 2, '.', ''),
+                        number_format((float)($art->precio_especial ?? 0), 2, '.', ''),
+                        number_format((float)($art->desc_precio_espec ?? 0), 2, '.', ''),
+                        number_format((float)($art->precio4 ?? 0), 2, '.', ''),
+                        number_format((float)($art->desc_precio4 ?? 0), 2, '.', ''),
+                        number_format($dProv, 2, '.', ''),
+                        number_format($pGerente, 2, '.', ''),
+                        number_format((float)($art->porcetaje_descuento ?? 0), 2, '.', ''),
+                        number_format((float)($art->precio_tope ?? 0), 2, '.', ''),
+                        number_format((float)($art->costo_venta ?? 0), 2, '.', ''),
+                        $art->articulo_kit ?? 0,
+                        $art->articulo_serie ?? 0,
+                        number_format((float)($art->margen_minimo ?? 0), 2, '.', ''),
+                        $art->color ?? 0,
+                        $art->protocolo ?? 0,
+                        $art->idsat ?? '',
+                        $art->id_impuesto_sat ?? '002',
+                        number_format((float)($art->peso ?? 0), 2, '.', ''),
+                        number_format((float)($art->std_pack ?? 1), 2, '.', ''),
+                        $art->critico ?? 0,
+                        $art->control_pedimentos ?? 0,
+                        $art->habilitado ? 'ACTIVO' : 'INACTIVO',
+                    ];
+                    fputcsv($handle, $row);
+                }
+            } else {
+                // con_datos (valores de ejemplo fijos a 2 decimales)
+                $example1 = [
+                    'ART001', 'EJEMPLO PRODUCTO XYZ', 'PZA', 'ELEC', 'ELECT',
+                    '1', '16.00', 'GENERAL', '0', '0', '0', '0',
+                    '100.00', '90.00', '10.00', '85.00', '15.00',
+                    '80.00', '20.00', '10.00', '90.00', '30.00', '70.00', '0.00',
+                    '0', '0', '20.00', '0', '0',
+                    '43211501', '002', '1.00', '1.00', '0', '0', 'ACTIVO',
+                ];
+                $example2 = [
+                    'ART002', 'EJEMPLO PRODUCTO ABC', 'PZA', 'HERR', 'HERRA',
+                    '1', '16.00', 'GENERAL', '0', '0', '0', '0',
+                    '200.00', '180.00', '10.00', '170.00', '15.00',
+                    '160.00', '20.00', '12.00', '176.00', '25.00', '150.00', '0.00',
+                    '0', '0', '20.00', '0', '0',
+                    '43211501', '002', '2.00', '1.00', '0', '0', 'ACTIVO',
+                ];
+                fputcsv($handle, $example1);
+                fputcsv($handle, $example2);
+            }
+
             fclose($handle);
         };
 
@@ -473,9 +585,13 @@ class ArticulosController extends Controller
                     }
 
                     if ($foundInUi) {
-                        // 1. Manejo de booleanos
-                        if (in_array($field, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'mn_usd', 'color', 'protocolo'])) {
-                            $val = (in_array(strtoupper($val), ['ACTIVO', '1', 'SI', 'SÍ', 'S', 'TRUE', 'VERDADERO'])) ? 1 : 0;
+                        // 1. Manejo de booleanos (excluyendo color que es un entero de 0 a 9)
+                        if (in_array($field, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'mn_usd', 'protocolo'])) {
+                            $val = (in_array(strtoupper((string)$val), ['ACTIVO', '1', 'SI', 'SÍ', 'S', 'TRUE', 'VERDADERO'])) ? 1 : 0;
+                        }
+
+                        if ($field === 'color') {
+                            $val = is_numeric($val) ? (int)$val : 0;
                         }
 
                         // 2. Truncado según esquema real (evitar SQL Truncated errors)
@@ -486,11 +602,12 @@ class ArticulosController extends Controller
                         if ($field === 'ubicacion') $val = mb_substr((string)$val, 0, 10);
                         if ($field === 'idsat') $val = mb_substr((string)$val, 0, 25);
                         if ($field === 'id_impuesto_sat') $val = mb_substr((string)$val, 0, 3);
+                        if (in_array($field, ['sustituto', 'sustituto1', 'sustituto2'])) $val = mb_substr((string)$val, 0, 40);
 
                         // 3. Gestión de numéricos (evitar Not Null errors)
                         $numericCols = [
                             'precio_lista', 'precio_venta', 'des_precio_venta', 'precio_especial', 
-                            'desc_precio_espec', 'precio4', 'desc_precio4', 'costo_venta', 
+                            'desc_precio_espec', 'precio4', 'desc_precio4', 'desc_proveedor', 'precio_gerente', 'precio_tope', 'costo_venta', 
                             'porcetaje_descuento', 'margen_minimo', 'area', 'iva', 'peso',
                             'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'std_pack'
                         ];
@@ -513,6 +630,29 @@ class ArticulosController extends Controller
                 // --- GOBERNANZA: SOLO ACTUALIZACIONES ---
                 $masterCurrent = DbMasterArticle::where('clave', $clave)->first();
                 if (!$masterCurrent) continue; // Si no existe en el maestro, no se puede crear vía CSV
+
+                // --- AUTO-CÁLCULO SIEMPRE DE CAMPOS DERIVADOS VÍA FÓRMULA (2 DECIMALES) ---
+                $pLista = isset($updateDataMaster['precio_lista']) ? (float)$updateDataMaster['precio_lista'] : (float)($masterCurrent->precio_lista ?? 0);
+                $d4     = isset($updateDataMaster['desc_precio4']) ? (float)$updateDataMaster['desc_precio4'] : (float)($masterCurrent->desc_precio4 ?? 0);
+                $dEsp   = isset($updateDataMaster['desc_precio_espec']) ? (float)$updateDataMaster['desc_precio_espec'] : (float)($masterCurrent->desc_precio_espec ?? 0);
+                $dProv  = isset($updateDataMaster['desc_proveedor']) ? (float)$updateDataMaster['desc_proveedor'] : (float)($masterCurrent->desc_proveedor ?? 0);
+                $pDesc  = isset($updateDataMaster['porcetaje_descuento']) ? (float)$updateDataMaster['porcetaje_descuento'] : (float)($masterCurrent->porcetaje_descuento ?? 0);
+
+                $calcP4 = round($pLista * (100 - $d4) / 100, 2);
+                $updateDataMaster['precio4'] = $calcP4;
+                $updateDataBranch['Precio4'] = $calcP4;
+
+                $calcPEsp = round($pLista * (100 - $dEsp) / 100, 2);
+                $updateDataMaster['precio_especial'] = $calcPEsp;
+                $updateDataBranch['Precio_Especial'] = $calcPEsp;
+
+                $calcPrecioGerente = round($pLista * (100 - $dProv) / 100, 2);
+                $updateDataMaster['precio_gerente'] = $calcPrecioGerente;
+                $updateDataBranch['Precio_gerente'] = $calcPrecioGerente;
+
+                $calcPrecioTope = round($pLista * (100 - $pDesc) / 100, 2);
+                $updateDataMaster['precio_tope'] = $calcPrecioTope;
+                $updateDataBranch['PrecioTope']   = $calcPrecioTope;
 
                 // --- AUDITORÍA ANTES DE ACTUALIZAR ---
                 $auditEntries = [];
@@ -674,6 +814,8 @@ class ArticulosController extends Controller
                 'desc_precio_espec'   => 'Desc. P. Espec',
                 'precio4'             => 'Precio 4',
                 'desc_precio4'        => 'Desc. Precio 4',
+                'desc_proveedor'      => 'Desc. Proveedor',
+                'precio_gerente'      => 'Precio Gerente',
                 'costo_venta'         => 'Costo Venta',
                 'porcetaje_descuento' => '% Descuento',
                 'articulo_kit'        => 'Art. Kit',
@@ -758,13 +900,42 @@ class ArticulosController extends Controller
                     }
                 }
 
+                // --- REVISAR RECÁLCULO OBLIGATORIO DE CAMPOS VÍA FÓRMULA (2 DECIMALES) ---
+                $pLista = isset($csvItem['precio_lista']) ? (float)$csvItem['precio_lista'] : (float)($masterItem->precio_lista ?? 0);
+                $d4     = isset($csvItem['desc_precio4']) ? (float)$csvItem['desc_precio4'] : (float)($masterItem->desc_precio4 ?? 0);
+                $dEsp   = isset($csvItem['desc_precio_espec']) ? (float)$csvItem['desc_precio_espec'] : (float)($masterItem->desc_precio_espec ?? 0);
+                $dProv  = isset($csvItem['desc_proveedor']) ? (float)$csvItem['desc_proveedor'] : (float)($masterItem->desc_proveedor ?? 0);
+                $pDesc  = isset($csvItem['porcetaje_descuento']) ? (float)$csvItem['porcetaje_descuento'] : (float)($masterItem->porcetaje_descuento ?? 0);
+
+                $formulaFields = [
+                    'precio4'         => ['label' => 'Precio 4',       'new' => round($pLista * (100 - $d4) / 100, 2),    'old' => round((float)($masterItem->precio4 ?? 0), 2)],
+                    'precio_especial' => ['label' => 'P. Especial',     'new' => round($pLista * (100 - $dEsp) / 100, 2),  'old' => round((float)($masterItem->precio_especial ?? 0), 2)],
+                    'precio_gerente'  => ['label' => 'Precio Gerente',  'new' => round($pLista * (100 - $dProv) / 100, 2), 'old' => round((float)($masterItem->precio_gerente ?? 0), 2)],
+                    'precio_tope'     => ['label' => 'Precio Tope',     'new' => round($pLista * (100 - $pDesc) / 100, 2), 'old' => round((float)($masterItem->precio_tope ?? 0), 2)],
+                ];
+
+                foreach ($formulaFields as $fKey => $fInfo) {
+                    // Solo evaluar fórmulas si su columna o sus detonadores están seleccionados en la UI
+                    $isColSelected = in_array($fInfo['label'], $columnsSelected) || in_array('P. Lista', $columnsSelected);
+                    if ($isColSelected && $fInfo['new'] !== $fInfo['old']) {
+                        $hasDifference = true;
+                        $rowDiff[$fKey] = [
+                            'old'        => number_format($fInfo['old'], 2, '.', ''),
+                            'new'        => number_format($fInfo['new'], 2, '.', ''),
+                            'is_formula' => true
+                        ];
+                        $changedCols[$fInfo['label']] = true;
+                    }
+                }
+
                 if ($hasDifference) {
                     $diffs[] = [
                         'clave'       => $clave,
                         'description' => $masterItem->descripcion,
                         'status'      => 'update',
                         'diff'        => $rowDiff,
-                        'full_new'    => $csvItem
+                        'full_new'    => $csvItem,
+                        'master_data' => $masterItem->toArray()
                     ];
                 }
             }
@@ -956,6 +1127,7 @@ class ArticulosController extends Controller
             'precio4'             => 'nullable|numeric',
             'desc_precio4'        => 'nullable|numeric',
             'desc_proveedor'      => 'nullable|numeric',
+            'precio_gerente'      => 'nullable|numeric',
             'precio_tope'         => 'nullable|numeric',
             'costo_venta'         => 'nullable|numeric',
             'porcetaje_descuento' => 'nullable|numeric',
@@ -995,11 +1167,43 @@ class ArticulosController extends Controller
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
 
-            // Automatización de campos fijos
+            // Automatización de campos fijos y valores por defecto para sucursales (evitar NOT NULL SQL errors)
             $data['fecha_alta']      = now()->toDateString();
-            $data['id_impuesto_sat'] = '002';
-            $data['iva']             = 16;
+            $data['id_impuesto_sat'] = !empty($data['id_impuesto_sat']) ? $data['id_impuesto_sat'] : '002';
+            $data['iva']             = isset($data['iva']) && $data['iva'] !== '' && $data['iva'] !== null ? $data['iva'] : 16;
             $data['id_tipo_factor']  = 'Tasa';
+            $data['area']            = isset($data['area']) && $data['area'] !== '' && $data['area'] !== null ? (int)$data['area'] : 1;
+            $data['mn_usd']          = !empty($data['mn_usd']) ? 1 : 0;
+            $data['color']           = isset($data['color']) && $data['color'] !== '' && $data['color'] !== null ? (int)$data['color'] : 0;
+            $data['protocolo']       = !empty($data['protocolo']) ? 1 : 0;
+            $data['articulo_kit']    = !empty($data['articulo_kit']) ? 1 : 0;
+            $data['articulo_serie']  = !empty($data['articulo_serie']) ? 1 : 0;
+            $data['en_promocion']    = !empty($data['en_promocion']) ? 1 : 0;
+            $data['critico']         = !empty($data['critico']) ? 1 : 0;
+            $data['control_pedimentos'] = !empty($data['control_pedimentos']) ? 1 : 0;
+            $data['ubicacion']       = (isset($data['ubicacion']) && $data['ubicacion'] !== null && $data['ubicacion'] !== '') ? $data['ubicacion'] : 'GENERAL';
+            $data['idsat']           = (isset($data['idsat']) && $data['idsat'] !== null && $data['idsat'] !== '') ? $data['idsat'] : '01010101';
+            $data['sustituto']       = (isset($data['sustituto']) && $data['sustituto'] !== null && $data['sustituto'] !== '') ? $data['sustituto'] : '0';
+            $data['sustituto1']      = (isset($data['sustituto1']) && $data['sustituto1'] !== null && $data['sustituto1'] !== '') ? $data['sustituto1'] : '0';
+            $data['sustituto2']      = (isset($data['sustituto2']) && $data['sustituto2'] !== null && $data['sustituto2'] !== '') ? $data['sustituto2'] : '0';
+            $data['peso']            = isset($data['peso']) && is_numeric($data['peso']) ? $data['peso'] : 0;
+            $data['std_pack']        = isset($data['std_pack']) && is_numeric($data['std_pack']) ? $data['std_pack'] : 1;
+
+            $numericFields = [
+                'precio_lista', 'precio_venta', 'des_precio_venta', 'precio_especial',
+                'desc_precio_espec', 'precio4', 'desc_precio4', 'desc_proveedor', 'precio_gerente',
+                'precio_tope', 'costo_venta', 'porcetaje_descuento', 'margen_minimo'
+            ];
+            foreach ($numericFields as $nf) {
+                if (!isset($data[$nf]) || $data[$nf] === null || $data[$nf] === '') {
+                    $data[$nf] = 0;
+                }
+            }
+
+            // SIEMPRE calcular precio_gerente con fórmula a 2 decimales
+            $pLista = (float)($data['precio_lista'] ?? 0);
+            $dProv  = (float)($data['desc_proveedor'] ?? 0);
+            $data['precio_gerente'] = round($pLista * (100 - $dProv) / 100, 2);
 
             // Extraer color_branch del array $data antes de crear en db_master
             $colorBranchMap = $data['color_branch'] ?? [];
@@ -1040,6 +1244,7 @@ class ArticulosController extends Controller
                 }
             }
 
+            $successfulBranchCodes = [];
             foreach ($branches as $branch) {
                 $replLogger->info("Sucursal {$branch->name} ({$branch->code}): Iniciando...");
                 try {
@@ -1047,11 +1252,22 @@ class ArticulosController extends Controller
                     $replLogger->info("Sucursal {$branch->name}: Conexión exitosa.");
                     
                     $localBranchData = $branchData;
-                    if (isset($colorBranchMap[$branch->code]) && $colorBranchMap[$branch->code] !== '' && $colorBranchMap[$branch->code] !== null) {
-                        $localBranchData['Color'] = (int) $colorBranchMap[$branch->code];
+                    
+                    $branchCode = $branch->code;
+                    $branchCodeUpper = strtoupper($branchCode);
+                    $branchCodeLower = strtolower($branchCode);
+
+                    $customColor = $colorBranchMap[$branchCode]
+                        ?? $colorBranchMap[$branchCodeUpper]
+                        ?? $colorBranchMap[$branchCodeLower]
+                        ?? null;
+
+                    if ($customColor !== '' && $customColor !== null) {
+                        $localBranchData['Color'] = (int) $customColor;
                     }
 
                     $conn->table('articulo')->insert($localBranchData);
+                    $successfulBranchCodes[] = $branch->code;
                     $replLogger->info("Sucursal {$branch->name}: Inserción exitosa.");
                 } catch (\Throwable $e) {
                     $errorMsg = "Error en sucursal {$branch->name}: " . $e->getMessage();
@@ -1060,6 +1276,56 @@ class ArticulosController extends Controller
                 }
             }
             $replLogger->info("--- FIN REPLICACIÓN ARTÍCULO: " . $data['clave'] . " ---");
+
+            // 4. Sincronizar inmediatamente a la Matriz de Homologación
+            try {
+                $matrizData = [
+                    'clave'               => $data['clave'],
+                    'descripcion'         => $data['descripcion'],
+                    'unidad_medida'       => $data['unidad_medida'],
+                    'linea'               => $data['linea'],
+                    'clasificacion'       => $data['clasificacion'],
+                    'area'                => $data['area'] ?? 1,
+                    'mn_usd'              => $data['mn_usd'] ?? 0,
+                    'precio_lista'        => $data['precio_lista'] ?? 0,
+                    'des_precio_venta'    => $data['des_precio_venta'] ?? 0,
+                    'precio_venta'        => $data['precio_venta'] ?? 0,
+                    'desc_precio_espec'   => $data['desc_precio_espec'] ?? 0,
+                    'precio_especial'     => $data['precio_especial'] ?? 0,
+                    'desc_precio4'        => $data['desc_precio4'] ?? 0,
+                    'precio4'             => $data['precio4'] ?? 0,
+                    'desc_proveedor'      => $data['desc_proveedor'] ?? 0,
+                    'precio_gerente'      => $data['precio_gerente'] ?? 0,
+                    'precio_tope'         => $data['precio_tope'] ?? 0,
+                    'costo_venta'         => $data['costo_venta'] ?? 0,
+                    'porcetaje_descuento' => $data['porcetaje_descuento'] ?? 0,
+                    'articulo_kit'        => $data['articulo_kit'] ?? 0,
+                    'articulo_serie'      => $data['articulo_serie'] ?? 0,
+                    'margen_minimo'       => $data['margen_minimo'] ?? 0,
+                    'color'               => $data['color'] ?? 0,
+                    'protocolo'           => $data['protocolo'] ?? 0,
+                    'idsat'               => $data['idsat'] ?? null,
+                    'id_impuesto_sat'     => $data['id_impuesto_sat'] ?? '002',
+                    'iva'                 => $data['iva'] ?? 16,
+                    'habilitado'          => $data['habilitado'] ?? 1,
+                    'fecha_alta'          => $data['fecha_alta'] ?? now()->toDateString(),
+                ];
+
+                $physicalCols = \App\Models\MatrizHomologacion::getPhysicalBranchColumns();
+                foreach ($successfulBranchCodes as $bCode) {
+                    $colName = \App\Models\MatrizHomologacion::resolveColumnName($bCode);
+                    if (in_array($colName, $physicalCols)) {
+                        $matrizData[$colName] = 1;
+                    }
+                }
+
+                \App\Models\MatrizHomologacion::updateOrCreate(
+                    ['clave' => $data['clave']],
+                    $matrizData
+                );
+            } catch (\Throwable $e) {
+                Log::warning("No se pudo actualizar matriz_homologacions al crear el artículo {$data['clave']}: " . $e->getMessage());
+            }
 
             // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
             $this->powerSales->syncArticulo($branchData);

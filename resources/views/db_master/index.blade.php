@@ -533,7 +533,9 @@ function openEditModal(row) {
     const pListaInit = parseFloat(row.precio_lista) || 0;
     const dProvInit = parseFloat(row.desc_proveedor) || 0;
     const resDescProvEl = document.getElementById('edit-resultado_desc_proveedor');
-    if (resDescProvEl) resDescProvEl.value = (pListaInit * (100 - dProvInit) / 100).toFixed(4);
+    if (resDescProvEl) {
+        resDescProvEl.value = (pListaInit * (100 - dProvInit) / 100).toFixed(2);
+    }
 
     let porcDescVal = row.porcetaje_descuento || 0;
     if (!porcDescVal && (row.precio_lista > 0) && (row.precio_tope > 0)) {
@@ -594,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!editPrecioLista || !editDescProv || !editResDescProv) return;
         const pLista = parseFloat(editPrecioLista.value) || 0;
         const dProv = parseFloat(editDescProv.value) || 0;
-        editResDescProv.value = (pLista * (100 - dProv) / 100).toFixed(4);
+        editResDescProv.value = (pLista * (100 - dProv) / 100).toFixed(2);
     }
 
     if (editDescProv) editDescProv.addEventListener('input', updateResDescProv);
@@ -818,7 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Precio Proveedor (Resultado)</label>
-                            <input type="number" step="0.0001" id="edit-resultado_desc_proveedor" readonly class="modal-input readonly">
+                            <input type="number" step="0.01" name="precio_gerente" id="edit-resultado_desc_proveedor" readonly class="modal-input readonly">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Porcentaje Descuento (%)</label>

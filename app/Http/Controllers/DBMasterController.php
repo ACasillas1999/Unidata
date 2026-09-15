@@ -155,6 +155,7 @@ class DBMasterController extends Controller
             'desc_precio_minimo'  => 'nullable|numeric',
             'precio_tope'         => 'nullable|numeric',
             'desc_proveedor'      => 'nullable|numeric',
+            'precio_gerente'      => 'nullable|numeric',
             'porcetaje_descuento' => 'nullable|numeric',
             'margen_minimo'       => 'nullable|numeric',
             'costo_venta'         => 'nullable|numeric',
@@ -181,6 +182,18 @@ class DBMasterController extends Controller
         ]);
 
         try {
+            // SIEMPRE se recalculan las fórmulas de precios a 2 decimales
+            $pLista = (float)($data['precio_lista'] ?? $article->precio_lista ?? 0);
+            $d4     = (float)($data['desc_precio4'] ?? $article->desc_precio4 ?? 0);
+            $dEsp   = (float)($data['desc_precio_espec'] ?? $article->desc_precio_espec ?? 0);
+            $dProv  = (float)($data['desc_proveedor'] ?? $article->desc_proveedor ?? 0);
+            $pDesc  = (float)($data['porcetaje_descuento'] ?? $article->porcetaje_descuento ?? 0);
+
+            $data['precio4']         = round($pLista * (100 - $d4) / 100, 2);
+            $data['precio_especial'] = round($pLista * (100 - $dEsp) / 100, 2);
+            $data['precio_gerente']  = round($pLista * (100 - $dProv) / 100, 2);
+            $data['precio_tope']     = round($pLista * (100 - $pDesc) / 100, 2);
+
             $article->update($data);
 
             // Replicar a sucursales activas (misma logica que ArticulosController::procesarSubida)

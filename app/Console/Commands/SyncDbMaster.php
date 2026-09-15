@@ -70,7 +70,7 @@ class SyncDbMaster extends Command
                 'clave', 'descripcion', 'unidad_medida', 'linea', 'clasificacion', 'area',
                 'mn_usd', 'precio_lista', 'des_precio_venta', 'precio_venta',
                 'desc_precio_espec', 'precio_especial', 'desc_precio4', 'precio4',
-                'desc_precio_minimo', 'precio_minimo', 'precio_tope', 'desc_proveedor',
+                'desc_precio_minimo', 'precio_minimo', 'precio_tope', 'desc_proveedor', 'precio_gerente',
                 'articulo_kit', 'margen_minimo', 'articulo_serie', 'color',
                 'protocolo', 'idsat', 'costo_venta', 'porcetaje_descuento',
                 'clave_proveedor_1', 'costo_act_prov_1', 'clave_prov_2', 'costo_act_prov_2', 'clave_prov_3', 'costo_act_prov_3', 'fecha_costo_act_p',

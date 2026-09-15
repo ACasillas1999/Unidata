@@ -32,6 +32,7 @@ class ArticuloFieldMap
             'costo_venta'         => 'CostoVenta',
             'porcetaje_descuento' => 'PorcentajeDescuento',
             'desc_proveedor'      => 'Desc_Proveedor',
+            'precio_gerente'      => 'Precio_gerente',
             'articulo_kit'        => 'Articulo_Kit',
             'articulo_serie'      => 'Articulo_Serie',
             'margen_minimo'       => 'Margen_Minimo',

@@ -88,15 +88,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 1. Precio 4 = Precio_Lista * (100 - Desc_Precio4) / 100
         const p4 = lista * (100 - d4) / 100;
-        if (precio4Input) precio4Input.value = p4.toFixed(4);
+        if (precio4Input) precio4Input.value = p4.toFixed(2);
 
         // 2. Precio Especial = Precio_Lista * (100 - Desc_Precio_Esp) / 100
         const pEsp = lista * (100 - dEsp) / 100;
-        if (precioEspInput) precioEspInput.value = pEsp.toFixed(4);
+        if (precioEspInput) precioEspInput.value = pEsp.toFixed(2);
 
         // 3. Precio Venta = Precio_Especial * (1 + Porcentaje_PV / 100)
         const pVenta = pEsp * (1 + pPV / 100);
-        if (precioVentaInput) precioVentaInput.value = pVenta.toFixed(4);
+        if (precioVentaInput) precioVentaInput.value = pVenta.toFixed(2);
 
         // 4. Descuento Precio Venta = 100 - Precio_Venta / Precio_Lista * 100
         if (lista > 0) {
@@ -108,11 +108,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 5. Precio Proveedor (Resultado) = Precio_Lista * (100 - Desc_Proveedor) / 100
         const resProv = lista * (100 - dProv) / 100;
-        if (resDescProvInput) resDescProvInput.value = resProv.toFixed(4);
+        if (resDescProvInput) resDescProvInput.value = resProv.toFixed(2);
 
         // 6. Precio Tope = Precio_Lista * (100 - PorcentajeDescuento) / 100
         const pTope = lista * (100 - pDesc) / 100;
-        if (precioTopeInput) precioTopeInput.value = pTope.toFixed(4);
+        if (precioTopeInput) precioTopeInput.value = pTope.toFixed(2);
     }
 
     [precioListaInput, descP4Input, descEspInput, porcPVInput, porcDescInput, descProvInput].forEach(el => {
