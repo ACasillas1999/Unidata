@@ -119,8 +119,8 @@
         <div class="form-group">
             <label class="modal-label">Moneda</label>
             <select name="mn_usd" class="modal-input">
-                <option value="0" {{ old('mn_usd') == '0' ? 'selected' : '' }}>MXN (Pesos)</option>
-                <option value="1" {{ old('mn_usd') == '1' ? 'selected' : '' }}>USD (Dólares)</option>
+                <option value="M" {{ old('mn_usd') == 'U' || old('mn_usd') == '1' ? '' : 'selected' }}>MXN (Pesos)</option>
+                <option value="U" {{ old('mn_usd') == 'U' || old('mn_usd') == '1' ? 'selected' : '' }}>USD (Dólares)</option>
             </select>
         </div>
         <div class="form-group">
@@ -163,7 +163,7 @@
         <!-- FILA 4: PRECIO VENTA -->
         <div class="form-group">
             <label class="modal-label">Porcentaje PV (%)</label>
-            <input type="number" step="0.01" id="porcentaje_pv" name="porcentaje_pv" value="{{ old('porcentaje_pv', 5.27) }}" class="modal-input">
+            <input type="number" step="0.01" id="porcentaje_pv" name="porcentaje_pv" value="{{ old('porcentaje_pv', 5.27) }}" class="modal-input" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1); font-weight: bold;">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Venta</label>

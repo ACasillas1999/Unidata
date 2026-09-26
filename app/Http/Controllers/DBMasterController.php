@@ -34,7 +34,11 @@ class DBMasterController extends Controller
         foreach ($activeBranches as $branch) {
             $colName = MatrizHomologacion::resolveColumnName($branch->code);
             if (in_array($colName, $physicalCols)) {
-                $branches[strtoupper($branch->name)] = ['col' => $colName];
+                $branches[strtoupper($branch->name)] = [
+                    'col'  => $colName,
+                    'code' => $branch->code,
+                    'name' => $branch->name,
+                ];
             }
         }
         return $branches;
@@ -88,10 +92,36 @@ class DBMasterController extends Controller
             $query->orderBy($orderCol, $dir);
             $paginator = $query->paginate($perPage)->withQueryString();
 
-            $paginator->getCollection()->transform(function ($item) use ($branches) {
+            // Obtenemos los colores específicos de cada sucursal para la página actual
+            $colorBranchMapByClave = [];
+            $claves = $paginator->getCollection()->pluck('clave')->filter()->toArray();
+
+            if (!empty($claves)) {
+                $activeBranchModels = $this->connectionManager->getActiveBranches();
+                foreach ($activeBranchModels as $bModel) {
+                    try {
+                        $conn = $this->connectionManager->connect($bModel->code);
+                        $branchColors = $conn->table('articulo')
+                            ->whereIn('Clave_Articulo', $claves)
+                            ->select('Clave_Articulo', 'Color')
+                            ->get();
+
+                        foreach ($branchColors as $bc) {
+                            if ($bc->Color !== null) {
+                                $colorBranchMapByClave[$bc->Clave_Articulo][$bModel->code] = (int)$bc->Color;
+                            }
+                        }
+                    } catch (\Throwable $tb) {
+                        Log::warning("No se pudo obtener color de sucursal {$bModel->code}: " . $tb->getMessage());
+                    }
+                }
+            }
+
+            $paginator->getCollection()->transform(function ($item) use ($branches, $colorBranchMapByClave) {
                 $out = (object) $item->toArray();
                 $out->Codigo_Deasa      = $item->clave;
                 $out->Descripcion_Deasa = $item->descripcion;
+                $out->color_branch      = $colorBranchMapByClave[$item->clave] ?? [];
                 foreach ($branches as $info) {
                     $out->{$info['col']} = 'ACTIVO';
                 }
@@ -138,13 +168,16 @@ class DBMasterController extends Controller
             'clasificacion'       => 'sometimes|required|string|max:6',
             'area'                => 'sometimes|required|integer',
             'unidad_medida'       => 'sometimes|required|string|max:4',
-            'color'               => 'nullable|boolean',
+            'color'               => 'nullable|integer|between:0,9',
+            'color_branch'        => 'nullable|array',
+            'color_branch.*'      => 'nullable|integer|between:0,9',
             'protocolo'           => 'nullable|boolean',
             'articulo_kit'        => 'nullable|boolean',
             'articulo_serie'      => 'nullable|boolean',
             'habilitado'          => 'nullable|boolean',
-            'mn_usd'              => 'nullable|boolean',
+            'mn_usd'              => 'nullable|string|max:10',
             'precio_lista'        => 'nullable|numeric',
+            'porcentaje_pv'       => 'nullable|numeric',
             'precio_venta'        => 'nullable|numeric',
             'des_precio_venta'    => 'nullable|numeric',
             'precio_especial'     => 'nullable|numeric',
@@ -173,6 +206,7 @@ class DBMasterController extends Controller
             'idsat'               => 'nullable|string|max:25',
             'id_impuesto_sat'     => 'nullable|string|max:3',
             'iva'                 => 'nullable|numeric',
+            'id_tipo_factor'      => 'nullable|string|max:10',
             'sustituto'           => 'nullable|string',
             'sustituto1'          => 'nullable|string',
             'sustituto2'          => 'nullable|string',
@@ -182,10 +216,14 @@ class DBMasterController extends Controller
         ]);
 
         try {
+            $colorBranchMap = $request->input('color_branch', []);
+            unset($data['color_branch']);
+
             // SIEMPRE se recalculan las fórmulas de precios a 2 decimales
             $pLista = (float)($data['precio_lista'] ?? $article->precio_lista ?? 0);
             $d4     = (float)($data['desc_precio4'] ?? $article->desc_precio4 ?? 0);
             $dEsp   = (float)($data['desc_precio_espec'] ?? $article->desc_precio_espec ?? 0);
+            $pPV    = (float)($data['porcentaje_pv'] ?? $article->porcentaje_pv ?? 5.27);
             $dProv  = (float)($data['desc_proveedor'] ?? $article->desc_proveedor ?? 0);
             $pDesc  = (float)($data['porcetaje_descuento'] ?? $article->porcetaje_descuento ?? 0);
 
@@ -194,17 +232,31 @@ class DBMasterController extends Controller
             $data['precio_gerente']  = round($pLista * (100 - $dProv) / 100, 2);
             $data['precio_tope']     = round($pLista * (100 - $pDesc) / 100, 2);
 
+            $pEspCalc                = $pLista * (100 - $dEsp) / 100;
+            $data['precio_venta']    = round($pEspCalc * (1 + $pPV / 100), 2);
+            if ($pLista > 0) {
+                $data['des_precio_venta'] = round((1 - ($data['precio_venta'] / $pLista)) * 100, 2);
+            }
+
             $article->update($data);
 
-            // Replicar a sucursales activas (misma logica que ArticulosController::procesarSubida)
-            $branchData = ArticuloFieldMap::toBranchFormat(array_merge(['clave' => $article->clave], $data));
+            // Replicar a sucursales activas (usando el articulo completo ya actualizado)
+            $branchData = ArticuloFieldMap::toBranchFormat($article->fresh()->toArray());
             $branches   = $this->connectionManager->getActiveBranches();
             $branchResults = [];
 
             foreach ($branches as $branch) {
                 try {
                     $conn = $this->connectionManager->connect($branch->code);
-                    $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($branchData);
+                    $existingCols = $conn->getSchemaBuilder()->getColumnListing('articulo');
+                    $localBranchData = array_intersect_key($branchData, array_flip($existingCols));
+                    $localBranchData = array_filter($localBranchData, fn($v) => $v !== null);
+
+                    if (isset($colorBranchMap[$branch->code]) && $colorBranchMap[$branch->code] !== '' && $colorBranchMap[$branch->code] !== null) {
+                        $localBranchData['Color'] = (int)$colorBranchMap[$branch->code];
+                    }
+
+                    $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($localBranchData);
                     $branchResults[] = "✓ {$branch->name}";
                 } catch (\Throwable $e) {
                     $branchResults[] = "✗ {$branch->name}: " . $this->friendlyDbError($e);
@@ -216,6 +268,8 @@ class DBMasterController extends Controller
             $this->powerSales->syncArticulo($fullBranchData);
             $this->powerSales->syncPriceListHeaders();
             $this->powerSales->syncArticuloPriceListDetails($fullBranchData);
+            $this->powerSales->syncDiscountListHeaders();
+            $this->powerSales->syncArticuloDiscountListDetails($fullBranchData);
 
             $message = 'Artículo actualizado en Maestro. Detalle de sucursales: ' . implode(' | ', $branchResults);
 

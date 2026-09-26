@@ -52,10 +52,11 @@ class PowerSalesService
     public function mappingGroups(): array
     {
         $groups = [
-            'articulo'    => ['label' => 'Artículos (productos)',       'rows' => collect()],
-            'pricelist'   => ['label' => 'Listas de Precios',           'rows' => collect()],
-            'articuloalm' => ['label' => 'Inventario (articuloalm)',    'rows' => collect()],
-            'cliente'     => ['label' => 'Clientes (customers)',        'rows' => collect()],
+            'articulo'     => ['label' => 'Artículos (productos)',       'rows' => collect()],
+            'pricelist'    => ['label' => 'Listas de Precios',           'rows' => collect()],
+            'discountlist' => ['label' => 'Listas de Descuentos',        'rows' => collect()],
+            'articuloalm'  => ['label' => 'Inventario (articuloalm)',    'rows' => collect()],
+            'cliente'      => ['label' => 'Clientes (customers)',        'rows' => collect()],
         ];
 
         foreach ($this->mappingRows('articulo') as $row) {
@@ -69,6 +70,10 @@ class PowerSalesService
         // solo para que la vista de mapeo no los muestre como "sin mapear".
         foreach ($this->articuloAutoRules() as $auto) {
             $groups['articulo']['rows']->push($auto);
+        }
+
+        foreach ($this->discountListAutoRules() as $auto) {
+            $groups['discountlist']['rows']->push($auto);
         }
 
         return $groups;
@@ -92,6 +97,48 @@ class PowerSalesService
                 'erp_column'  => null,
                 'fixed_value' => null,
                 'auto_note'   => 'Automático — primeros 5 caracteres del SKU',
+            ],
+        ];
+    }
+
+    protected function discountListAutoRules(): array
+    {
+        return [
+            (object) [
+                'ps_field'    => 'DiscountList 1 (Desc_Precio_Venta)',
+                'erp_column'  => 'des_precio_venta',
+                'fixed_value' => null,
+                'auto_note'   => 'Columna ERP: des_precio_venta (% Desc. Venta)',
+            ],
+            (object) [
+                'ps_field'    => 'DiscountList 2 (Desc_Precio_Espec)',
+                'erp_column'  => 'desc_precio_espec',
+                'fixed_value' => null,
+                'auto_note'   => 'Columna ERP: desc_precio_espec (% Desc. Especial)',
+            ],
+            (object) [
+                'ps_field'    => 'DiscountList 3 (Desc_Precio4)',
+                'erp_column'  => 'desc_precio4',
+                'fixed_value' => null,
+                'auto_note'   => 'Columna ERP: desc_precio4 (% Desc. 4)',
+            ],
+            (object) [
+                'ps_field'    => 'DiscountList 4 (Descuento Gerente)',
+                'erp_column'  => 'desc_proveedor',
+                'fixed_value' => null,
+                'auto_note'   => 'Columna ERP: desc_proveedor (Desc. Proveedor/Gerente)',
+            ],
+            (object) [
+                'ps_field'    => 'DiscountList 5 (Descuento Pricing)',
+                'erp_column'  => 'porcetaje_descuento',
+                'fixed_value' => null,
+                'auto_note'   => 'Columna ERP: porcetaje_descuento (% Descuento)',
+            ],
+            (object) [
+                'ps_field'    => 'DiscountList 6 (Descuento Encargado Pricing)',
+                'erp_column'  => null,
+                'fixed_value' => '100',
+                'auto_note'   => 'Fijo: 100 (Hardcodeado)',
             ],
         ];
     }
@@ -281,23 +328,8 @@ class PowerSalesService
      */
     public function syncPriceListHeaders(): void
     {
-        $cacheKey = 'powersales_pricelists_registered';
-
-        try {
-            if (Cache::has($cacheKey)) {
-                return;
-            }
-        } catch (Throwable $e) {
-            $this->logger()->error("PowerSales /pricelists: no se pudo leer cache: " . $e->getMessage());
-        }
-
-        $this->postBatch('pricelist', '/pricelists', $this->priceListDefinitions(), 'headers');
-
-        try {
-            Cache::put($cacheKey, true, now()->addDay());
-        } catch (Throwable $e) {
-            $this->logger()->error("PowerSales /pricelists: no se pudo guardar cache: " . $e->getMessage());
-        }
+        // Las listas de precios ya están creadas en PowerSales; no es necesario enviar encabezados.
+        return;
     }
 
     /**
@@ -315,6 +347,8 @@ class PowerSalesService
 
         try {
             $cost = $branchData['Costo_Ult_Compra'] ?? null;
+            $mnUsd = strtoupper(trim((string) ($branchData['MN_USD'] ?? $branchData['mn_usd'] ?? 'M')));
+            $currency = in_array($mnUsd, ['U', '1', 'USD'], true) ? 'USD' : 'MXN';
 
             $rows = [];
             foreach ($this->mappingRows('articulo') as $row) {
@@ -334,6 +368,7 @@ class PowerSalesService
                     'PriceListId' => substr($row->ps_field, 3), // quita el prefijo "PL_"
                     'Cost'        => $cost,
                     'Price'       => $price,
+                    'Currency'    => $currency,
                     'IsActive'    => 1,
                 ];
             }
@@ -344,6 +379,93 @@ class PowerSalesService
         }
 
         $this->postBatch('pricelist', '/pricelistsdetails', $rows, (string) $sku);
+    }
+
+    /**
+     * Headers de las 6 listas de descuento que PowerSales espera en /discountlist.
+     */
+    protected function discountListDefinitions(): array
+    {
+        return [
+            ['DiscountListId' => 1, 'DiscountListNumber' => '1', 'Name' => 'Desc_Precio_Venta',           'Description' => 'Descuento Precio Venta',          'IsActive' => 1, 'CreatedBy' => 1],
+            ['DiscountListId' => 2, 'DiscountListNumber' => '2', 'Name' => 'Desc_Precio_Espec',           'Description' => 'Descuento Precio Especial',       'IsActive' => 1, 'CreatedBy' => 1],
+            ['DiscountListId' => 3, 'DiscountListNumber' => '3', 'Name' => 'Desc_Precio4',                'Description' => 'Descuento Precio 4',              'IsActive' => 1, 'CreatedBy' => 1],
+            ['DiscountListId' => 4, 'DiscountListNumber' => '4', 'Name' => 'Descuento Gerente',           'Description' => 'Descuento Gerente',               'IsActive' => 1, 'CreatedBy' => 1],
+            ['DiscountListId' => 5, 'DiscountListNumber' => '5', 'Name' => 'Descuento Pricing',           'Description' => 'Descuento Pricing',               'IsActive' => 1, 'CreatedBy' => 1],
+            ['DiscountListId' => 6, 'DiscountListNumber' => '6', 'Name' => 'Descuento Encargado Pricing', 'Description' => 'Descuento Encargado Pricing',     'IsActive' => 1, 'CreatedBy' => 1],
+        ];
+    }
+
+    /**
+     * Registra las 6 listas de descuento en PowerSales (POST /discountlist). Se cachea 1 dia.
+     */
+    public function syncDiscountListHeaders(): void
+    {
+        // Las listas de descuentos ya están creadas en PowerSales; no es necesario enviar encabezados.
+        return;
+    }
+
+    /**
+     * Envia a /discountlistdetail los 6 descuentos de este articulo.
+     */
+    public function syncArticuloDiscountListDetails(array $branchData): void
+    {
+        $sku = $branchData['Clave_Articulo'] ?? $branchData['clave'] ?? null;
+        if ($sku === null || $sku === '') {
+            return;
+        }
+
+        try {
+            $now = now()->format('Y-m-d H:i:s');
+
+            $getVal = function ($pascalKey, $snakeKey, $default = '0') use ($branchData) {
+                if (isset($branchData[$pascalKey]) && $branchData[$pascalKey] !== null && $branchData[$pascalKey] !== '') {
+                    return (string) $branchData[$pascalKey];
+                }
+                if (isset($branchData[$snakeKey]) && $branchData[$snakeKey] !== null && $branchData[$snakeKey] !== '') {
+                    return (string) $branchData[$snakeKey];
+                }
+                return (string) $default;
+            };
+
+            $discountMap = [
+                1 => $getVal('Desc_Precio_Venta', 'des_precio_venta'),
+                2 => $getVal('Desc_Precio_Espec', 'desc_precio_espec'),
+                3 => $getVal('Desc_Precio4', 'desc_precio4'),
+                4 => $getVal('Desc_Proveedor', 'desc_proveedor'),
+                5 => $getVal('PorcentajeDescuento', 'porcetaje_descuento'),
+                6 => '100',
+            ];
+
+            $rows = [];
+            foreach ($discountMap as $listId => $discountVal) {
+                $valFloat = round((float)$discountVal, 4);
+                $discNum  = (string) $listId;
+                $rows[] = [
+                    'DiscountListId'     => (int) $listId,
+                    'DiscountListNumber' => $discNum,
+                    'ProductId'          => (string) $sku,
+                    'RangeMin'           => 1,
+                    'RangeMax'           => 9999,
+                    'Discount'           => $valFloat,
+                    'DiscountPct'        => $valFloat,
+                    'DiscountAppliedTo'  => 1,
+                    'Type'               => '%',
+                    'IsActive'           => 1,
+                    'ExternalReference'  => $discNum,
+                    'CreatedBy'          => 1,
+                    'CreatedDate'        => $now,
+                    'ModifiedBy'         => 1,
+                    'ModifiedDate'       => $now,
+                ];
+            }
+        } catch (Throwable $e) {
+            $this->logger()->error("PowerSales /discountlistdetail [{$sku}] EXCEPCION armando payload: " . $e->getMessage());
+            $this->saveAudit('discountlist', '/discountlistdetail', (string) $sku, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
+            return;
+        }
+
+        $this->postBatch('discountlist', '/discountlistdetail', $rows, (string) $sku);
     }
 
     /**

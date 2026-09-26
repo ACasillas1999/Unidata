@@ -310,7 +310,7 @@
                             <td style="text-align: right;">{{ number_format((float)($row->Precio_Minimo ?? 0), 2) }}</td>
                             <td style="text-align: center;">{{ number_format((float)($row->Desc_Precio_Minimo ?? 0), 2) }}%</td>
                             <td style="text-align: right;">{{ number_format((float)($row->PrecioTope ?? 0), 2) }}</td>
-                            <td style="text-align: center;">{{ $row->MN_USD == 1 ? 'USD' : 'MXN' }}</td>
+                            <td style="text-align: center;">{{ in_array(strtoupper(trim((string)$row->MN_USD)), ['U', '1', 'USD'], true) ? 'USD' : 'MXN' }}</td>
                             {{-- SAT --}}
                             <td style="font-size: 11px;">{{ $row->IDSAT }}</td>
                             <td style="text-align: center;">{{ number_format((float)($row->IVA ?? 16), 0) }}%</td>

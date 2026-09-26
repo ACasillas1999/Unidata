@@ -44,9 +44,9 @@
     </form>
 </div>
 
-<div class="glass-card shadow-premium" style="padding: 0; overflow: hidden;">
+<div class="glass-card shadow-premium" style="padding: 0; overflow-x: auto; overflow-y: auto; max-height: 75vh;">
     <table style="width: 100%; border-collapse: collapse;">
-        <thead>
+        <thead style="position: sticky; top: 0; z-index: 10; background: #131722;">
             <tr style="background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border);">
                 <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Fecha</th>
                 <th style="padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">Entidad</th>
