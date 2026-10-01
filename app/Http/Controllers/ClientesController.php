@@ -176,6 +176,16 @@ class ClientesController extends Controller
         }
 
         // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
+        // ─────────────────────────────────────────────────────────────────────────
+        // NOTA PARA FUTURA EXPANSION MULTI-SUCURSAL EN POWERSALES:
+        // Por defecto se envia con BranchId = 9 (AIESA). Cuando desees replicar a mas sucursales:
+        //
+        // $mapaPowerSales = ['AIESA' => 9, 'DEASA' => 2, 'SEGSA' => 4, 'TAPATIA' => 6];
+        // foreach ($branches as $b) {
+        //     $psBranchId = $mapaPowerSales[$b->code] ?? 9;
+        //     $this->powerSales->syncCliente($this->toBranchFormat($dataMaestro), $psBranchId);
+        // }
+        // ─────────────────────────────────────────────────────────────────────────
         $this->powerSales->syncCliente($this->toBranchFormat($dataMaestro));
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
@@ -190,7 +200,16 @@ class ClientesController extends Controller
 
         return redirect()->route('clientes.index')
             ->with('success', "Cliente #{$nuevoIdGlobal} creado exitosamente en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
-            ->with('resultados', $resultados);
+            ->with('resultados', $resultados)
+            ->with('sync_modal', [
+                'accion'     => 'crear',
+                'rfc'        => $dataMaestro['rfc'],
+                'nombre'     => $dataMaestro['razon_social'],
+                'exitosos'   => $exitosos,
+                'total'      => $total,
+                'resultados' => $resultados,
+                'powersales' => true,
+            ]);
 
     }
 
@@ -317,6 +336,16 @@ class ClientesController extends Controller
         }
 
         // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
+        // ─────────────────────────────────────────────────────────────────────────
+        // NOTA PARA FUTURA EXPANSION MULTI-SUCURSAL EN POWERSALES:
+        // Por defecto se envia con BranchId = 9 (AIESA). Cuando desees replicar a mas sucursales:
+        //
+        // $mapaPowerSales = ['AIESA' => 9, 'DEASA' => 2, 'SEGSA' => 4, 'TAPATIA' => 6];
+        // foreach ($branches as $b) {
+        //     $psBranchId = $mapaPowerSales[$b->code] ?? 9;
+        //     $this->powerSales->syncCliente($dataBranch, $psBranchId);
+        // }
+        // ─────────────────────────────────────────────────────────────────────────
         $this->powerSales->syncCliente($dataBranch);
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
@@ -331,7 +360,16 @@ class ClientesController extends Controller
 
         return redirect()->route('clientes.edit', $rfc)
             ->with('success', "Cliente actualizado en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
-            ->with('resultados', $resultados);
+            ->with('resultados', $resultados)
+            ->with('sync_modal', [
+                'accion'     => 'editar',
+                'rfc'        => $cliente->rfc,
+                'nombre'     => $cliente->razon_social,
+                'exitosos'   => $exitosos,
+                'total'      => $total,
+                'resultados' => $resultados,
+                'powersales' => true,
+            ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

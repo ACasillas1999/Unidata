@@ -41,10 +41,13 @@ class ArticulosController extends Controller
             $normalize('Codigo')          => 'clave',
             $normalize('Descripción')     => 'descripcion',
             $normalize('Descripcion')     => 'descripcion',
+            $normalize('Característica')  => 'descripcion',
+            $normalize('Caracteristica')  => 'descripcion',
             $normalize('U.M.')            => 'unidad_medida',
             $normalize('Unidad_Medida')   => 'unidad_medida',
             $normalize('Unid. Med.')      => 'unidad_medida',
             $normalize('Unidad Medida')   => 'unidad_medida',
+            $normalize('UNIDADDEMEDIDA')  => 'unidad_medida',
             $normalize('Línea')           => 'linea',
             $normalize('Linea')           => 'linea',
             $normalize('Clasificación')   => 'clasificacion',
@@ -52,17 +55,22 @@ class ArticulosController extends Controller
             $normalize('MN/USD')          => 'mn_usd',
             $normalize('MN_USD')          => 'mn_usd',
             $normalize('M/U')             => 'mn_usd',
+            $normalize('MONEDA')          => 'mn_usd',
+            $normalize('Moneda')          => 'mn_usd',
             $normalize('P. Lista')        => 'precio_lista',
             $normalize('Precio_Lista')    => 'precio_lista',
             $normalize('Precio Lista')    => 'precio_lista',
+            $normalize('PRECIOLISTA')     => 'precio_lista',
             $normalize('P. Venta')        => 'precio_venta',
             $normalize('Precio_Venta')    => 'precio_venta',
             $normalize('Precio Venta')    => 'precio_venta',
+            $normalize('PRECIOVENTA')     => 'precio_venta',
             $normalize('Desc. P. Venta')  => 'des_precio_venta',
             $normalize('Desc. P. Venta (Auto)') => 'des_precio_venta',
             $normalize('Desc. P. Venta (Calculado)') => 'des_precio_venta',
             $normalize('% Desc. V')       => 'des_precio_venta',
             $normalize('Desc_Precio_Venta') => 'des_precio_venta',
+            $normalize('DESCUENTOPRECIOVTA') => 'des_precio_venta',
             $normalize('P. Especial')     => 'precio_especial',
             $normalize('P. Especial (Auto)') => 'precio_especial',
             $normalize('P. Especial (Calculado)') => 'precio_especial',
@@ -71,43 +79,59 @@ class ArticulosController extends Controller
             $normalize('Precio Especial') => 'precio_especial',
             $normalize('Precio Especial (Auto)') => 'precio_especial',
             $normalize('Precio Especial (Calculado)') => 'precio_especial',
+            $normalize('PRECIOVTAESPECIAL') => 'precio_especial',
             $normalize('Desc. P. Espec')  => 'desc_precio_espec',
             $normalize('% Desc. E')       => 'desc_precio_espec',
             $normalize('Desc_Precio_Espec') => 'desc_precio_espec',
+            $normalize('DESCUENTOESPECIAL') => 'desc_precio_espec',
             $normalize('Precio 4')        => 'precio4',
             $normalize('Precio 4 (Auto)') => 'precio4',
             $normalize('Precio 4 (Calculado)') => 'precio4',
             $normalize('Precio4')         => 'precio4',
             $normalize('Precio4 (Auto)')  => 'precio4',
+            $normalize('PRECIO4')         => 'precio4',
             $normalize('Desc. Precio 4')  => 'desc_precio4',
             $normalize('% Desc. 4')       => 'desc_precio4',
             $normalize('Desc_Precio4')    => 'desc_precio4',
+            $normalize('DESCUENTOPRECIO4') => 'desc_precio4',
             $normalize('Costo Venta')     => 'costo_venta',
+            $normalize('Costo de Venta')  => 'costo_venta',
             $normalize('CostoVenta')      => 'costo_venta',
             $normalize('Costo')           => 'costo_venta',
             $normalize('% Descuento')     => 'porcetaje_descuento',
+            $normalize('Descuento')       => 'porcetaje_descuento',
             $normalize('PorcentajeDescuento') => 'porcetaje_descuento',
             $normalize('Porcentaje de Descuento') => 'porcetaje_descuento',
             $normalize('Art. Kit')        => 'articulo_kit',
             $normalize('Kit')             => 'articulo_kit',
+            $normalize('KIT')             => 'articulo_kit',
             $normalize('Articulo_Kit')    => 'articulo_kit',
             $normalize('Art. Serie')      => 'articulo_serie',
             $normalize('Serie')           => 'articulo_serie',
+            $normalize('SERIES')          => 'articulo_serie',
+            $normalize('Series')          => 'articulo_serie',
             $normalize('Articulo_Serie')  => 'articulo_serie',
             $normalize('Mg Mín')          => 'margen_minimo',
             $normalize('Margen')          => 'margen_minimo',
+            $normalize('MARGENMINIMO')    => 'margen_minimo',
             $normalize('Margen_Minimo')   => 'margen_minimo',
             $normalize('Color')           => 'color',
+            $normalize('COLOR')           => 'color',
             $normalize('Protocolo')       => 'protocolo',
+            $normalize('PROTOCOLO')       => 'protocolo',
             $normalize('Prot.')           => 'protocolo',
             $normalize('IDSAT')           => 'idsat',
             $normalize('SAT')             => 'idsat',
             $normalize('Estatus')         => 'habilitado',
             $normalize('Estatus Global')  => 'habilitado',
             $normalize('Habilitado')      => 'habilitado',
+            $normalize('HABILIDATO')      => 'habilitado',
+            $normalize('Habilidato')      => 'habilitado',
             $normalize('Area')            => 'area',
             $normalize('IVA')             => 'iva',
             $normalize('Ubicacion')       => 'ubicacion',
+            $normalize('Ubicación')       => 'ubicacion',
+            $normalize('UBICACION')       => 'ubicacion',
             $normalize('Sustituto')       => 'sustituto',
             $normalize('Sustituto1')      => 'sustituto1',
             $normalize('Sustituto 1')     => 'sustituto1',
@@ -120,6 +144,7 @@ class ArticulosController extends Controller
             $normalize('Desc_Proveedor')  => 'desc_proveedor',
             $normalize('Desc Prov')       => 'desc_proveedor',
             $normalize('% Desc. Prov')    => 'desc_proveedor',
+            $normalize('DESCTOPROVEEDOR') => 'desc_proveedor',
             $normalize('Precio Gerente')  => 'precio_gerente',
             $normalize('Precio Gerente (Auto)') => 'precio_gerente',
             $normalize('Precio Gerente (Calculado)') => 'precio_gerente',
@@ -132,15 +157,20 @@ class ArticulosController extends Controller
             $normalize('PrecioTope')      => 'precio_tope',
             $normalize('Precio_Tope')     => 'precio_tope',
             $normalize('Peso')            => 'peso',
+            $normalize('PESO')            => 'peso',
             $normalize('Std Pack')        => 'std_pack',
             $normalize('StdPack')         => 'std_pack',
             $normalize('Std_Pack')        => 'std_pack',
+            $normalize('STANDARDPACK')    => 'std_pack',
             $normalize('Empaque')         => 'std_pack',
             $normalize('Crítico')         => 'critico',
             $normalize('Critico')         => 'critico',
+            $normalize('CRITICO')         => 'critico',
             $normalize('Control Pedimentos') => 'control_pedimentos',
             $normalize('Control_Pedimentos') => 'control_pedimentos',
             $normalize('Pedimentos')      => 'control_pedimentos',
+            $normalize('PEDIMIENTOS')     => 'control_pedimentos',
+            $normalize('Pedimientos')     => 'control_pedimentos',
         ];
 
         $branchFieldMap = \App\Support\ArticuloFieldMap::map();
@@ -404,12 +434,12 @@ class ArticulosController extends Controller
         ];
 
         $columns = [
-            'Clave', 'Descripción', 'U.M.', 'Línea', 'Clasificación',
-            'Area', 'IVA', 'Ubicacion', 'Sustituto', 'Sustituto 1', 'Sustituto 2', 'MN/USD',
-            'P. Lista', 'P. Venta', 'Desc. P. Venta (Auto)', 'P. Especial (Auto)', 'Desc. P. Espec',
-            'Precio 4 (Auto)', 'Desc. Precio 4', 'Desc. Proveedor', 'Precio Gerente (Auto)', '% Descuento', 'Precio Tope (Auto)', 'Costo Venta',
-            'Art. Kit', 'Art. Serie', 'Mg Mín', 'Color', 'Protocolo',
-            'IDSAT', 'ID_Impuesto_SAT', 'Peso', 'Std Pack', 'Crítico', 'Control Pedimentos', 'Estatus',
+            'Clave', 'Descripción', 'U.M.', 'Línea', 'Clasificación', 'MN/USD',
+            'P. Lista', 'Desc. P. Venta (Auto)', 'P. Venta', 'Desc. P. Espec', 'P. Especial (Auto)',
+            'Desc. Precio 4', 'Precio 4 (Auto)', 'Desc. Proveedor', 'Art. Kit', 'Mg Mín',
+            'Std Pack', 'Art. Serie', 'Color', 'Ubicacion', 'Control Pedimentos', 'Protocolo',
+            'IDSAT', 'Peso', 'Crítico', 'Estatus', 'Sustituto', 'Sustituto 1', 'Sustituto 2',
+            'Costo Venta', '% Descuento', 'Precio Tope (Auto)',
         ];
 
         $callback = function () use ($columns, $tipo) {
@@ -423,74 +453,91 @@ class ArticulosController extends Controller
                 return;
             }
 
+            $formatRow = function ($art) {
+                $pLista = (float)($art->precio_lista ?? 0);
+                $dProv  = (float)($art->desc_proveedor ?? 0);
+
+                return [
+                    $art->clave,
+                    $art->descripcion,
+                    $art->unidad_medida ?? 'PZA',
+                    $art->linea ?? 'GEN',
+                    $art->clasificacion ?? 'GEN',
+                    $art->mn_usd ?? 0,
+                    number_format($pLista, 2, '.', ''),
+                    number_format((float)($art->des_precio_venta ?? 0), 2, '.', ''),
+                    number_format((float)($art->precio_venta ?? 0), 2, '.', ''),
+                    number_format((float)($art->desc_precio_espec ?? 0), 2, '.', ''),
+                    number_format((float)($art->precio_especial ?? 0), 2, '.', ''),
+                    number_format((float)($art->desc_precio4 ?? 0), 2, '.', ''),
+                    number_format((float)($art->precio4 ?? 0), 2, '.', ''),
+                    number_format($dProv, 2, '.', ''),
+                    $art->articulo_kit ?? 0,
+                    number_format((float)($art->margen_minimo ?? 0), 2, '.', ''),
+                    number_format((float)($art->std_pack ?? 1), 2, '.', ''),
+                    $art->articulo_serie ?? 0,
+                    $art->color ?? 0,
+                    $art->ubicacion ?? 'GENERAL',
+                    $art->control_pedimentos ?? 0,
+                    $art->protocolo ?? 0,
+                    $art->idsat ?? '01010101',
+                    number_format((float)($art->peso ?? 0), 2, '.', ''),
+                    $art->critico ?? 0,
+                    ($art->habilitado ?? 1) ? 'ACTIVO' : 'INACTIVO',
+                    $art->sustituto ?? '0',
+                    $art->sustituto1 ?? '0',
+                    $art->sustituto2 ?? '0',
+                    number_format((float)($art->costo_venta ?? 0), 2, '.', ''),
+                    number_format((float)($art->porcetaje_descuento ?? 0), 2, '.', ''),
+                    number_format((float)($art->precio_tope ?? 0), 2, '.', ''),
+                ];
+            };
+
             if ($tipo === 'catalogo') {
                 // Exportar catálogo maestro formateado a 2 decimales en todos los precios
                 $articles = DbMasterArticle::take(1000)->get();
                 foreach ($articles as $art) {
-                    $pLista = (float)($art->precio_lista ?? 0);
-                    $dProv  = (float)($art->desc_proveedor ?? 0);
-                    $pGerente = round($pLista * (100 - $dProv) / 100, 2);
-
-                    $row = [
-                        $art->clave,
-                        $art->descripcion,
-                        $art->unidad_medida,
-                        $art->linea,
-                        $art->clasificacion,
-                        $art->area ?? 1,
-                        number_format((float)($art->iva ?? 16), 2, '.', ''),
-                        $art->ubicacion ?? 'GENERAL',
-                        $art->sustituto ?? '0',
-                        $art->sustituto1 ?? '0',
-                        $art->sustituto2 ?? '0',
-                        $art->mn_usd ?? 0,
-                        number_format($pLista, 2, '.', ''),
-                        number_format((float)($art->precio_venta ?? 0), 2, '.', ''),
-                        number_format((float)($art->des_precio_venta ?? 0), 2, '.', ''),
-                        number_format((float)($art->precio_especial ?? 0), 2, '.', ''),
-                        number_format((float)($art->desc_precio_espec ?? 0), 2, '.', ''),
-                        number_format((float)($art->precio4 ?? 0), 2, '.', ''),
-                        number_format((float)($art->desc_precio4 ?? 0), 2, '.', ''),
-                        number_format($dProv, 2, '.', ''),
-                        number_format($pGerente, 2, '.', ''),
-                        number_format((float)($art->porcetaje_descuento ?? 0), 2, '.', ''),
-                        number_format((float)($art->precio_tope ?? 0), 2, '.', ''),
-                        number_format((float)($art->costo_venta ?? 0), 2, '.', ''),
-                        $art->articulo_kit ?? 0,
-                        $art->articulo_serie ?? 0,
-                        number_format((float)($art->margen_minimo ?? 0), 2, '.', ''),
-                        $art->color ?? 0,
-                        $art->protocolo ?? 0,
-                        $art->idsat ?? '',
-                        $art->id_impuesto_sat ?? '002',
-                        number_format((float)($art->peso ?? 0), 2, '.', ''),
-                        number_format((float)($art->std_pack ?? 1), 2, '.', ''),
-                        $art->critico ?? 0,
-                        $art->control_pedimentos ?? 0,
-                        $art->habilitado ? 'ACTIVO' : 'INACTIVO',
-                    ];
-                    fputcsv($handle, $row);
+                    fputcsv($handle, $formatRow($art));
                 }
             } else {
-                // con_datos (valores de ejemplo fijos a 2 decimales)
-                $example1 = [
-                    'ART001', 'EJEMPLO PRODUCTO XYZ', 'PZA', 'ELEC', 'ELECT',
-                    '1', '16.00', 'GENERAL', '0', '0', '0', '0',
-                    '100.00', '90.00', '10.00', '85.00', '15.00',
-                    '80.00', '20.00', '10.00', '90.00', '30.00', '70.00', '0.00',
-                    '0', '0', '20.00', '0', '0',
-                    '43211501', '002', '1.00', '1.00', '0', '0', 'ACTIVO',
-                ];
-                $example2 = [
-                    'ART002', 'EJEMPLO PRODUCTO ABC', 'PZA', 'HERR', 'HERRA',
-                    '1', '16.00', 'GENERAL', '0', '0', '0', '0',
-                    '200.00', '180.00', '10.00', '170.00', '15.00',
-                    '160.00', '20.00', '12.00', '176.00', '25.00', '150.00', '0.00',
-                    '0', '0', '20.00', '0', '0',
-                    '43211501', '002', '2.00', '1.00', '0', '0', 'ACTIVO',
-                ];
-                fputcsv($handle, $example1);
-                fputcsv($handle, $example2);
+                // con_datos: intentamos obtener artículos reales de la BD primero
+                $articles = DbMasterArticle::take(5)->get();
+
+                if ($articles->count() > 0) {
+                    foreach ($articles as $art) {
+                        fputcsv($handle, $formatRow($art));
+                    }
+                } else {
+                    // Si la BD no tiene registros, exportar ejemplos reales representativos de un ERP
+                    $example1 = [
+                        'HERR-00845', 'MARTILLO DE UÑA CURVA 16 OZ MANGO DE FIBRA DE VIDRIO', 'PZA', 'HERR', 'MANU', '0',
+                        '285.00', '10.00', '256.50', '15.00', '242.25',
+                        '20.00', '228.00', '12.50', '0', '18.00',
+                        '6.00', '0', '0', 'EST-A1-04', '0', '0',
+                        '27111602', '0.65', '0', 'ACTIVO', 'HERR-00846', '0', '0',
+                        '145.00', '25.00', '213.75',
+                    ];
+                    $example2 = [
+                        'ELEC-01290', 'CABLE THW-LS CALIBRE 12 AWG 600V COLOR NEGRO', 'MTR', 'ELEC', 'CABL', '0',
+                        '18.50', '8.00', '17.02', '12.00', '16.28',
+                        '15.00', '15.73', '10.00', '0', '15.00',
+                        '100.00', '0', '1', 'BOD-E3-12', '1', '0',
+                        '26121500', '0.04', '1', 'ACTIVO', 'ELEC-01291', 'ELEC-01292', '0',
+                        '9.80', '20.00', '14.80',
+                    ];
+                    $example3 = [
+                        'KIT-00501', 'JUEGO DE HERRAMIENTAS INALÁMBRICAS 20V MAX (DRILL + IMPACT)', 'JGO', 'ELEC', 'KITS', '1',
+                        '3490.00', '12.00', '3071.20', '18.00', '2861.80',
+                        '22.00', '2722.20', '15.00', '1', '25.00',
+                        '1.00', '1', '0', 'MOSTRADOR', '1', '1',
+                        '27112700', '4.80', '1', 'ACTIVO', 'KIT-00502', '0', '0',
+                        '1850.00', '30.00', '2443.00',
+                    ];
+
+                    fputcsv($handle, $example1);
+                    fputcsv($handle, $example2);
+                    fputcsv($handle, $example3);
+                }
             }
 
             fclose($handle);

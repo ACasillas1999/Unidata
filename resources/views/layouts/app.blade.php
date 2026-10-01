@@ -946,5 +946,6 @@
         setTimeout(fetchGDCData, 500);
     })();
     </script>
+    @include('partials.sync_modal')
 </body>
 </html>

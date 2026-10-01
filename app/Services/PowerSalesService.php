@@ -76,6 +76,10 @@ class PowerSalesService
             $groups['discountlist']['rows']->push($auto);
         }
 
+        foreach ($this->clienteAutoRules() as $auto) {
+            $groups['cliente']['rows']->push($auto);
+        }
+
         return $groups;
     }
 
@@ -97,6 +101,24 @@ class PowerSalesService
                 'erp_column'  => null,
                 'fixed_value' => null,
                 'auto_note'   => 'Automático — primeros 5 caracteres del SKU',
+            ],
+        ];
+    }
+
+    protected function clienteAutoRules(): array
+    {
+        return [
+            (object) [
+                'ps_field'    => 'PriceListNumber',
+                'erp_column'  => null,
+                'fixed_value' => 'Precio_Venta',
+                'auto_note'   => 'Automático — Requerido por PowerSales, por defecto "Precio_Venta" si no está mapeado',
+            ],
+            (object) [
+                'ps_field'    => 'BranchId',
+                'erp_column'  => null,
+                'fixed_value' => '9',
+                'auto_note'   => 'Automático — Requerido por PowerSales, por defecto "9" (AIESA) si no está mapeado',
             ],
         ];
     }
@@ -160,6 +182,8 @@ class PowerSalesService
                 $payload[$row->ps_field] = $source[$row->erp_column];
             } elseif ($row->fixed_value !== null && $row->fixed_value !== '') {
                 $payload[$row->ps_field] = $row->fixed_value;
+            } else {
+                $payload[$row->ps_field] = '';
             }
         }
 
@@ -469,14 +493,64 @@ class PowerSalesService
     }
 
     /**
+     * Sincroniza la ficha del cliente hacia PowerSales (endpoint /customers).
      * $branchData: array en formato sucursal (PascalCase), ej. RFC, Razon_Social...
+     * $branchId (opcional): ID de la sucursal en PowerSales. Por defecto asigna 9 (AIESA).
+     *
+     * EXPANSION MULTI-SUCURSAL POWERSALES (FUTURO):
+     * Para enviar a mas sucursales en el futuro, pasa el BranchId especifico como 2do argumento:
+     * $powerSales->syncCliente($branchData, $branchIdEspecifico);
+     *
      * No lanza excepciones: cualquier fallo (mapeo, red, API) se loguea en storage/logs/powersales.log.
      */
-    public function syncCliente(array $branchData): void
+    public function syncCliente(array $branchData, ?int $branchId = null): void
     {
         $ref = $branchData['RFC'] ?? 'sin-rfc';
         try {
             $payload = $this->buildPayload('cliente', $branchData);
+
+            // Determinar BranchId: argumento $branchId, $payload['BranchId'], o por defecto 9 (AIESA)
+            $resolvedBranchId = $branchId 
+                ?? (!empty($payload['BranchId']) ? (int)$payload['BranchId'] 
+                : (!empty($branchData['BranchId']) ? (int)$branchData['BranchId'] : 9));
+
+            // PowerSales /customers requiere campos especificos no-nulos en su BD.
+            $defaults = [
+                'PriceListNumber'        => 'Precio_Venta',
+                'BranchId'               => $resolvedBranchId,
+                'CallDay'                => 0,
+                'DayOffSet'              => 0,
+                'DefaultPaymentTypeId'   => 1,
+                'IsEarlyOrderEnabled'    => 0,
+                'IsPOMandatory'          => 0,
+                'IsPriorityEnabled'      => 0,
+                'IsProspect'             => 0,
+                'IsSignatureMandatory'   => 0,
+                'IsTop10Enabled'         => 0,
+                'CustomerTypeId'         => 1,
+                'ChannelId'              => 1,
+                'BannerId'               => 1,
+                'StateId'                => 1,
+                'CityId'                 => 1,
+                'LocationId'             => 1,
+                'Top10Id'                => 1,
+                'ParentCustomerId'       => 0,
+                'PriceListId'            => 1,
+                'ProductListsId'         => 1,
+                'RouteId'                => 1,
+                'RouteNumber'            => 1,
+                'Address2'               => ' ',
+                'Cellphone'              => ' ',
+                'LeftStreet'             => ' ',
+                'RightStreet'            => ' ',
+                'UniqueId'               => ' ',
+            ];
+
+            foreach ($defaults as $key => $defaultVal) {
+                if (!isset($payload[$key]) || $payload[$key] === '') {
+                    $payload[$key] = $defaultVal;
+                }
+            }
         } catch (Throwable $e) {
             $this->logger()->error("PowerSales /customers [{$ref}] EXCEPCION armando payload: " . $e->getMessage());
             $this->saveAudit('cliente', '/customers', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
