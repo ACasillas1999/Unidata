@@ -118,7 +118,19 @@ class PowerSalesService
                 'ps_field'    => 'BranchId',
                 'erp_column'  => null,
                 'fixed_value' => '9',
-                'auto_note'   => 'Automático — Requerido por PowerSales, por defecto "9" (AIESA) si no está mapeado',
+                'auto_note'   => 'Automático — Requerido por PowerSales, por defecto 9 (AIESA)',
+            ],
+            (object) [
+                'ps_field'    => 'CallDay / DayOffSet / DefaultPaymentTypeId',
+                'erp_column'  => 'Dias_Credito',
+                'fixed_value' => '0 / 1',
+                'auto_note'   => 'Automático — Valores enteros por defecto para evitar restricciones no-null en PowerSales',
+            ],
+            (object) [
+                'ps_field'    => 'Address1 / InvoiceAddress',
+                'erp_column'  => 'Calle, Exterior, Interior, Colonia, Cod_Postal',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Concatena Calle, Núm. Exterior/Interior, Colonia y CP para PowerSales',
             ],
         ];
     }
@@ -245,16 +257,28 @@ class PowerSalesService
                 ->timeout(15)
                 ->post($this->baseUrl() . $endpoint, ['data' => [$payload]]);
 
-            if ($response->successful()) {
-                $logger->info("PowerSales {$endpoint} [{$refLabel}] OK. Body: " . $response->body());
-            } else {
-                $logger->error("PowerSales {$endpoint} [{$refLabel}] FALLO {$response->status()}: {$response->body()}");
+            $body = $response->body();
+            $json = json_decode($body, true);
+
+            $isSuccess = $response->successful();
+            if ($isSuccess && is_array($json)) {
+                if (!empty($json['error']) && $json['error'] != 0) {
+                    $isSuccess = false;
+                } elseif (isset($json['ok']) && $json['ok'] == 0 && !empty($json['noInsert'])) {
+                    $isSuccess = false;
+                }
             }
 
-            $this->saveAudit($entity, $endpoint, $refLabel, $payload, $response->successful(), $response->status(), $response->body());
+            if ($isSuccess) {
+                $logger->info("PowerSales {$endpoint} [{$refLabel}] OK. Body: " . $body);
+            } else {
+                $logger->error("PowerSales {$endpoint} [{$refLabel}] FALLO {$response->status()}: " . $body);
+            }
+
+            $this->saveAudit($entity, $endpoint, $refLabel, $payload, $isSuccess, $response->status(), $body);
         } catch (Throwable $e) {
             $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $e->getMessage());
-            $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'EXCEPCION: ' . $e->getMessage());
+            $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'EXCEPCION DE CONEXION/CODIGO: ' . $e->getMessage());
         }
     }
 
@@ -279,16 +303,28 @@ class PowerSalesService
                 ->timeout(15)
                 ->post($this->baseUrl() . $endpoint, ['data' => $rows]);
 
-            if ($response->successful()) {
-                $logger->info("PowerSales {$endpoint} [{$refLabel}] OK. Body: " . $response->body());
-            } else {
-                $logger->error("PowerSales {$endpoint} [{$refLabel}] FALLO {$response->status()}: {$response->body()}");
+            $body = $response->body();
+            $json = json_decode($body, true);
+
+            $isSuccess = $response->successful();
+            if ($isSuccess && is_array($json)) {
+                if (!empty($json['error']) && $json['error'] != 0) {
+                    $isSuccess = false;
+                } elseif (isset($json['ok']) && $json['ok'] == 0 && !empty($json['noInsert'])) {
+                    $isSuccess = false;
+                }
             }
 
-            $this->saveAudit($entity, $endpoint, $refLabel, $rows, $response->successful(), $response->status(), $response->body());
+            if ($isSuccess) {
+                $logger->info("PowerSales {$endpoint} [{$refLabel}] OK. Body: " . $body);
+            } else {
+                $logger->error("PowerSales {$endpoint} [{$refLabel}] FALLO {$response->status()}: " . $body);
+            }
+
+            $this->saveAudit($entity, $endpoint, $refLabel, $rows, $isSuccess, $response->status(), $body);
         } catch (Throwable $e) {
             $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $e->getMessage());
-            $this->saveAudit($entity, $endpoint, $refLabel, $rows, false, null, 'EXCEPCION: ' . $e->getMessage());
+            $this->saveAudit($entity, $endpoint, $refLabel, $rows, false, null, 'EXCEPCION DE CONEXION/CODIGO: ' . $e->getMessage());
         }
     }
 
@@ -299,6 +335,8 @@ class PowerSalesService
     protected function saveAudit(string $entity, string $endpoint, string $refLabel, array $payload, bool $success, ?int $statusCode, ?string $responseBody): void
     {
         try {
+            $cleanResponseBody = $responseBody !== null ? mb_substr($responseBody, 0, 60000) : null;
+
             DB::connection('mysql')->table('powersales_sync_logs')->insert([
                 'entity'        => $entity,
                 'endpoint'      => $endpoint,
@@ -306,7 +344,7 @@ class PowerSalesService
                 'payload'       => json_encode($payload),
                 'success'       => $success,
                 'status_code'   => $statusCode,
-                'response_body' => $responseBody,
+                'response_body' => $cleanResponseBody,
                 'created_at'    => now(),
             ]);
         } catch (Throwable $e) {
@@ -509,10 +547,121 @@ class PowerSalesService
         try {
             $payload = $this->buildPayload('cliente', $branchData);
 
+            // Sanear / Defaultear IsCredit (evita fallo 1048 Column 'IsCredit' cannot be null en PowerSales DB)
+            if (!isset($payload['IsCredit']) || $payload['IsCredit'] === '' || $payload['IsCredit'] === null) {
+                $rawCredit = $branchData['OtorgoCredito'] ?? $branchData['OtorgoCreditO'] ?? $branchData['otorgo_credito'] ?? 0;
+                $payload['IsCredit'] = (int)$rawCredit;
+            } else {
+                $payload['IsCredit'] = (int)$payload['IsCredit'];
+            }
+
+            // Sanear IsActive: convertir 'A' -> 1, 'B'/'I' -> 0 o mantener entero
+            if (isset($payload['IsActive']) && $payload['IsActive'] !== '') {
+                $valActive = strtoupper((string)$payload['IsActive']);
+                $payload['IsActive'] = in_array($valActive, ['A', '1', 'TRUE'], true) ? 1 : 0;
+            } else {
+                $payload['IsActive'] = 1;
+            }
+
+            // Armar la dirección completa en Address1 e InvoiceAddress a partir de Calle, Exterior, Interior, Colonia, Cod_Postal
+            $partesDireccion = [];
+            if (!empty($branchData['Calle'])) {
+                $partesDireccion[] = trim((string)$branchData['Calle']);
+            }
+            if (!empty($branchData['Exterior'])) {
+                $partesDireccion[] = '#' . trim((string)$branchData['Exterior']);
+            }
+            if (!empty($branchData['Interior'])) {
+                $partesDireccion[] = 'Int ' . trim((string)$branchData['Interior']);
+            }
+            if (!empty($branchData['Colonia'])) {
+                $partesDireccion[] = 'Col. ' . trim((string)$branchData['Colonia']);
+            }
+            if (!empty($branchData['Cod_Postal'])) {
+                $partesDireccion[] = 'C.P. ' . trim((string)$branchData['Cod_Postal']);
+            }
+
+            $direccionCompleta = implode(', ', $partesDireccion);
+
+            // Si Address1 está vacío o solo contiene la Calle, enriquecer con la dirección completa
+            if (empty($payload['Address1']) || trim((string)$payload['Address1']) === trim((string)($branchData['Calle'] ?? ''))) {
+                if (!empty($direccionCompleta)) {
+                    $payload['Address1'] = $direccionCompleta;
+                }
+            }
+
+            if (empty($payload['InvoiceAddress'])) {
+                $payload['InvoiceAddress'] = !empty($payload['Address1']) ? $payload['Address1'] : $direccionCompleta;
+            }
+
+            if (empty($payload['Address2'])) {
+                $municipio = $branchData['Municipio'] ?? $branchData['municipio'] ?? '';
+                $ciudad    = $branchData['Ciudad'] ?? $branchData['ciudad'] ?? '';
+                $payload['Address2'] = !empty($municipio) ? (string)$municipio : (!empty($ciudad) ? (string)$ciudad : ' ');
+            }
+
             // Determinar BranchId: argumento $branchId, $payload['BranchId'], o por defecto 9 (AIESA)
             $resolvedBranchId = $branchId 
                 ?? (!empty($payload['BranchId']) ? (int)$payload['BranchId'] 
                 : (!empty($branchData['BranchId']) ? (int)$branchData['BranchId'] : 9));
+
+            // Resolver StateId y CityId mediante mapeo geográfico si existen
+            $resolvedStateId = null;
+            $resolvedCityId  = null;
+
+            $cveCiudad = trim((string)($branchData['Ciudad'] ?? $branchData['ciudad'] ?? ''));
+            if ($cveCiudad !== '') {
+                $cityMapping = \App\Models\PowerSalesMappingCiudad::where('magic_cve_ciudad', $cveCiudad)
+                    ->orWhere('magic_dsc_ciudad', $cveCiudad)
+                    ->first();
+                if ($cityMapping && $cityMapping->ps_city_id) {
+                    $resolvedCityId = (int)$cityMapping->ps_city_id;
+                    if ($cityMapping->ps_state_id) {
+                        $resolvedStateId = (int)$cityMapping->ps_state_id;
+                    }
+                }
+                if (!$resolvedStateId && $cityMapping && $cityMapping->magic_cve_estado) {
+                    $stateMapping = \App\Models\PowerSalesMappingEstado::where('magic_clave', $cityMapping->magic_cve_estado)->first();
+                    if ($stateMapping && $stateMapping->ps_state_id) {
+                        $resolvedStateId = (int)$stateMapping->ps_state_id;
+                    }
+                }
+            }
+
+            // Fallback por Municipio si Ciudad no resolvió
+            if (!$resolvedCityId) {
+                $municipio = trim((string)($branchData['Municipio'] ?? $branchData['municipio'] ?? ''));
+                if ($municipio !== '') {
+                    $cityMapping = \App\Models\PowerSalesMappingCiudad::where('magic_dsc_ciudad', $municipio)
+                        ->orWhere('magic_cve_ciudad', $municipio)
+                        ->first();
+                    if ($cityMapping && $cityMapping->ps_city_id) {
+                        $resolvedCityId = (int)$cityMapping->ps_city_id;
+                        if (!$resolvedStateId && $cityMapping->ps_state_id) {
+                            $resolvedStateId = (int)$cityMapping->ps_state_id;
+                        }
+                    }
+                }
+            }
+
+            if (!$resolvedStateId) {
+                $cveEstado = trim((string)($branchData['Estado'] ?? $branchData['estado'] ?? ''));
+                if ($cveEstado !== '') {
+                    $stateMapping = \App\Models\PowerSalesMappingEstado::where('magic_clave', $cveEstado)
+                        ->orWhere('magic_descripcion', $cveEstado)
+                        ->first();
+                    if ($stateMapping && $stateMapping->ps_state_id) {
+                        $resolvedStateId = (int)$stateMapping->ps_state_id;
+                    }
+                }
+            }
+
+            if ($resolvedStateId) {
+                $payload['StateId'] = $resolvedStateId;
+            }
+            if ($resolvedCityId) {
+                $payload['CityId'] = $resolvedCityId;
+            }
 
             // PowerSales /customers requiere campos especificos no-nulos en su BD.
             $defaults = [
@@ -527,6 +676,8 @@ class PowerSalesService
                 'IsProspect'             => 0,
                 'IsSignatureMandatory'   => 0,
                 'IsTop10Enabled'         => 0,
+                'IsCredit'               => 0,
+                'IsActive'               => 1,
                 'CustomerTypeId'         => 1,
                 'ChannelId'              => 1,
                 'BannerId'               => 1,
@@ -557,5 +708,266 @@ class PowerSalesService
             return;
         }
         $this->post('cliente', '/customers', $payload, (string) $ref);
+    }
+
+    /**
+     * Obtiene los Estados desde la API de PowerSales (con cache de 24h).
+     */
+    public function fetchPowerSalesStates(bool $forceRefresh = false): array
+    {
+        if ($forceRefresh) {
+            Cache::forget('powersales_states');
+        }
+
+        return Cache::remember('powersales_states', now()->addHours(24), function () {
+            try {
+                $response = Http::withToken($this->token())
+                    ->acceptJson()
+                    ->timeout(15)
+                    ->get($this->baseUrl() . '/state');
+
+                if ($response->successful()) {
+                    return $response->json('data') ?? [];
+                }
+                $this->logger()->error("PowerSales GET /state respondió {$response->status()}: " . $response->body());
+            } catch (Throwable $e) {
+                $this->logger()->error("PowerSales GET /state EXCEPCION: " . $e->getMessage());
+            }
+            return [];
+        });
+    }
+
+    /**
+     * Obtiene las Ciudades desde la API de PowerSales (con cache de 24h).
+     */
+    public function fetchPowerSalesCities(bool $forceRefresh = false): array
+    {
+        if ($forceRefresh) {
+            Cache::forget('powersales_cities');
+        }
+
+        return Cache::remember('powersales_cities', now()->addHours(24), function () {
+            try {
+                $response = Http::withToken($this->token())
+                    ->acceptJson()
+                    ->timeout(25)
+                    ->get($this->baseUrl() . '/city');
+
+                if ($response->successful()) {
+                    return $response->json('data') ?? [];
+                }
+                $this->logger()->error("PowerSales GET /city respondió {$response->status()}: " . $response->body());
+            } catch (Throwable $e) {
+                $this->logger()->error("PowerSales GET /city EXCEPCION: " . $e->getMessage());
+            }
+            return [];
+        });
+    }
+
+    /**
+     * Sincroniza los catalogos de Magic (tabgen Tipo='ES' y ciudades) hacia las tablas locales de mapeo.
+     */
+    public function syncMagicGeografia(): array
+    {
+        $conn = null;
+        try {
+            $cm = app(\App\Services\BranchConnectionManager::class);
+            $branches = $cm->getActiveBranches();
+            foreach ($branches as $b) {
+                try {
+                    $c = $cm->connect($b->code);
+                    $c->select("SELECT 1 FROM tabgen LIMIT 1");
+                    $conn = $c;
+                    break;
+                } catch (Throwable $e) {
+                    continue;
+                }
+            }
+        } catch (Throwable $e) {}
+
+        if (!$conn) {
+            try {
+                $conn = DB::connection('aiesa');
+            } catch (Throwable $e) {}
+        }
+
+        $estadosCount = 0;
+        $ciudadesCount = 0;
+
+        if ($conn) {
+            $estados = $conn->select("SELECT TRIM(Clave) as Clave, TRIM(Descripcion) as Descripcion FROM tabgen WHERE Tipo = 'ES'");
+            foreach ($estados as $e) {
+                \App\Models\PowerSalesMappingEstado::firstOrCreate(
+                    ['magic_clave' => $e->Clave],
+                    ['magic_descripcion' => $e->Descripcion]
+                );
+                $estadosCount++;
+            }
+
+            $ciudades = $conn->select("SELECT TRIM(Cve_Ciudad) as Cve_Ciudad, TRIM(Dsc_Ciudad) as Dsc_Ciudad, TRIM(Cve_Estado) as Cve_Estado, TRIM(Cve_Pais) as Cve_Pais FROM ciudades");
+            foreach ($ciudades as $c) {
+                \App\Models\PowerSalesMappingCiudad::firstOrCreate(
+                    ['magic_cve_ciudad' => $c->Cve_Ciudad],
+                    [
+                        'magic_dsc_ciudad' => $c->Dsc_Ciudad,
+                        'magic_cve_estado' => $c->Cve_Estado,
+                        'magic_cve_pais'   => $c->Cve_Pais ?: 'MEX',
+                    ]
+                );
+                $ciudadesCount++;
+            }
+        }
+
+        return [
+            'estados'  => $estadosCount,
+            'ciudades' => $ciudadesCount,
+        ];
+    }
+
+    /**
+     * Normaliza un string para comparaciones difusas (sin acentos, mayúsculas, alfanumérico).
+     */
+    protected function normalizeGeoString(?string $str): string
+    {
+        if ($str === null || $str === '') {
+            return '';
+        }
+        $clean = @iconv('UTF-8', 'ASCII//TRANSLIT', $str) ?: $str;
+        $clean = strtoupper(trim($clean));
+        return (string) preg_replace('/[^A-Z0-9]/', '', $clean);
+    }
+
+    /**
+     * Mapeo automático de estados de Magic contra PowerSales.
+     */
+    public function autoMatchEstados(): int
+    {
+        $psStates = $this->fetchPowerSalesStates();
+        if (empty($psStates)) {
+            return 0;
+        }
+
+        $unmapped = \App\Models\PowerSalesMappingEstado::whereNull('ps_state_id')->get();
+        $matchedCount = 0;
+
+        foreach ($unmapped as $estado) {
+            $mClave = strtoupper(trim($estado->magic_clave));
+            $mNorm  = $this->normalizeGeoString($estado->magic_descripcion);
+
+            $bestMatch = null;
+            foreach ($psStates as $ps) {
+                $psNorm = $this->normalizeGeoString($ps['Name'] ?? '');
+                $psCol  = strtoupper(trim($ps['StatesCol'] ?? ''));
+
+                // 1. Clave == StatesCol (ej. JAL == JAL, BCN == BCN)
+                if ($mClave !== '' && $psCol !== '' && $mClave === $psCol) {
+                    $bestMatch = $ps;
+                    break;
+                }
+
+                // 2. Coincidencia exacta de nombre normalizado
+                if ($mNorm !== '' && $mNorm === $psNorm) {
+                    $bestMatch = $ps;
+                    break;
+                }
+
+                // 3. Contenido mutuo (ej. COAHUILA dentro de COAHUILA DE ZARAGOZA)
+                if ($mNorm !== '' && $psNorm !== '') {
+                    if (str_contains($psNorm, $mNorm) || str_contains($mNorm, $psNorm)) {
+                        $bestMatch = $ps;
+                        break;
+                    }
+                }
+
+                // 4. Similaridad fonética/texto >= 85%
+                if ($mNorm !== '' && $psNorm !== '') {
+                    similar_text($mNorm, $psNorm, $perc);
+                    if ($perc >= 85) {
+                        $bestMatch = $ps;
+                        break;
+                    }
+                }
+            }
+
+            if ($bestMatch) {
+                $estado->update([
+                    'ps_state_id'     => $bestMatch['Id'],
+                    'ps_state_name'   => $bestMatch['Name'] ?? '',
+                    'ps_state_number' => $bestMatch['StateNumber'] ?? '',
+                    'ps_states_col'   => $bestMatch['StatesCol'] ?? '',
+                ]);
+                $matchedCount++;
+            }
+        }
+
+        return $matchedCount;
+    }
+
+    /**
+     * Mapeo automático de ciudades de Magic contra PowerSales.
+     */
+    public function autoMatchCiudades(?string $magicCveEstado = null): int
+    {
+        $psCities = $this->fetchPowerSalesCities();
+        if (empty($psCities)) {
+            return 0;
+        }
+
+        // Agrupar ciudades de PS por StateId para búsqueda rápida O(1)
+        $psCitiesByState = [];
+        foreach ($psCities as $city) {
+            $stateId = (int) ($city['StateId'] ?? 0);
+            $psCitiesByState[$stateId][] = $city;
+        }
+
+        $query = \App\Models\PowerSalesMappingCiudad::whereNull('ps_city_id');
+        if ($magicCveEstado !== null && $magicCveEstado !== '') {
+            $query->where('magic_cve_estado', $magicCveEstado);
+        }
+
+        $unmapped = $query->get();
+        $matchedCount = 0;
+
+        // Cachear mapeos de estados Magic -> ps_state_id
+        $stateMap = \App\Models\PowerSalesMappingEstado::whereNotNull('ps_state_id')
+            ->pluck('ps_state_id', 'magic_clave')
+            ->toArray();
+
+        foreach ($unmapped as $ciudad) {
+            $psStateId = $stateMap[$ciudad->magic_cve_estado] ?? null;
+            if (!$psStateId || !isset($psCitiesByState[$psStateId])) {
+                continue;
+            }
+
+            $cNorm = $this->normalizeGeoString($ciudad->magic_dsc_ciudad);
+            if ($cNorm === '') {
+                continue;
+            }
+
+            $bestMatch = null;
+            foreach ($psCitiesByState[$psStateId] as $psCity) {
+                $psNameNorm = $this->normalizeGeoString($psCity['Name'] ?? '');
+                if ($cNorm === $psNameNorm) {
+                    $bestMatch = $psCity;
+                    break;
+                }
+                if (similar_text($cNorm, $psNameNorm, $perc) && $perc >= 90) {
+                    $bestMatch = $psCity;
+                    break;
+                }
+            }
+
+            if ($bestMatch) {
+                $ciudad->update([
+                    'ps_city_id'     => $bestMatch['Id'],
+                    'ps_city_name'   => $bestMatch['Name'] ?? '',
+                    'ps_city_number' => $bestMatch['CityNumber'] ?? '',
+                    'ps_state_id'    => $psStateId,
+                ]);
+                $matchedCount++;
+            }
+        }
+
+        return $matchedCount;
     }
 }

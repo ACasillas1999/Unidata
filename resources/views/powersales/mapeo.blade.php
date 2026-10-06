@@ -18,10 +18,16 @@
             <p class="page-subtitle" style="margin:4px 0 0; color: var(--text-secondary);">Solo lectura — reflejo en vivo de <code>proteo_db.field_mapping</code>. Editar en Proteo.</p>
         </div>
     </div>
-    <a href="{{ route('powersales.auditoria') }}" class="btn btn--ghost" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
-        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Ver Auditoría
-    </a>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a href="{{ route('powersales.geografia') }}" class="btn btn--ghost" style="display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>
+            Mapeo Geográfico
+        </a>
+        <a href="{{ route('powersales.auditoria') }}" class="btn btn--ghost" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Ver Auditoría
+        </a>
+    </div>
 </div>
 
 <div class="glass-card shadow-premium" style="padding: 14px 20px; margin-bottom: 20px; border: 1px solid rgba(245,158,11,0.25); background: rgba(245,158,11,0.05);">

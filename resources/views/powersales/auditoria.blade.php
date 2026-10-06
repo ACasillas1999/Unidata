@@ -18,10 +18,16 @@
             <p class="page-subtitle" style="margin:4px 0 0; color: var(--text-secondary);">Qué se mandó a PowerSales, cuándo, y qué contestó</p>
         </div>
     </div>
-    <a href="{{ route('powersales.mapeo') }}" class="btn btn--ghost" style="display: flex; align-items: center; gap: 8px;">
-        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m0-18h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9m0-18v18"/></svg>
-        Ver Mapeo de Campos
-    </a>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a href="{{ route('powersales.geografia') }}" class="btn btn--ghost" style="display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>
+            Mapeo Geográfico
+        </a>
+        <a href="{{ route('powersales.mapeo') }}" class="btn btn--ghost" style="display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m0-18h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9m0-18v18"/></svg>
+            Ver Mapeo de Campos
+        </a>
+    </div>
 </div>
 
 <div class="glass-card shadow-premium" style="padding: 16px 20px; margin-bottom: 20px;">
@@ -127,11 +133,47 @@ function prettyJson(raw) {
     try { return JSON.stringify(JSON.parse(raw), null, 2); } catch (e) { return raw; }
 }
 
+function formatResponse(raw, success) {
+    if (!raw) return '(vacío)';
+    
+    // Si es un JSON válido, formatearlo con pretty JSON
+    try {
+        const parsed = JSON.parse(raw);
+        return JSON.stringify(parsed, null, 2);
+    } catch (e) {
+        // No es JSON (posiblemente error HTML o mensaje de excepción)
+    }
+
+    // Extraer título o mensajes principales si es una página de error HTML (ej. Laravel Ignition)
+    let extracted = [];
+    const titleMatch = raw.match(/<title>(.*?)<\/title>/i);
+    const excMatch   = raw.match(/(?:Exception|Error|QueryException):\s*([^\n<]+)/i);
+
+    if (titleMatch && titleMatch[1]) {
+        let cleanTitle = titleMatch[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        extracted.push(`⚠️ RESUMEN DE ERROR:\n${cleanTitle}`);
+    }
+    if (excMatch && excMatch[1]) {
+        let cleanExc = excMatch[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        extracted.push(`🚨 DETALLE:\n${cleanExc}`);
+    }
+
+    if (extracted.length > 0) {
+        return extracted.join("\n\n") + "\n\n----------------------------------------\n" + raw;
+    }
+
+    return raw;
+}
+
 function verDetalle(log) {
     document.getElementById('modal-detalle-title').textContent = `${log.entity.toUpperCase()} · ${log.referencia}`;
     document.getElementById('modal-detalle-sub').textContent = `${log.endpoint} · ${log.success ? 'OK' : 'ERROR'} · HTTP ${log.status_code ?? '—'} · ${log.created_at}`;
     document.getElementById('modal-detalle-payload').textContent = prettyJson(log.payload);
-    document.getElementById('modal-detalle-response').textContent = prettyJson(log.response_body) === log.response_body ? (log.response_body || '(vacío)') : prettyJson(log.response_body);
+    
+    const respElem = document.getElementById('modal-detalle-response');
+    respElem.textContent = formatResponse(log.response_body, log.success);
+    respElem.style.color = log.success ? '#86efac' : '#fca5a5';
+
     document.getElementById('modal-detalle').style.display = 'flex';
 }
 

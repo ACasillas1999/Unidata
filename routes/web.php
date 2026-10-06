@@ -40,6 +40,9 @@ Route::get('/articulos/crear', [ArticulosController::class, 'crear'])->name('art
 Route::post('/articulos/crear', [ArticulosController::class, 'storeManual'])->name('articulos.storeManual');
 Route::get('/articulos/inventario', [InventarioController::class, 'index'])->name('inventario.index');
 Route::get('/articulos/inventario/export', [InventarioController::class, 'export'])->name('inventario.export');
+Route::get('/articulos/inventario/plantilla', [InventarioController::class, 'descargarPlantillaCsv'])->name('inventario.plantilla');
+Route::post('/articulos/inventario/actualizar-item', [InventarioController::class, 'updateItem'])->name('inventario.update_item');
+Route::post('/articulos/inventario/actualizar-masivo', [InventarioController::class, 'updateMasivo'])->name('inventario.update_masivo');
 Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
 Route::get('/articulos/subir/machote', [ArticulosController::class, 'descargarMachote'])->name('articulos.subir.machote');
 Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');
@@ -99,9 +102,14 @@ Route::get('/clientes/{rfc}/estado',                       [ClientesController::
 Route::get('/clientes/{rfc}/sucursal/{branchId}',          [ClientesController::class, 'editSucursal'])->name('clientes.edit_sucursal')->where('rfc', '.+')->where('branchId', '[0-9]+');
 Route::put('/clientes/{rfc}/sucursal/{branchId}',          [ClientesController::class, 'updateSucursal'])->name('clientes.update_sucursal')->where('rfc', '.+')->where('branchId', '[0-9]+');
 
-// Módulo: PowerSales (auditoria de sync)
+// Módulo: PowerSales (auditoria de sync y mapeos)
 Route::get('/powersales/auditoria', [PowerSalesController::class, 'index'])->name('powersales.auditoria');
 Route::get('/powersales/mapeo', [PowerSalesController::class, 'mapeo'])->name('powersales.mapeo');
+Route::get('/powersales/geografia', [PowerSalesController::class, 'geografia'])->name('powersales.geografia');
+Route::post('/powersales/geografia/estado', [PowerSalesController::class, 'mapEstado'])->name('powersales.geografia.estado');
+Route::post('/powersales/geografia/ciudad', [PowerSalesController::class, 'mapCiudad'])->name('powersales.geografia.ciudad');
+Route::post('/powersales/geografia/auto-match', [PowerSalesController::class, 'autoMatchGeografia'])->name('powersales.geografia.auto_match');
+Route::post('/powersales/geografia/refresh', [PowerSalesController::class, 'refreshGeografiaCatalogs'])->name('powersales.geografia.refresh');
 
 // Módulo: Proveedores
 Route::get('/proveedores', [ProveedoresController::class, 'index'])->name('proveedores.index');
