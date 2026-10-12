@@ -70,7 +70,7 @@ class ClientesController extends Controller
     {
         // Solo obtener campos configurados para Crear
         $campos = ClienteCampo::where('show_in_create', true)->orderBy('id')->get();
-        $catalogs = config('client_catalogs');
+        $catalogs = $this->getCatalogs();
         return view('clientes.crear', compact('campos', 'catalogs'));
     }
 
@@ -236,7 +236,7 @@ class ClientesController extends Controller
         // Consultar estado en cada sucursal
         $estadoSucursales = $this->resolveEstadoSucursales($cliente);
 
-        $catalogs = config('client_catalogs');
+        $catalogs = $this->getCatalogs();
 
         return view('clientes.editar', compact('cliente', 'campos', 'estadoSucursales', 'catalogs'));
     }
@@ -909,5 +909,31 @@ class ClientesController extends Controller
         }
 
         return $estado;
+    }
+
+    /**
+     * Obtiene los catálogos del cliente, cargando dinámicamente girosclientes de la BD.
+     */
+    private function getCatalogs(): array
+    {
+        $catalogs = config('client_catalogs');
+
+        try {
+            $branch = $this->connectionManager->getActiveBranches()->first();
+            if ($branch) {
+                $conn = $this->connectionManager->connect($branch->code);
+                $girosDb = $conn->table('girosclientes')
+                    ->orderBy('IdGiro', 'asc')
+                    ->pluck('DescripcionGiro', 'IdGiro')
+                    ->toArray();
+                if (!empty($girosDb)) {
+                    $catalogs['giros'] = $girosDb;
+                }
+            }
+        } catch (Throwable) {
+            // Fallback a config('client_catalogs.giros')
+        }
+
+        return $catalogs;
     }
 }

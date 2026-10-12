@@ -68,14 +68,14 @@ return [
     ],
 
     'giros' => [
-        5 => 'CONSTRUCTORA ELECTRICA',
-        4 => 'CONSTRUCTORA GENERAL',
-        3 => 'CONTRATISTA ELECTRICO DE BAJA Y MEDIA TENSION',
         1 => 'ELECTRICISTA',
-        8 => 'GOBIERNO  / DEPENDENCIA',
-        7 => 'INDUSTRIA',
         2 => 'INTEGRADOR',
+        3 => 'CONTRATISTA ELECTRICO DE BAJA Y MEDIA TENSION',
+        4 => 'CONSTRUCTORA GENERAL',
+        5 => 'CONSTRUCTORA ELECTRICA',
         6 => 'PROYECTISTA / DESARROLLADOR',
+        7 => 'INDUSTRIA',
+        8 => 'GOBIERNO  / DEPENDENCIA',
     ],
 
     'bloqueos' => [

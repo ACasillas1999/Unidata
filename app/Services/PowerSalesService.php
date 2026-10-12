@@ -614,8 +614,8 @@ class PowerSalesService
                 $cityMapping = \App\Models\PowerSalesMappingCiudad::where('magic_cve_ciudad', $cveCiudad)
                     ->orWhere('magic_dsc_ciudad', $cveCiudad)
                     ->first();
-                if ($cityMapping && $cityMapping->ps_city_id) {
-                    $resolvedCityId = (int)$cityMapping->ps_city_id;
+                if ($cityMapping && ($cityMapping->ps_city_id || $cityMapping->ps_city_number)) {
+                    $resolvedCityId = !empty($cityMapping->ps_city_number) ? $cityMapping->ps_city_number : (int)$cityMapping->ps_city_id;
                     if ($cityMapping->ps_state_id) {
                         $resolvedStateId = (int)$cityMapping->ps_state_id;
                     }
@@ -635,8 +635,8 @@ class PowerSalesService
                     $cityMapping = \App\Models\PowerSalesMappingCiudad::where('magic_dsc_ciudad', $municipio)
                         ->orWhere('magic_cve_ciudad', $municipio)
                         ->first();
-                    if ($cityMapping && $cityMapping->ps_city_id) {
-                        $resolvedCityId = (int)$cityMapping->ps_city_id;
+                    if ($cityMapping && ($cityMapping->ps_city_id || $cityMapping->ps_city_number)) {
+                        $resolvedCityId = !empty($cityMapping->ps_city_number) ? $cityMapping->ps_city_number : (int)$cityMapping->ps_city_id;
                         if (!$resolvedStateId && $cityMapping->ps_state_id) {
                             $resolvedStateId = (int)$cityMapping->ps_state_id;
                         }
