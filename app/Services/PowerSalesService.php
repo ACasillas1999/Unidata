@@ -240,7 +240,7 @@ class PowerSalesService
         return $this->buildPayload('articuloalm', $source);
     }
 
-    protected function post(string $entity, string $endpoint, array $payload, string $refLabel): void
+    protected function post(string $entity, string $endpoint, array $payload, string $refLabel): array
     {
         $logger = $this->logger();
 
@@ -248,7 +248,11 @@ class PowerSalesService
             if (empty($payload)) {
                 $logger->warning("PowerSales {$endpoint} [{$refLabel}]: payload vacio, no se envia (revisar field_mapping).");
                 $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'Payload vacio (revisar field_mapping).');
-                return;
+                return [
+                    'success' => false,
+                    'status'  => null,
+                    'message' => 'Payload vacío (revisar field_mapping)',
+                ];
             }
 
             $logger->info("PowerSales {$endpoint} [{$refLabel}] payload enviado: " . json_encode($payload));
@@ -261,12 +265,17 @@ class PowerSalesService
             $json = json_decode($body, true);
 
             $isSuccess = $response->successful();
+            $message = 'Sincronizado correctamente a PowerSales';
             if ($isSuccess && is_array($json)) {
                 if (!empty($json['error']) && $json['error'] != 0) {
                     $isSuccess = false;
+                    $message = $json['message'] ?? 'Error reportado por API de PowerSales';
                 } elseif (isset($json['ok']) && $json['ok'] == 0 && !empty($json['noInsert'])) {
                     $isSuccess = false;
+                    $message = 'Registro no insertado en PowerSales';
                 }
+            } elseif (!$isSuccess) {
+                $message = "Error HTTP {$response->status()} en PowerSales";
             }
 
             if ($isSuccess) {
@@ -276,9 +285,22 @@ class PowerSalesService
             }
 
             $this->saveAudit($entity, $endpoint, $refLabel, $payload, $isSuccess, $response->status(), $body);
+
+            return [
+                'success' => $isSuccess,
+                'status'  => $response->status(),
+                'message' => $message,
+                'body'    => $body,
+            ];
         } catch (Throwable $e) {
             $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $e->getMessage());
             $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'EXCEPCION DE CONEXION/CODIGO: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'status'  => null,
+                'message' => 'Excepción de conexión: ' . $e->getMessage(),
+            ];
         }
     }
 
@@ -541,9 +563,12 @@ class PowerSalesService
      *
      * No lanza excepciones: cualquier fallo (mapeo, red, API) se loguea en storage/logs/powersales.log.
      */
-    public function syncCliente(array $branchData, ?int $branchId = null): void
+    public function syncCliente(array $branchData, ?int $branchId = null): array
     {
         $ref = $branchData['RFC'] ?? 'sin-rfc';
+        $resolvedBranchId = $branchId 
+            ?? (!empty($branchData['BranchId']) ? (int)$branchData['BranchId'] : 9);
+
         try {
             $payload = $this->buildPayload('cliente', $branchData);
 
@@ -705,9 +730,21 @@ class PowerSalesService
         } catch (Throwable $e) {
             $this->logger()->error("PowerSales /customers [{$ref}] EXCEPCION armando payload: " . $e->getMessage());
             $this->saveAudit('cliente', '/customers', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
-            return;
+            return [
+                'success'   => false,
+                'branch_id' => $resolvedBranchId,
+                'message'   => 'Error preparando datos: ' . $e->getMessage(),
+            ];
         }
-        $this->post('cliente', '/customers', $payload, (string) $ref);
+
+        $postResult = $this->post('cliente', '/customers', $payload, (string) $ref);
+
+        return [
+            'success'   => $postResult['success'] ?? false,
+            'branch_id' => $resolvedBranchId,
+            'message'   => $postResult['message'] ?? '',
+            'status'    => $postResult['status'] ?? null,
+        ];
     }
 
     /**

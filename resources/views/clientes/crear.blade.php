@@ -310,13 +310,66 @@
 
 @push('scripts')
 <script>
-document.getElementById('form-crear-cliente').addEventListener('submit', function() {
+document.getElementById('form-crear-cliente').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = this;
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
     Swal.fire({
         title: 'Creando cliente...',
-        text: 'Replicando en todas las sucursales activas.',
+        text: 'Replicando en todas las sucursales y sincronizando con PowerSales.',
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
     });
+
+    try {
+        const formData = new FormData(form);
+        const res = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (res.redirected) {
+            window.location.href = res.url;
+            return;
+        }
+
+        const data = await res.json();
+        if (res.ok && data.success && data.sync_modal && window.renderUnidataSyncModal) {
+            window.renderUnidataSyncModal(data.sync_modal, () => {
+                window.location.href = data.redirect || "{{ route('clientes.index') }}";
+            });
+        } else if (!res.ok && res.status === 422 && data.errors) {
+            const errList = Object.values(data.errors).flat().map(e => `<li>${e}</li>`).join('');
+            Swal.fire({
+                icon: 'error',
+                title: 'Campos requeridos incompletos',
+                html: `<ul style="text-align:left; font-size:13px; color:#f87171; margin:0; padding-left:18px;">${errList}</ul>`,
+                background: '#0f172a',
+                color: '#fff',
+                confirmButtonColor: '#6366f1'
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al registrar',
+                text: data.message || 'Ocurrió un error al procesar el cliente.',
+                background: '#0f172a',
+                color: '#fff',
+                confirmButtonColor: '#6366f1'
+            });
+        }
+    } catch (err) {
+        // Fallback a envío convencional
+        form.submit();
+    }
 });
 
 const ciudadesMap = @json($catalogs['ciudades']);

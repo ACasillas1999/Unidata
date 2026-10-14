@@ -186,7 +186,7 @@ class ClientesController extends Controller
         //     $this->powerSales->syncCliente($this->toBranchFormat($dataMaestro), $psBranchId);
         // }
         // ─────────────────────────────────────────────────────────────────────────
-        $this->powerSales->syncCliente($this->toBranchFormat($dataMaestro));
+        $psResult = $this->powerSales->syncCliente($this->toBranchFormat($dataMaestro));
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
         $total    = count($resultados);
@@ -198,17 +198,36 @@ class ClientesController extends Controller
             $detalleError .= " | [{$err['sucursal']}]: {$err['message']}";
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Terminó con éxito',
+                'sync_modal' => [
+                    'accion'     => 'crear',
+                    'id_global'  => $nuevoIdGlobal,
+                    'rfc'        => $dataMaestro['rfc'],
+                    'nombre'     => $dataMaestro['razon_social'],
+                    'exitosos'   => $exitosos,
+                    'total'      => $total,
+                    'resultados' => $resultados,
+                    'powersales' => $psResult,
+                ],
+                'redirect'   => route('clientes.index'),
+            ]);
+        }
+
         return redirect()->route('clientes.index')
             ->with('success', "Cliente #{$nuevoIdGlobal} creado exitosamente en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
             ->with('resultados', $resultados)
             ->with('sync_modal', [
                 'accion'     => 'crear',
+                'id_global'  => $nuevoIdGlobal,
                 'rfc'        => $dataMaestro['rfc'],
                 'nombre'     => $dataMaestro['razon_social'],
                 'exitosos'   => $exitosos,
                 'total'      => $total,
                 'resultados' => $resultados,
-                'powersales' => true,
+                'powersales' => $psResult,
             ]);
 
     }
@@ -346,7 +365,7 @@ class ClientesController extends Controller
         //     $this->powerSales->syncCliente($dataBranch, $psBranchId);
         // }
         // ─────────────────────────────────────────────────────────────────────────
-        $this->powerSales->syncCliente($dataBranch);
+        $psResult = $this->powerSales->syncCliente($dataBranch);
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
         $total    = count($resultados);
@@ -358,17 +377,36 @@ class ClientesController extends Controller
             $detalleError .= " | [{$err['sucursal']}]: {$err['message']}";
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Terminó con éxito',
+                'sync_modal' => [
+                    'accion'     => 'editar',
+                    'id_global'  => $cliente->id_global,
+                    'rfc'        => $cliente->rfc,
+                    'nombre'     => $cliente->razon_social,
+                    'exitosos'   => $exitosos,
+                    'total'      => $total,
+                    'resultados' => $resultados,
+                    'powersales' => $psResult,
+                ],
+                'redirect'   => route('clientes.edit', $rfc),
+            ]);
+        }
+
         return redirect()->route('clientes.edit', $rfc)
             ->with('success', "Cliente actualizado en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
             ->with('resultados', $resultados)
             ->with('sync_modal', [
                 'accion'     => 'editar',
+                'id_global'  => $cliente->id_global,
                 'rfc'        => $cliente->rfc,
                 'nombre'     => $cliente->razon_social,
                 'exitosos'   => $exitosos,
                 'total'      => $total,
                 'resultados' => $resultados,
-                'powersales' => true,
+                'powersales' => $psResult,
             ]);
     }
 

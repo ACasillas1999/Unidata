@@ -331,8 +331,69 @@
 
 @push('scripts')
 <script>
-document.getElementById('form-editar-cliente').addEventListener('submit', function() {
-    Swal.fire({ title: 'Actualizando...', text: 'Propagando cambios a todas las sucursales.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+document.getElementById('form-editar-cliente').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = this;
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    Swal.fire({ 
+        title: 'Actualizando cliente...', 
+        text: 'Propagando cambios a todas las sucursales y sincronizando con PowerSales.', 
+        allowOutsideClick: false, 
+        didOpen: () => Swal.showLoading() 
+    });
+
+    try {
+        const formData = new FormData(form);
+        const res = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (res.redirected) {
+            window.location.href = res.url;
+            return;
+        }
+
+        const data = await res.json();
+        if (res.ok && data.success && data.sync_modal && window.renderUnidataSyncModal) {
+            window.renderUnidataSyncModal(data.sync_modal, () => {
+                // Al confirmar, recargar la pantalla para mostrar datos actualizados o navegar
+                window.location.reload();
+            });
+            if (typeof recargarEstado === 'function') {
+                recargarEstado();
+            }
+        } else if (!res.ok && res.status === 422 && data.errors) {
+            const errList = Object.values(data.errors).flat().map(e => `<li>${e}</li>`).join('');
+            Swal.fire({
+                icon: 'error',
+                title: 'Campos requeridos incompletos',
+                html: `<ul style="text-align:left; font-size:13px; color:#f87171; margin:0; padding-left:18px;">${errList}</ul>`,
+                background: '#0f172a',
+                color: '#fff',
+                confirmButtonColor: '#6366f1'
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al actualizar',
+                text: data.message || 'Ocurrió un error al procesar la actualización.',
+                background: '#0f172a',
+                color: '#fff',
+                confirmButtonColor: '#6366f1'
+            });
+        }
+    } catch (err) {
+        form.submit();
+    }
 });
 
 const ciudadesMap = @json($catalogs['ciudades']);
