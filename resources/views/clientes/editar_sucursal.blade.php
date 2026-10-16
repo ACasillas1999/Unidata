@@ -106,6 +106,11 @@
                                     <option value="0" {{ (int)$valor === 0 ? 'selected' : '' }}>No</option>
                                     <option value="1" {{ (int)$valor === 1 ? 'selected' : '' }}>Sí</option>
                                 </select>
+                            @elseif(strcasecmp($key, 'Condicion_Pago') === 0 || strcasecmp($key, 'condicion_pago') === 0)
+                                <select name="{{ $key }}" class="es-input">
+                                    <option value="CONT" {{ strtoupper($valor) === 'CONT' ? 'selected' : '' }}>CONTADO (CONT)</option>
+                                    <option value="CRE"  {{ strtoupper($valor) === 'CRE'  ? 'selected' : '' }}>CRÉDITO (CRE)</option>
+                                </select>
                             @else
                                 <input type="text" name="{{ $key }}" value="{{ $valor }}" class="es-input">
                             @endif

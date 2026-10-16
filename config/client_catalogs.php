@@ -79,14 +79,17 @@ return [
     ],
 
     'bloqueos' => [
-        8 => 'CHEQUE POR FACTURA',
-        3 => 'CHEQUEPOSFECHADO',
-        5 => 'CONTRATO',
         1 => 'ORDENCOMPRA',
-        4 => 'PERSONAUNICA',
-        2 => 'PROCHEMEX',
-        7 => 'PROCHEMEX CHEQUE 6MESES',
-        6 => 'PROCHEMEX FACT 100',
+        2 => 'CHEQUEPOSFECHADO',
+        3 => 'PERSONAUNICA',
+        4 => 'CONTRATO',
+        5 => 'CHEQUE POR FACTURA',
+        6 => 'NO APLICA',
+    ],
+
+    'condiciones_pago' => [
+        'CONT' => 'CONTADO (CONT)',
+        'CRE'  => 'CRÉDITO (CRE)',
     ],
 
     'clasificaciones' => [

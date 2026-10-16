@@ -172,13 +172,16 @@
             @endif
 
             {{-- SECCIÓN: Contacto --}}
-            @if(collect(['telefono1','telefono2','telefono3','fax','representante'])->contains(fn($f) => $campos->where('campo',$f)->first()!== null))
+            @if(collect(['email','telefono1','telefono2','telefono3','fax','representante'])->contains(fn($f) => $campos->where('campo',$f)->first()!== null))
             <div class="section-card">
                 <h3 style="margin: 0 0 24px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #818cf8; display: flex; align-items: center; gap: 8px;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.29 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9a16 16 0 0 0 6.91 6.91l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                     Contacto
                 </h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    @if($campos->where('campo','email')->first()!== null)
+                    <div><label class="modal-label">Correo Electrónico (Email)</label><input type="email" name="email" value="{{ old('email') }}" maxlength="255" placeholder="ejemplo@correo.com" class="modal-input"></div>
+                    @endif
                     @if($campos->where('campo','telefono1')->first()!== null)
                     <div><label class="modal-label">Teléfono 1</label><input type="text" name="telefono1" value="{{ old('telefono1') }}" maxlength="15" class="modal-input"></div>
                     @endif
@@ -213,7 +216,15 @@
                     <div><label class="modal-label">Días de Pago</label><input type="text" name="dias_pago" value="{{ old('dias_pago') }}" maxlength="6" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','condicion_pago')->first() !== null)
-                    <div><label class="modal-label">Condición de Pago</label><input type="text" name="condicion_pago" value="{{ old('condicion_pago') }}" maxlength="4" class="modal-input"></div>
+                    <div>
+                        <label class="modal-label">Condición de Pago</label>
+                        <select name="condicion_pago" class="modal-input">
+                            @php($selCond = strtoupper(old('condicion_pago', 'CONT')))
+                            @foreach($catalogs['condiciones_pago'] ?? ['CONT' => 'CONTADO (CONT)', 'CRE' => 'CRÉDITO (CRE)'] as $val => $lbl)
+                                <option value="{{ $val }}" {{ $selCond === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','dias_credito')->first() !== null)
                     <div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', 0) }}" class="modal-input"></div>
@@ -252,9 +263,9 @@
                     <div>
                         <label class="modal-label">Opción Bloqueo</label>
                         <select name="id_opcion_bloqueo" class="modal-input">
-                            <option value="0" {{ old('id_opcion_bloqueo', 0) == 0 ? 'selected' : '' }}>Ninguno</option>
+                            @php($selBloqueo = (int) (old('id_opcion_bloqueo') ?: 6))
                             @foreach($catalogs['bloqueos'] as $key => $desc)
-                                <option value="{{ $key }}" {{ old('id_opcion_bloqueo') == $key ? 'selected' : '' }}>
+                                <option value="{{ $key }}" {{ $selBloqueo == $key ? 'selected' : '' }}>
                                     {{ $desc }}
                                 </option>
                             @endforeach

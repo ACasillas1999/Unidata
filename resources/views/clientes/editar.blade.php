@@ -183,13 +183,14 @@
                     @endif
 
                     {{-- Contacto --}}
-                    @if(collect(['telefono1','telefono2','telefono3','fax','representante'])->contains(fn($f) => $campos->where('campo',$f)->first()!== null))
+                    @if(collect(['email','telefono1','telefono2','telefono3','fax','representante'])->contains(fn($f) => $campos->where('campo',$f)->first()!== null))
                     <div class="section-card">
                         <h3 class="section-title">
                             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.29 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9a16 16 0 0 0 6.91 6.91l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                             Contacto
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
+                            @if($campos->where('campo','email')->first()!== null)<div><label class="modal-label">Correo Electrónico (Email)</label><input type="email" name="email" value="{{ old('email', $cliente->email) }}" {{ !($campos->where('campo','email')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="255" placeholder="ejemplo@correo.com" class="modal-input"></div>@endif
                             @if($campos->where('campo','telefono1')->first()!== null)<div><label class="modal-label">Teléfono 1</label><input type="text" name="telefono1" value="{{ old('telefono1', $cliente->telefono1) }}" {{ !($campos->where('campo','telefono1')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
                             @if($campos->where('campo','telefono2')->first()!== null)<div><label class="modal-label">Teléfono 2</label><input type="text" name="telefono2" value="{{ old('telefono2', $cliente->telefono2) }}" {{ !($campos->where('campo','telefono2')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
                             @if($campos->where('campo','fax')->first()!== null)<div><label class="modal-label">Fax</label><input type="text" name="fax" value="{{ old('fax', $cliente->fax) }}" {{ !($campos->where('campo','fax')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
@@ -208,7 +209,17 @@
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
                             @if($campos->where('campo','vendedor')->first() !== null)<div><label class="modal-label">Vendedor</label><input type="text" name="vendedor" value="{{ old('vendedor', $cliente->vendedor) }}" {{ !($campos->where('campo','vendedor')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="6" class="modal-input"></div>@endif
                             @if($campos->where('campo','dias_pago')->first() !== null)<div><label class="modal-label">Días de Pago</label><input type="text" name="dias_pago" value="{{ old('dias_pago', $cliente->dias_pago) }}" {{ !($campos->where('campo','dias_pago')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="6" class="modal-input"></div>@endif
-                            @if($campos->where('campo','condicion_pago')->first() !== null)<div><label class="modal-label">Condición de Pago</label><input type="text" name="condicion_pago" value="{{ old('condicion_pago', $cliente->condicion_pago) }}" {{ !($campos->where('campo','condicion_pago')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="4" class="modal-input"></div>@endif
+                            @if($campos->where('campo','condicion_pago')->first() !== null)
+                            <div>
+                                <label class="modal-label">Condición de Pago</label>
+                                <select name="condicion_pago" class="modal-input" {{ !($campos->where('campo','condicion_pago')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }}>
+                                    @php($selCond = strtoupper(old('condicion_pago', $cliente->condicion_pago ?: 'CONT')))
+                                    @foreach($catalogs['condiciones_pago'] ?? ['CONT' => 'CONTADO (CONT)', 'CRE' => 'CRÉDITO (CRE)'] as $val => $lbl)
+                                        <option value="{{ $val }}" {{ $selCond === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                             @if($campos->where('campo','dias_credito')->first() !== null)<div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', $cliente->dias_credito) }}" {{ !($campos->where('campo','dias_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
                             @if($campos->where('campo','limite_credito')->first() !== null)<div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', $cliente->limite_credito) }}" {{ !($campos->where('campo','limite_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
                             @if($campos->where('campo','saldo_actual')->first() !== null)<div><label class="modal-label">Saldo Actual</label><input type="number" step="0.01" name="saldo_actual" value="{{ old('saldo_actual', $cliente->saldo_actual) }}" {{ !($campos->where('campo','saldo_actual')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
@@ -232,9 +243,9 @@
                             <div>
                                 <label class="modal-label">Opción Bloqueo</label>
                                 <select name="id_opcion_bloqueo" class="modal-input" {{ !($campos->where('campo','id_opcion_bloqueo')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }}>
-                                    <option value="0" {{ old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) == 0 ? 'selected' : '' }}>Ninguno</option>
+                                    @php($selBloqueo = (int) (old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) ?: 6))
                                     @foreach($catalogs['bloqueos'] as $key => $desc)
-                                        <option value="{{ $key }}" {{ old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) == $key ? 'selected' : '' }}>
+                                        <option value="{{ $key }}" {{ $selBloqueo == $key ? 'selected' : '' }}>
                                             {{ $desc }}
                                         </option>
                                     @endforeach

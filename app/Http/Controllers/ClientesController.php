@@ -161,6 +161,15 @@ class ClientesController extends Controller
                 $conn->table('clientes')->insert($dataFiltrada);
                 $localId = $dataFiltrada['Cliente'] ?? null;
 
+                // Guardar/Actualizar en clientes_email de la sucursal si la tabla existe
+                $emailVal = trim($dataMaestro['email'] ?? '');
+                if ($localId && $conn->getSchemaBuilder()->hasTable('clientes_email')) {
+                    $conn->table('clientes_email')->updateOrInsert(
+                        ['Clave_Cliente' => (int)$localId],
+                        ['e_mail' => $emailVal]
+                    );
+                }
+
                 $resultados[] = [
                     'sucursal' => $branch->name,
                     'status'   => 'ok',
@@ -249,6 +258,26 @@ class ClientesController extends Controller
             abort(404, "Cliente {$rfc} no encontrado en ninguna sucursal ni en maestro.");
         }
 
+        // Si en el maestro aún no tiene email, intentar obtenerlo de clientes_email de las sucursales
+        if (empty($cliente->email)) {
+            $branches = $this->connectionManager->getActiveBranches();
+            foreach ($branches as $b) {
+                try {
+                    $conn = $this->connectionManager->connect($b->code);
+                    if ($conn->getSchemaBuilder()->hasTable('clientes_email')) {
+                        $found = $conn->table('clientes')->where('RFC', $rfc)->first();
+                        if ($found && !empty($found->Cliente)) {
+                            $emailRow = $conn->table('clientes_email')->where('Clave_Cliente', (int)$found->Cliente)->first();
+                            if ($emailRow && !empty($emailRow->e_mail)) {
+                                $cliente->email = trim($emailRow->e_mail);
+                                break;
+                            }
+                        }
+                    }
+                } catch (\Throwable) {}
+            }
+        }
+
         // Obtener TODOS los campos para mostrarlos (si show_in_edit es false, se mostrarán como readonly en la vista)
         $campos = ClienteCampo::orderBy('id')->get();
 
@@ -331,6 +360,15 @@ class ClientesController extends Controller
                     $conn->table('clientes')
                         ->where('Cliente', $found->Cliente)
                         ->update($dataFiltrada);
+
+                    // Guardar/Actualizar en clientes_email de la sucursal si la tabla existe
+                    $emailVal = trim($dataMaestro['email'] ?? '');
+                    if ($conn->getSchemaBuilder()->hasTable('clientes_email')) {
+                        $conn->table('clientes_email')->updateOrInsert(
+                            ['Clave_Cliente' => (int)$found->Cliente],
+                            ['e_mail' => $emailVal]
+                        );
+                    }
 
                     $resultados[] = [
                         'sucursal' => $branch->name,
@@ -704,6 +742,7 @@ class ClientesController extends Controller
             'id_global'         => $idGlobal,
             'rfc'               => strtoupper(trim($request->input('rfc', ''))),
             'razon_social'      => $request->input('razon_social', ''),
+            'email'             => trim($request->input('email', '')),
             'calle'             => $request->input('calle', ''),
             'exterior'          => $request->input('exterior', ''),
             'interior'          => $request->input('interior', ''),

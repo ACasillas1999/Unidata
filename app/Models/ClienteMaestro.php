@@ -16,6 +16,7 @@ class ClienteMaestro extends Model
         'id_global',
         'rfc',
         'razon_social',
+        'email',
         'calle',
         'exterior',
         'interior',

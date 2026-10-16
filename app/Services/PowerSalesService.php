@@ -76,7 +76,15 @@ class PowerSalesService
             $groups['discountlist']['rows']->push($auto);
         }
 
-        foreach ($this->clienteAutoRules() as $auto) {
+        // Las reglas automaticas reemplazan la fila de BD con el mismo ps_field
+        // (ej. IsEarlyOrderEnabled existe en field_mapping pero sin columna ERP).
+        $clienteAuto = $this->clienteAutoRules();
+        $autoFields  = array_map(fn ($a) => $a->ps_field, $clienteAuto);
+        $groups['cliente']['rows'] = $groups['cliente']['rows']
+            ->reject(fn ($r) => in_array($r->ps_field, $autoFields, true)
+                && empty($r->erp_column) && ($r->fixed_value === null || $r->fixed_value === ''))
+            ->values();
+        foreach ($clienteAuto as $auto) {
             $groups['cliente']['rows']->push($auto);
         }
 
@@ -111,8 +119,14 @@ class PowerSalesService
             (object) [
                 'ps_field'    => 'PriceListNumber',
                 'erp_column'  => null,
-                'fixed_value' => 'Precio_Venta',
-                'auto_note'   => 'Automático — Requerido por PowerSales, por defecto "Precio_Venta" si no está mapeado',
+                'fixed_value' => 'Precio_Especial',
+                'auto_note'   => 'Fijo — Siempre lista Id 3 "Precio_Especial" (PriceListId = 3)',
+            ],
+            (object) [
+                'ps_field'    => 'PriceListId',
+                'erp_column'  => null,
+                'fixed_value' => '3',
+                'auto_note'   => 'Fijo — Siempre 3 (Precio_Especial en /pricelists)',
             ],
             (object) [
                 'ps_field'    => 'BranchId',
@@ -125,6 +139,42 @@ class PowerSalesService
                 'erp_column'  => 'Dias_Credito',
                 'fixed_value' => '0 / 1',
                 'auto_note'   => 'Automático — Valores enteros por defecto para evitar restricciones no-null en PowerSales',
+            ],
+            (object) [
+                'ps_field'    => 'IsEarlyOrderEnabled',
+                'erp_column'  => 'IdOpcionBloqueo',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Toma el valor de IdOpcionBloqueo del cliente (por defecto 0)',
+            ],
+            (object) [
+                'ps_field'    => 'IsCreatedOrderEnabled',
+                'erp_column'  => 'IdOpcionBloqueo',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Toma el valor de IdOpcionBloqueo del cliente (por defecto 0)',
+            ],
+            (object) [
+                'ps_field'    => 'CustomerClassificationId',
+                'erp_column'  => 'Clasificacion',
+                'fixed_value' => '1',
+                'auto_note'   => 'Automático — Columna Clasificacion; por defecto 1 (TIENDA) si es 0 o vacío',
+            ],
+            (object) [
+                'ps_field'    => 'IsCredit',
+                'erp_column'  => 'Condicion_Pago',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — 1 si Condicion_Pago es CRE, 0 si CONT (respaldo: OtorgoCredito)',
+            ],
+            (object) [
+                'ps_field'    => 'CreditDays',
+                'erp_column'  => 'Dias_Credito',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Toma los días de crédito del cliente (Dias_Credito)',
+            ],
+            (object) [
+                'ps_field'    => 'TaxRegimeCatalogId',
+                'erp_column'  => 'RegimenFiscal',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Se prefija con "Z" (ej: 624 -> Z624)',
             ],
             (object) [
                 'ps_field'    => 'Address1 / InvoiceAddress',
@@ -572,12 +622,25 @@ class PowerSalesService
         try {
             $payload = $this->buildPayload('cliente', $branchData);
 
-            // Sanear / Defaultear IsCredit (evita fallo 1048 Column 'IsCredit' cannot be null en PowerSales DB)
-            if (!isset($payload['IsCredit']) || $payload['IsCredit'] === '' || $payload['IsCredit'] === null) {
+            // Sanear / Determinar IsCredit: si condicion_pago es CRE -> 1, CONT -> 0
+            $condicion = strtoupper(trim((string)($branchData['Condicion_Pago'] ?? $branchData['condicion_pago'] ?? '')));
+            if ($condicion === 'CRE') {
+                $payload['IsCredit'] = 1;
+            } elseif ($condicion === 'CONT') {
+                $payload['IsCredit'] = 0;
+            } elseif (isset($payload['IsCredit']) && $payload['IsCredit'] !== '' && $payload['IsCredit'] !== null) {
+                $payload['IsCredit'] = (int)$payload['IsCredit'];
+            } else {
                 $rawCredit = $branchData['OtorgoCredito'] ?? $branchData['OtorgoCreditO'] ?? $branchData['otorgo_credito'] ?? 0;
                 $payload['IsCredit'] = (int)$rawCredit;
-            } else {
-                $payload['IsCredit'] = (int)$payload['IsCredit'];
+            }
+
+            // Mapear CreditDays desde Dias_Credito / dias_credito de la base de datos
+            $rawDiasCredito = $branchData['Dias_Credito'] ?? $branchData['dias_credito'] ?? null;
+            if ($rawDiasCredito !== null && $rawDiasCredito !== '') {
+                $payload['CreditDays'] = (int)$rawDiasCredito;
+            } elseif (isset($payload['CreditDays']) && $payload['CreditDays'] !== '') {
+                $payload['CreditDays'] = (int)$payload['CreditDays'];
             }
 
             // Sanear IsActive: convertir 'A' -> 1, 'B'/'I' -> 0 o mantener entero
@@ -586,6 +649,36 @@ class PowerSalesService
                 $payload['IsActive'] = in_array($valActive, ['A', '1', 'TRUE'], true) ? 1 : 0;
             } else {
                 $payload['IsActive'] = 1;
+            }
+
+            // Sanear CustomerClassificationId (por defecto 1 = TIENDA si viene vacío o 0)
+            if (empty($payload['CustomerClassificationId']) || (int)$payload['CustomerClassificationId'] <= 0) {
+                $rawClasif = $branchData['Clasificacion'] ?? $branchData['clasificacion'] ?? 1;
+                $payload['CustomerClassificationId'] = !empty($rawClasif) && (int)$rawClasif > 0 ? (int)$rawClasif : 1;
+            } else {
+                $payload['CustomerClassificationId'] = (int)$payload['CustomerClassificationId'];
+            }
+
+            // Prefijar TaxRegimeCatalogId con 'Z' (ej: 624 -> Z624)
+            $regimen = trim((string)($payload['TaxRegimeCatalogId'] ?? $branchData['RegimenFiscal'] ?? $branchData['regimen_fiscal'] ?? ''));
+            if ($regimen !== '') {
+                $payload['TaxRegimeCatalogId'] = str_starts_with(strtoupper($regimen), 'Z')
+                    ? strtoupper($regimen)
+                    : 'Z' . $regimen;
+            }
+
+            // Mapeo de opción de bloqueo hacia PowerSales
+            $rawBloqueo = $branchData['IdOpcionBloqueo'] ?? $branchData['id_opcion_bloqueo'] ?? null;
+            if ($rawBloqueo !== null && $rawBloqueo !== '') {
+                $payload['IsEarlyOrderEnabled']   = (int)$rawBloqueo;
+                $payload['IsCreatedOrderEnabled'] = (int)$rawBloqueo;
+            } else {
+                if (isset($payload['IsEarlyOrderEnabled']) && $payload['IsEarlyOrderEnabled'] !== '') {
+                    $payload['IsEarlyOrderEnabled'] = (int)$payload['IsEarlyOrderEnabled'];
+                }
+                if (isset($payload['IsCreatedOrderEnabled']) && $payload['IsCreatedOrderEnabled'] !== '') {
+                    $payload['IsCreatedOrderEnabled'] = (int)$payload['IsCreatedOrderEnabled'];
+                }
             }
 
             // Armar la dirección completa en Address1 e InvoiceAddress a partir de Calle, Exterior, Interior, Colonia, Cod_Postal
@@ -696,12 +789,14 @@ class PowerSalesService
                 'DayOffSet'              => 0,
                 'DefaultPaymentTypeId'   => 1,
                 'IsEarlyOrderEnabled'    => 0,
+                'IsCreatedOrderEnabled'  => 0,
                 'IsPOMandatory'          => 0,
                 'IsPriorityEnabled'      => 0,
                 'IsProspect'             => 0,
                 'IsSignatureMandatory'   => 0,
                 'IsTop10Enabled'         => 0,
                 'IsCredit'               => 0,
+                'CreditDays'             => 0,
                 'IsActive'               => 1,
                 'CustomerTypeId'         => 1,
                 'ChannelId'              => 1,
@@ -710,6 +805,7 @@ class PowerSalesService
                 'CityId'                 => 1,
                 'LocationId'             => 1,
                 'Top10Id'                => 1,
+                'CustomerClassificationId' => 1,
                 'ParentCustomerId'       => 0,
                 'PriceListId'            => 1,
                 'ProductListsId'         => 1,
@@ -727,6 +823,10 @@ class PowerSalesService
                     $payload[$key] = $defaultVal;
                 }
             }
+
+            // Lista de precios fija: siempre Id 3 (Precio_Especial) segun GET /pricelists de PowerSales
+            $payload['PriceListId']     = 3;
+            $payload['PriceListNumber'] = 'Precio_Especial';
         } catch (Throwable $e) {
             $this->logger()->error("PowerSales /customers [{$ref}] EXCEPCION armando payload: " . $e->getMessage());
             $this->saveAudit('cliente', '/customers', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
