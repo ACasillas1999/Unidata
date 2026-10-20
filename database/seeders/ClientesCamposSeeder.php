@@ -63,7 +63,7 @@ class ClientesCamposSeeder extends Seeder
 
             // NUEVOS CAMPOS (antes excluidos)
             ['campo' => 'documentos',         'label' => 'Documentos',             'is_required' => false, 'show_in_create' => false, 'show_in_edit' => true],
-            ['campo' => 'saldo_actual',       'label' => 'Saldo Actual',           'is_required' => false, 'show_in_create' => false, 'show_in_edit' => true],
+            ['campo' => 'saldo_actual',       'label' => 'Saldo Actual',           'is_required' => false, 'show_in_create' => false, 'show_in_edit' => false],
             ['campo' => 'codigo_contpaq',     'label' => 'Código Contpaq',         'is_required' => false, 'show_in_create' => false, 'show_in_edit' => true],
             ['campo' => 'modificar_fpmpfac',  'label' => 'Modificar FPMPFac',      'is_required' => false, 'show_in_create' => false, 'show_in_edit' => true],
             ['campo' => 'id_opcion_bloqueo',  'label' => 'Opción Bloqueo',         'is_required' => false, 'show_in_create' => false, 'show_in_edit' => true],

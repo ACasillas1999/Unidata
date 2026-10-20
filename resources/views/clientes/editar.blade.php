@@ -200,7 +200,7 @@
                     @endif
 
                     {{-- Crédito --}}
-                    @if(collect(['vendedor','dias_pago','condicion_pago','dias_credito','limite_credito','cta_contable','saldo_actual'])->contains(fn($f) => $campos->where('campo',$f)->first() !== null))
+                    @if(collect(['vendedor','dias_pago','condicion_pago','dias_credito','limite_credito','cta_contable'])->contains(fn($f) => $campos->where('campo',$f)->first() !== null))
                     <div class="section-card">
                         <h3 class="section-title">
                             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -222,7 +222,6 @@
                             @endif
                             @if($campos->where('campo','dias_credito')->first() !== null)<div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', $cliente->dias_credito) }}" {{ !($campos->where('campo','dias_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
                             @if($campos->where('campo','limite_credito')->first() !== null)<div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', $cliente->limite_credito) }}" {{ !($campos->where('campo','limite_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
-                            @if($campos->where('campo','saldo_actual')->first() !== null)<div><label class="modal-label">Saldo Actual</label><input type="number" step="0.01" name="saldo_actual" value="{{ old('saldo_actual', $cliente->saldo_actual) }}" {{ !($campos->where('campo','saldo_actual')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
                             @if($campos->where('campo','cta_contable')->first() !== null)<div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable', $cliente->cta_contable) }}" {{ !($campos->where('campo','cta_contable')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="14" class="modal-input"></div>@endif
                         </div>
                     </div>

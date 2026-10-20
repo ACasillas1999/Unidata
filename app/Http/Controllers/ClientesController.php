@@ -158,6 +158,11 @@ class ClientesController extends Controller
                     $dataFiltrada['Cliente'] = (int)$maxCliente + 1;
                 }
 
+                // Saldo inicial en 0 para nuevo cliente en la sucursal (no se replica desde formularios)
+                if (in_array('Saldo_Actual', $columnasReales)) {
+                    $dataFiltrada['Saldo_Actual'] = 0;
+                }
+
                 $conn->table('clientes')->insert($dataFiltrada);
                 $localId = $dataFiltrada['Cliente'] ?? null;
 
@@ -911,7 +916,6 @@ class ClientesController extends Controller
             'OtorgoCredito'     => $data['otorgo_credito'] ?? 0,
             'e_mail'            => $data['e_mail'] ?? $data['email'] ?? '',
             'email'             => $data['email'] ?? $data['e_mail'] ?? '',
-            'Saldo_Actual'      => $data['saldo_actual'] ?? 0,
             'Status'            => $data['status'] ?? 'A',
             'Cta_Contable'      => $data['cta_contable'] ?? '',
             'Fecha_Alta'        => $data['fecha_alta'] ?? now()->toDateString(),

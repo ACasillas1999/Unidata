@@ -246,7 +246,6 @@ class SyncClientesMaestro extends Command
             'Dias_Credito'      => $data->dias_credito,
             'Limite_Credito'    => $data->limite_credito,
             'OtorgoCreditO'     => $data->otorgo_credito,
-            'Saldo_Actual'      => $data->saldo_actual,
             'Status'            => $data->status,
             'Cta_Contable'      => $data->cta_contable,
             'Fecha_Alta'        => $data->fecha_alta,

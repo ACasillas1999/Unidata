@@ -202,7 +202,7 @@
             @endif
 
             {{-- SECCIÓN: Crédito --}}
-            @if(collect(['vendedor','dias_pago','condicion_pago','dias_credito','limite_credito','cta_contable','saldo_actual'])->contains(fn($f) => $campos->where('campo',$f)->first() !== null))
+            @if(collect(['vendedor','dias_pago','condicion_pago','dias_credito','limite_credito','cta_contable'])->contains(fn($f) => $campos->where('campo',$f)->first() !== null))
             <div class="section-card">
                 <h3 style="margin: 0 0 24px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #818cf8; display: flex; align-items: center; gap: 8px;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -231,9 +231,6 @@
                     @endif
                     @if($campos->where('campo','limite_credito')->first() !== null)
                     <div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', 0) }}" class="modal-input"></div>
-                    @endif
-                    @if($campos->where('campo','saldo_actual')->first() !== null)
-                    <div><label class="modal-label">Saldo Actual</label><input type="number" step="0.01" name="saldo_actual" value="{{ old('saldo_actual', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','cta_contable')->first() !== null)
                     <div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable') }}" maxlength="14" class="modal-input"></div>
