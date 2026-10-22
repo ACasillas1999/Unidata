@@ -286,14 +286,14 @@
 
                                 @if($c->ps_city_id && !empty($c->ps_city_name))
                                     <option value="{{ $c->ps_city_id }}" selected>
-                                        [Cód: {{ $c->ps_city_number ?: $c->ps_city_id }}] {{ $c->ps_city_name }} (Actual)
+                                        [ID: {{ $c->ps_city_id }}] {{ $c->ps_city_name }} (Actual)
                                     </option>
                                 @endif
 
                                 @foreach($stateCities as $psc)
                                     @if((int)$c->ps_city_id !== (int)$psc['Id'])
                                         <option value="{{ $psc['Id'] }}">
-                                            [Cód: {{ $psc['CityNumber'] ?? $psc['Id'] }}] {{ $psc['Name'] }}
+                                            [ID: {{ $psc['Id'] }}] {{ $psc['Name'] }}
                                         </option>
                                     @endif
                                 @endforeach
@@ -303,7 +303,7 @@
                             <span class="status-badge" id="badge-ciudad-{{ $c->id }}">
                                 @if($c->ps_city_id)
                                     <span style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;">
-                                        Mapeado (Cód: {{ $c->ps_city_number ?: $c->ps_city_id }})
+                                        Mapeado (ID: {{ $c->ps_city_id }})
                                     </span>
                                 @else
                                     <span style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;">
@@ -431,9 +431,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     showToast(data.message);
                     const badge = document.getElementById(`badge-ciudad-${id}`);
                     if (badge) {
-                        const cityCode = (data.mapping && data.mapping.ps_city_number) ? data.mapping.ps_city_number : psCityId;
+                        const cityId = (data.mapping && data.mapping.ps_city_id) ? data.mapping.ps_city_id : psCityId;
                         badge.innerHTML = psCityId
-                            ? `<span style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;">Mapeado (Cód: ${cityCode})</span>`
+                            ? `<span style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;">Mapeado (ID: ${cityId})</span>`
                             : `<span style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;">Sin Mapear</span>`;
                     }
                 } else {

@@ -174,13 +174,19 @@ class PowerSalesService
                 'ps_field'    => 'TaxRegimeCatalogId',
                 'erp_column'  => 'RegimenFiscal',
                 'fixed_value' => null,
-                'auto_note'   => 'Automático — Se prefija con "Z" (ej: 624 -> Z624)',
+                'auto_note'   => 'Automático — Toma el régimen fiscal del cliente (ej: 624)',
             ],
             (object) [
                 'ps_field'    => 'Address1 / InvoiceAddress',
                 'erp_column'  => 'Calle, Exterior, Interior, Colonia, Cod_Postal',
                 'fixed_value' => null,
                 'auto_note'   => 'Automático — Concatena Calle, Núm. Exterior/Interior, Colonia y CP para PowerSales',
+            ],
+            (object) [
+                'ps_field'    => 'CityId / StateId',
+                'erp_column'  => 'Ciudad, Municipio, Estado',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Mapea el ID único de Ciudad y Estado desde la homologación geográfica de PowerSales',
             ],
         ];
     }
@@ -624,9 +630,9 @@ class PowerSalesService
 
             // Sanear / Determinar IsCredit: si condicion_pago es CRE -> 1, CONT -> 0
             $condicion = strtoupper(trim((string)($branchData['Condicion_Pago'] ?? $branchData['condicion_pago'] ?? '')));
-            if ($condicion === 'CRE') {
+            if ($condicion === 'CRE' || str_starts_with($condicion, 'CRE')) {
                 $payload['IsCredit'] = 1;
-            } elseif ($condicion === 'CONT') {
+            } elseif ($condicion === 'CONT' || str_starts_with($condicion, 'CONT')) {
                 $payload['IsCredit'] = 0;
             } elseif (isset($payload['IsCredit']) && $payload['IsCredit'] !== '' && $payload['IsCredit'] !== null) {
                 $payload['IsCredit'] = (int)$payload['IsCredit'];
@@ -659,13 +665,9 @@ class PowerSalesService
                 $payload['CustomerClassificationId'] = (int)$payload['CustomerClassificationId'];
             }
 
-            // Prefijar TaxRegimeCatalogId con 'Z' (ej: 624 -> Z624)
+            // TaxRegimeCatalogId sin prefijo 'Z' (ej: 624) - siempre enviar la llave para evitar Undefined array key en PowerSales
             $regimen = trim((string)($payload['TaxRegimeCatalogId'] ?? $branchData['RegimenFiscal'] ?? $branchData['regimen_fiscal'] ?? ''));
-            if ($regimen !== '') {
-                $payload['TaxRegimeCatalogId'] = str_starts_with(strtoupper($regimen), 'Z')
-                    ? strtoupper($regimen)
-                    : 'Z' . $regimen;
-            }
+            $payload['TaxRegimeCatalogId'] = $regimen !== '' ? preg_replace('/^Z/i', '', $regimen) : '';
 
             // Mapeo de opción de bloqueo hacia PowerSales
             $rawBloqueo = $branchData['IdOpcionBloqueo'] ?? $branchData['id_opcion_bloqueo'] ?? null;
@@ -733,7 +735,7 @@ class PowerSalesService
                     ->orWhere('magic_dsc_ciudad', $cveCiudad)
                     ->first();
                 if ($cityMapping && ($cityMapping->ps_city_id || $cityMapping->ps_city_number)) {
-                    $resolvedCityId = !empty($cityMapping->ps_city_number) ? $cityMapping->ps_city_number : (int)$cityMapping->ps_city_id;
+                    $resolvedCityId = !empty($cityMapping->ps_city_id) ? (int)$cityMapping->ps_city_id : (int)$cityMapping->ps_city_number;
                     if ($cityMapping->ps_state_id) {
                         $resolvedStateId = (int)$cityMapping->ps_state_id;
                     }
@@ -754,7 +756,7 @@ class PowerSalesService
                         ->orWhere('magic_cve_ciudad', $municipio)
                         ->first();
                     if ($cityMapping && ($cityMapping->ps_city_id || $cityMapping->ps_city_number)) {
-                        $resolvedCityId = !empty($cityMapping->ps_city_number) ? $cityMapping->ps_city_number : (int)$cityMapping->ps_city_id;
+                        $resolvedCityId = !empty($cityMapping->ps_city_id) ? (int)$cityMapping->ps_city_id : (int)$cityMapping->ps_city_number;
                         if (!$resolvedStateId && $cityMapping->ps_state_id) {
                             $resolvedStateId = (int)$cityMapping->ps_state_id;
                         }
