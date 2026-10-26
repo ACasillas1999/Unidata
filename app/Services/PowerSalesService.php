@@ -349,13 +349,14 @@ class PowerSalesService
                 'body'    => $body,
             ];
         } catch (Throwable $e) {
-            $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $e->getMessage());
-            $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'EXCEPCION DE CONEXION/CODIGO: ' . $e->getMessage());
+            $err = $this->cleanUtf8($e->getMessage());
+            $logger->error("PowerSales {$endpoint} [{$refLabel}] EXCEPCION: " . $err);
+            $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, 'EXCEPCION DE CONEXION/CODIGO: ' . $err);
 
             return [
                 'success' => false,
                 'status'  => null,
-                'message' => 'Excepción de conexión: ' . $e->getMessage(),
+                'message' => 'Excepción de conexión: ' . $err,
             ];
         }
     }
@@ -413,20 +414,20 @@ class PowerSalesService
     protected function saveAudit(string $entity, string $endpoint, string $refLabel, array $payload, bool $success, ?int $statusCode, ?string $responseBody): void
     {
         try {
-            $cleanResponseBody = $responseBody !== null ? mb_substr($responseBody, 0, 60000) : null;
+            $cleanResponseBody = $responseBody !== null ? mb_substr($this->cleanUtf8($responseBody), 0, 60000) : null;
 
             DB::connection('mysql')->table('powersales_sync_logs')->insert([
                 'entity'        => $entity,
                 'endpoint'      => $endpoint,
                 'referencia'    => $refLabel,
-                'payload'       => json_encode($payload),
+                'payload'       => json_encode($this->cleanUtf8($payload), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
                 'success'       => $success,
                 'status_code'   => $statusCode,
                 'response_body' => $cleanResponseBody,
                 'created_at'    => now(),
             ]);
         } catch (Throwable $e) {
-            $this->logger()->error("No se pudo guardar auditoria PowerSales: " . $e->getMessage());
+            $this->logger()->error("No se pudo guardar auditoria PowerSales: " . $this->cleanUtf8($e->getMessage()));
         }
     }
 
@@ -830,12 +831,13 @@ class PowerSalesService
             $payload['PriceListId']     = 3;
             $payload['PriceListNumber'] = 'Precio_Especial';
         } catch (Throwable $e) {
-            $this->logger()->error("PowerSales /customers [{$ref}] EXCEPCION armando payload: " . $e->getMessage());
-            $this->saveAudit('cliente', '/customers', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $e->getMessage());
+            $err = $this->cleanUtf8($e->getMessage());
+            $this->logger()->error("PowerSales /customers [{$ref}] EXCEPCION armando payload: " . $err);
+            $this->saveAudit('cliente', '/customers', (string) $ref, [], false, null, 'EXCEPCION armando payload: ' . $err);
             return [
                 'success'   => false,
                 'branch_id' => $resolvedBranchId,
-                'message'   => 'Error preparando datos: ' . $e->getMessage(),
+                'message'   => 'Error preparando datos: ' . $err,
             ];
         }
 
@@ -1108,5 +1110,38 @@ class PowerSalesService
         }
 
         return $matchedCount;
+    }
+
+    /**
+     * Sanitiza recursivamente cualquier estructura de datos para asegurar codificación UTF-8 válida.
+     */
+    public function cleanUtf8(mixed $data): mixed
+    {
+        if (is_string($data)) {
+            if (!mb_check_encoding($data, 'UTF-8')) {
+                $converted = @mb_convert_encoding($data, 'UTF-8', 'Windows-1252, ISO-8859-1');
+                if ($converted !== false && mb_check_encoding($converted, 'UTF-8')) {
+                    return $converted;
+                }
+                return mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            }
+            return $data;
+        }
+
+        if (is_array($data)) {
+            $result = [];
+            foreach ($data as $k => $v) {
+                $cleanKey = is_string($k) ? $this->cleanUtf8($k) : $k;
+                $result[$cleanKey] = $this->cleanUtf8($v);
+            }
+            return $result;
+        }
+
+        if (is_object($data)) {
+            $arr = (array) $data;
+            return (object) $this->cleanUtf8($arr);
+        }
+
+        return $data;
     }
 }

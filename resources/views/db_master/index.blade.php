@@ -529,7 +529,7 @@ function calculateEditPrices() {
 
     // 4. Desc Venta Final (%) = 100 - (Precio_Venta / Precio_Lista * 100)
     if (editDesVentaFinal) {
-        if (lista > 0) {
+        if (lista > 0 && pVenta > 0) {
             const dVentaFinal = 100 - (pVenta / lista * 100);
             editDesVentaFinal.value = dVentaFinal.toFixed(2);
         } else {

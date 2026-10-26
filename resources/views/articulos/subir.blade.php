@@ -120,7 +120,7 @@
                             'Clasificación'        => ['type' => 'normal'],
                             'MN/USD'               => ['type' => 'normal'],
                             'P. Lista'             => ['type' => 'trigger', 'title' => 'Dispara el cálculo de P4, P.Especial, P.Gerente, P.Tope'],
-                            'Desc. P. Venta'       => ['type' => 'formula', 'title' => 'Fórmula: 100 - (P.Venta / P.Lista * 100)'],
+                            'Desc. P. Venta'       => ['type' => 'formula', 'title' => 'Fórmula: Si P.Lista y P.Venta > 0: 100 - (P.Venta / P.Lista * 100), sino 0%'],
                             'P. Venta'             => ['type' => 'normal'],
                             'Desc. P. Espec'       => ['type' => 'trigger', 'title' => 'Dispara el cálculo de P.Especial'],
                             'P. Especial'          => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - Desc.Espec) / 100'],
@@ -171,10 +171,16 @@
                     <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     Vista Previa
                 </button>
-                <button id="process-btn" class="btn btn--primary" style="width: 100%; padding: 9px 14px; justify-content: center; border-radius: var(--radius-md); font-size: 12px; font-weight: 800; box-shadow: 0 6px 14px -4px rgba(245,158,11,0.3);">
+                <button id="process-btn" class="btn btn--primary" style="width: 100%; padding: 9px 14px; justify-content: center; border-radius: var(--radius-md); font-size: 12px; font-weight: 800; box-shadow: 0 6px 14px -4px rgba(245,158,11,0.3); transition: all 0.25s ease;">
                     <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     Ejecutar Actualización
                 </button>
+                <div id="preview-status-hint" style="font-size: 10.5px; text-align: center; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 4px; padding-top: 2px; transition: color 0.2s;">
+                    <span id="preview-status-icon" style="display: flex; align-items: center;">
+                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </span>
+                    <span id="preview-status-text">Requiere Vista Previa para habilitar</span>
+                </div>
             </div>
         </div>
     </div>
@@ -258,7 +264,10 @@
                         <svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                     </div>
                     <div>
-                        <h3 class="card-title" style="color: var(--amber-light); font-size: 14px; margin: 0;">Previsualización de Comparativa</h3>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h3 class="card-title" style="color: var(--amber-light); font-size: 14px; margin: 0;">Previsualización de Comparativa</h3>
+                            <span id="preview-badge-count" style="font-size: 10px; background: rgba(245,158,11,0.15); color: var(--amber); padding: 2px 7px; border-radius: 4px; font-weight: 700; display: none;">0 registros</span>
+                        </div>
                         <p class="card-subtitle" style="font-size: 10.5px; margin: 0;">Verifica los cambios calculados antes de ejecutar la actualización final</p>
                     </div>
                 </div>
@@ -267,7 +276,25 @@
                         <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                         Seleccionar solo campos con cambios
                     </button>
+                    <button id="preview-header-process-btn" type="button" class="btn btn--primary" style="padding: 5px 12px; font-size: 10.5px; display: none; border-radius: 5px; font-weight: 700;">
+                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Ejecutar Actualización
+                    </button>
                     <button onclick="document.getElementById('preview-container').style.display = 'none'; document.getElementById('preview-placeholder').style.display = 'block';" class="btn btn--ghost" style="padding: 4px 10px; font-size: 10.5px; border-radius: 5px;">Ocultar</button>
+                </div>
+            </div>
+
+            {{-- Banner Informativo para Archivos Pesados / Truncados a 500 filas --}}
+            <div id="preview-limit-banner" style="display: none; padding: 10px 16px; background: rgba(56, 189, 248, 0.08); border-bottom: 1px solid rgba(56, 189, 248, 0.2); font-size: 11.5px; color: #bae6fd; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 9px;">
+                    <span style="font-size: 16px;">⚡</span>
+                    <div>
+                        <strong style="color: white;">Archivo extenso detectado:</strong> Mostrando únicamente las primeras <strong style="color: var(--amber);" id="banner-preview-limit">500</strong> filas de <strong style="color: white;" id="banner-total-rows">0</strong> registros totales del CSV para optimizar la velocidad y fluidez.
+                        <span style="color: var(--text-muted); display: block; font-size: 10.5px; margin-top: 1px;">Al presionar <strong>"Ejecutar Actualización"</strong> se procesará la totalidad del archivo en las sucursales seleccionadas.</span>
+                    </div>
+                </div>
+                <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--sky); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap;">
+                    Vista previa de 500 filas
                 </div>
             </div>
             <div class="card-body" style="flex: 1; overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
@@ -441,6 +468,57 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentData = null;
     let selectedFile = null;
     let lastChangedCols = [];
+    let isPreviewValid = false;
+    let totalRowsInCsv = 0;
+
+    function setPreviewValid(valid, message = null) {
+        isPreviewValid = valid;
+        const hint = document.getElementById('preview-status-hint');
+        const text = document.getElementById('preview-status-text');
+        const iconContainer = document.getElementById('preview-status-icon');
+        const headerProcBtn = document.getElementById('preview-header-process-btn');
+
+        if (valid) {
+            processBtn.style.opacity = '1';
+            processBtn.style.filter = 'none';
+            processBtn.style.cursor = 'pointer';
+            processBtn.style.boxShadow = '0 6px 14px -4px rgba(245,158,11,0.4)';
+            if (headerProcBtn) headerProcBtn.style.display = 'inline-flex';
+            if (hint && text && iconContainer) {
+                hint.style.color = 'var(--emerald)';
+                iconContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+                text.textContent = message || 'Vista Previa verificada';
+            }
+        } else {
+            processBtn.style.opacity = '0.5';
+            processBtn.style.filter = 'grayscale(35%)';
+            processBtn.style.cursor = 'not-allowed';
+            processBtn.style.boxShadow = 'none';
+            if (headerProcBtn) headerProcBtn.style.display = 'none';
+            if (hint && text && iconContainer) {
+                hint.style.color = message ? 'var(--amber)' : 'var(--text-muted)';
+                iconContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+                text.textContent = message || 'Requiere Vista Previa para habilitar';
+            }
+        }
+    }
+
+    function invalidatePreview(reason) {
+        if (isPreviewValid) {
+            setPreviewValid(false, reason);
+        }
+    }
+
+    // Estado inicial: previsualización obligatoria requerida
+    setPreviewValid(false);
+
+    // Botón de actualización dentro del panel de previsualización
+    const previewHeaderProcessBtn = document.getElementById('preview-header-process-btn');
+    if (previewHeaderProcessBtn) {
+        previewHeaderProcessBtn.addEventListener('click', () => {
+            processBtn.click();
+        });
+    }
 
     // Toggle All Columns
     if (btnToggleAllCols) {
@@ -448,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
             const anyUnchecked = Array.from(columnCheckboxes).some(cb => !cb.checked);
             columnCheckboxes.forEach(cb => cb.checked = anyUnchecked);
+            invalidatePreview('Columnas modificadas. Actualiza la Vista Previa.');
         });
     }
 
@@ -500,21 +579,34 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZone.style.display = 'none';
         fileInfo.style.display = 'flex';
 
-        Papa.parse(file, {
-            complete: (results) => {
-                currentData = results.data;
-                if (results.meta && results.meta.fields) {
-                    syncCheckboxesWithCsvHeaders(results.meta.fields);
-                }
-            },
-            header: true,
-            skipEmptyLines: true
+        // Ocultar previsualización anterior si existía
+        const previewContainer = document.getElementById('preview-container');
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (previewPlaceholder) previewPlaceholder.style.display = 'block';
+
+        totalRowsInCsv = 0;
+        const limitBanner = document.getElementById('preview-limit-banner');
+        if (limitBanner) limitBanner.style.display = 'none';
+        const badgeCount = document.getElementById('preview-badge-count');
+        if (badgeCount) badgeCount.style.display = 'none';
+
+        invalidatePreview('Archivo nuevo cargado. Genera la Vista Previa.');
+
+        extractCsvHeaders(file, (headers) => {
+            syncCheckboxesWithCsvHeaders(headers);
         });
     }
 
     // Select All Branches
     selectAllBranches.addEventListener('change', () => {
         branchCheckboxes.forEach(cb => cb.checked = selectAllBranches.checked);
+        invalidatePreview('Sucursales modificadas. Actualiza la Vista Previa.');
+    });
+
+    branchCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            invalidatePreview('Sucursales modificadas. Actualiza la Vista Previa.');
+        });
     });
 
     // ── Lógica de restricción y autocontrol de dependencias de fórmulas ──
@@ -527,42 +619,180 @@ document.addEventListener('DOMContentLoaded', () => {
         'Desc. P. Venta': ['P. Lista', 'P. Venta']
     };
 
+    // Función robusta para extraer los encabezados de cualquier CSV (detectando UTF-8, Windows-1252/ANSI de Excel, delimitador ; o , y BOM)
+    function extractCsvHeaders(file, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = e.target.result;
+            let text = '';
+            try {
+                // Modo estricto UTF-8 para detectar si viene en ANSI / Windows-1252 de Excel
+                const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+                text = utf8Decoder.decode(buffer);
+            } catch (err) {
+                try {
+                    const winDecoder = new TextDecoder('windows-1252');
+                    text = winDecoder.decode(buffer);
+                } catch (e2) {
+                    text = new TextDecoder('iso-8859-1').decode(buffer);
+                }
+            }
+
+            // Remover marcas de BOM
+            text = text.replace(/^\uFEFF/, '').replace(/^\xEF\xBB\xBF/, '');
+
+            // Obtener la primera línea no vacía
+            const lines = text.split(/\r\n|\n|\r/);
+            const firstLine = lines.find(l => l.trim().length > 0) || '';
+            if (!firstLine) {
+                callback([]);
+                return;
+            }
+
+            // Detectar delimitador: punto y coma ';' o coma ','
+            const delimiter = (firstLine.indexOf(';') !== -1) ? ';' : ',';
+
+            // Tokenizar respetando comillas
+            const rawHeaders = [];
+            let inQuotes = false;
+            let currentField = '';
+
+            for (let i = 0; i < firstLine.length; i++) {
+                const char = firstLine[i];
+                if (char === '"' || char === "'") {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    rawHeaders.push(currentField.trim().replace(/^["']|["']$/g, ''));
+                    currentField = '';
+                } else {
+                    currentField += char;
+                }
+            }
+            if (currentField.length > 0) {
+                rawHeaders.push(currentField.trim().replace(/^["']|["']$/g, ''));
+            }
+
+            callback(rawHeaders);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
     function normalizeStr(str) {
         return str ? str.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "") : "";
     }
 
+    const COLUMN_ALIASES = {
+        'descripcion': 'Descripción',
+        'descripcionuniversal': 'Descripción',
+        'caracteristica': 'Descripción',
+        'um': 'U.M.',
+        'unidadmedida': 'U.M.',
+        'unidmed': 'U.M.',
+        'linea': 'Línea',
+        'clasificacion': 'Clasificación',
+        'mnusd': 'MN/USD',
+        'mn_usd': 'MN/USD',
+        'mu': 'MN/USD',
+        'moneda': 'MN/USD',
+        'plista': 'P. Lista',
+        'preciolista': 'P. Lista',
+        'descpventa': 'Desc. P. Venta',
+        'desprecioventa': 'Desc. P. Venta',
+        'descprecioventa': 'Desc. P. Venta',
+        'descpventaauto': 'Desc. P. Venta',
+        'descpventacalculado': 'Desc. P. Venta',
+        'pventa': 'P. Venta',
+        'precioventa': 'P. Venta',
+        'descpespec': 'Desc. P. Espec',
+        'descprecioespec': 'Desc. P. Espec',
+        'descuentoespecial': 'Desc. P. Espec',
+        'pespecial': 'P. Especial',
+        'precioespecial': 'P. Especial',
+        'pespecialauto': 'P. Especial',
+        'precioespecialauto': 'P. Especial',
+        'descprecio4': 'Desc. Precio 4',
+        'descp4': 'Desc. Precio 4',
+        'descuentoprecio4': 'Desc. Precio 4',
+        'precio4': 'Precio 4',
+        'p4': 'Precio 4',
+        'precio4auto': 'Precio 4',
+        'descproveedor': 'Desc. Proveedor',
+        'descprov': 'Desc. Proveedor',
+        'preciogerente': 'Precio Gerente',
+        'pgerente': 'Precio Gerente',
+        'artkit': 'Art. Kit',
+        'articulokit': 'Art. Kit',
+        'kit': 'Art. Kit',
+        'mgmin': 'Mg Mín',
+        'margenminimo': 'Mg Mín',
+        'stdpack': 'Std Pack',
+        'standardpack': 'Std Pack',
+        'artserie': 'Art. Serie',
+        'articuloserie': 'Art. Serie',
+        'serie': 'Art. Serie',
+        'color': 'Color',
+        'ubicacion': 'Ubicación',
+        'controlpedimentos': 'Control Pedimentos',
+        'pedimentos': 'Control Pedimentos',
+        'protocolo': 'Protocolo',
+        'idsat': 'IDSAT',
+        'clavesat': 'IDSAT',
+        'peso': 'Peso',
+        'critico': 'Crítico',
+        'estatus': 'Estatus',
+        'habilitado': 'Estatus',
+        'estado': 'Estatus',
+        'sustituto': 'Sustituto',
+        'sustituto1': 'Sustituto 1',
+        'sustituto2': 'Sustituto 2',
+        'costoventa': 'Costo Venta',
+        'costodeventa': 'Costo Venta',
+        'costo': 'Costo Venta',
+        'descuento': '% Descuento',
+        'porcetajedescuento': '% Descuento',
+        'porcentajedescuento': '% Descuento',
+        'preciotope': 'Precio Tope',
+        'preciotopeauto': 'Precio Tope'
+    };
+
     function syncCheckboxesWithCsvHeaders(csvHeaders) {
         if (!csvHeaders || !csvHeaders.length) return;
 
-        const normCsvHeaders = csvHeaders.map(h => normalizeStr(h));
-        let matchedCount = 0;
+        const targetSelectedLabels = new Set();
 
-        columnCheckboxes.forEach(cb => {
-            const cbValue = cb.value;
-            const normCbValue = normalizeStr(cbValue);
+        csvHeaders.forEach(h => {
+            const rawNorm = normalizeStr(h);
+            if (!rawNorm) return;
 
-            let isMatch = normCsvHeaders.some(h => {
-                if (h === normCbValue) return true;
-                if (normCbValue === 'plista' && (h === 'preciolista' || h === 'plista')) return true;
-                if (normCbValue === 'pventa' && (h === 'precioventa' || h === 'pventa')) return true;
-                if (normCbValue === 'descpventa' && (h === 'desprecioventa' || h === 'descprecioventa')) return true;
-                if (normCbValue === 'pespecial' && (h === 'precioespecial' || h === 'pespecial')) return true;
-                if (normCbValue === 'descpespec' && (h === 'descprecioespec' || h === 'descpespec')) return true;
-                if (normCbValue === 'precio4' && (h === 'p4' || h === 'precio4')) return true;
-                if (normCbValue === 'descprecio4' && (h === 'descp4' || h === 'descprecio4')) return true;
-                if (normCbValue === 'descproveedor' && (h === 'descproveedor' || h === 'descprov')) return true;
-                if (normCbValue === 'preciogerente' && (h === 'preciogerente' || h === 'pgerente')) return true;
-                if (normCbValue === 'descuento' && (h === 'porcetajedescuento' || h === 'porcentajedescuento' || h === 'descuento')) return true;
-                if (normCbValue === 'preciotope' && (h === 'preciotope' || h === 'ptope')) return true;
-                if (normCbValue === 'um' && (h === 'unidadmedida' || h === 'um')) return true;
-                if (normCbValue === 'estatus' && (h === 'habilitado' || h === 'estatus' || h === 'estado')) return true;
-                if (normCbValue === 'idsat' && (h === 'idsat' || h === 'clavesat')) return true;
-                if (normCbValue === 'idimpuestosat' && (h === 'idimpuestosat' || h === 'impuestosat')) return true;
-                return false;
+            if (COLUMN_ALIASES[rawNorm]) {
+                targetSelectedLabels.add(COLUMN_ALIASES[rawNorm]);
+                return;
+            }
+
+            columnCheckboxes.forEach(cb => {
+                const cbNorm = normalizeStr(cb.value);
+                if (cbNorm === rawNorm || rawNorm.startsWith(cbNorm) || cbNorm.startsWith(rawNorm)) {
+                    targetSelectedLabels.add(cb.value);
+                }
             });
+        });
 
-            cb.checked = isMatch;
-            if (isMatch) matchedCount++;
+        let matchedCount = 0;
+        columnCheckboxes.forEach(cb => {
+            const shouldCheck = targetSelectedLabels.has(cb.value);
+            cb.checked = shouldCheck;
+            if (shouldCheck) matchedCount++;
+
+            const wrapper = cb.closest('.checkbox-wrapper');
+            if (wrapper) {
+                if (shouldCheck) {
+                    wrapper.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+                    wrapper.style.background = 'rgba(245, 158, 11, 0.08)';
+                } else {
+                    wrapper.style.borderColor = '';
+                    wrapper.style.background = '';
+                }
+            }
         });
 
         // Activar automáticamente fórmulas si sus detonadores están seleccionados
@@ -574,7 +804,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (allDepsChecked) {
                 const formulaCb = Array.from(columnCheckboxes).find(c => c.value === formulaName);
-                if (formulaCb) formulaCb.checked = true;
+                if (formulaCb) {
+                    formulaCb.checked = true;
+                    const wrapper = formulaCb.closest('.checkbox-wrapper');
+                    if (wrapper) {
+                        wrapper.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+                        wrapper.style.background = 'rgba(245, 158, 11, 0.08)';
+                    }
+                }
             }
         });
 
@@ -595,8 +832,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     columnCheckboxes.forEach(cb => {
         cb.addEventListener('change', (e) => {
+            invalidatePreview('Columnas modificadas. Actualiza la Vista Previa.');
             const name = e.target.value;
             const isChecked = e.target.checked;
+
+            const wrapper = cb.closest('.checkbox-wrapper');
+            if (wrapper) {
+                wrapper.style.borderColor = isChecked ? 'rgba(245, 158, 11, 0.45)' : '';
+                wrapper.style.background = isChecked ? 'rgba(245, 158, 11, 0.08)' : '';
+            }
 
             if (isChecked && formulaDependencies[name]) {
                 const deps = formulaDependencies[name];
@@ -650,9 +894,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Preview Logic (Backend-powered)
     previewBtn.addEventListener('click', async () => {
-        const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
         if (!selectedFile) {
-            Swal.fire('Atención', 'Sube un archivo primero.', 'warning');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Archivo Requerido',
+                text: 'Sube o selecciona un archivo CSV primero.',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--amber, #f59e0b)'
+            });
+            return;
+        }
+
+        const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
+        if (columns.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Columnas Requeridas',
+                text: 'Selecciona al menos una columna para previsualizar los cambios.',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--amber, #f59e0b)'
+            });
             return;
         }
 
@@ -660,6 +923,8 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Generando comparativa...',
             text: 'Estamos comparando tu CSV con la Base Maestra',
             allowOutsideClick: false,
+            background: '#1a1d27',
+            color: '#fff',
             didOpen: () => Swal.showLoading()
         });
 
@@ -674,11 +939,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonErr) {
+                Swal.close();
+                invalidatePreview('Error al procesar la respuesta del servidor.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error del Servidor',
+                    text: 'El servidor no devolvió un formato válido (HTTP ' + response.status + ').',
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: 'var(--amber, #f59e0b)'
+                });
+                return;
+            }
             Swal.close();
 
             if (!data.success) {
-                Swal.fire('Error', data.message, 'error');
+                invalidatePreview('Error en previsualización.');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atención',
+                    text: data.message || 'Error en previsualización.',
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: 'var(--amber, #f59e0b)'
+                });
                 return;
             }
 
@@ -749,10 +1037,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const tr = document.createElement('tr');
                     tr.style.borderBottom = '1px solid var(--border-light)';
 
-                    // Columna 1: CLAVE (Sticky fija a la izquierda)
+                    // Columna 1: CLAVE (Limpia sin guiones para que coincida con la base de datos)
+                    const cleanClave = (item.canonical_clave || item.clave || '').toString().replace(/[-\s]/g, '');
                     let rowHtml = `<td style="padding:8px 12px; font-family:monospace; vertical-align:middle; position:sticky; left:0; background:#141721; z-index:1; border-right:1px solid var(--border);">
-                        <div style="font-weight:bold; color:var(--amber); font-size:12px;">${item.clave}</div>
-                        ${item.description ? `<div style="font-size:9.5px; color:var(--text-muted); white-space:nowrap; max-width:140px; overflow:hidden; text-overflow:ellipsis;">${item.description}</div>` : ''}
+                        <div style="font-weight:bold; color:var(--amber); font-size:12px;">${cleanClave}</div>
+                        ${item.description ? `<div style="font-size:9.5px; color:var(--text-muted); white-space:nowrap; max-width:160px; overflow:hidden; text-overflow:ellipsis;">${item.description}</div>` : ''}
                     </td>`;
 
                     if (item.status === 'new') {
@@ -806,7 +1095,40 @@ document.addEventListener('DOMContentLoaded', () => {
             previewContainer.style.display = 'flex';
             previewContainer.scrollIntoView({ behavior: 'smooth' });
 
+            // Gestión del límite de 500 filas para archivos pesados
+            totalRowsInCsv = data.total_rows || (data.diffs ? data.diffs.length : 0);
+            const limitBanner = document.getElementById('preview-limit-banner');
+            const badgeCount = document.getElementById('preview-badge-count');
+
+            if (data.is_truncated) {
+                if (limitBanner) {
+                    limitBanner.style.display = 'flex';
+                    const previewLimitEl = document.getElementById('banner-preview-limit');
+                    const totalRowsEl = document.getElementById('banner-total-rows');
+                    if (previewLimitEl) previewLimitEl.textContent = Number(data.preview_rows || 500).toLocaleString();
+                    if (totalRowsEl) totalRowsEl.textContent = Number(data.total_rows || 0).toLocaleString();
+                }
+                if (badgeCount) {
+                    badgeCount.style.display = 'inline-block';
+                    badgeCount.style.background = 'rgba(245,158,11,0.15)';
+                    badgeCount.style.color = 'var(--amber)';
+                    badgeCount.textContent = `${data.diffs.length} cambios en primeras ${data.preview_rows} filas (de ${Number(data.total_rows).toLocaleString()} totales)`;
+                }
+            } else {
+                if (limitBanner) limitBanner.style.display = 'none';
+                if (badgeCount) {
+                    badgeCount.style.display = 'inline-block';
+                    badgeCount.style.background = 'rgba(16,185,129,0.15)';
+                    badgeCount.style.color = 'var(--emerald)';
+                    badgeCount.textContent = `${data.diffs.length} cambios detectados (${data.total_rows || data.diffs.length} filas en CSV)`;
+                }
+            }
+
+            // Habilitar botón de actualización con estado verificado
+            setPreviewValid(true, 'Vista Previa verificada');
+
         } catch (error) {
+            invalidatePreview('Error de conexión con el servidor.');
             Swal.fire('Error', 'Fallo al conectar con el servidor para la vista previa.', 'error');
         }
     });
@@ -819,6 +1141,9 @@ document.addEventListener('DOMContentLoaded', () => {
         columnCheckboxes.forEach(cb => {
             cb.checked = lastChangedCols.includes(cb.value);
         });
+
+        // Al seleccionar las columnas calculadas en esta misma previa, se mantiene válida
+        setPreviewValid(true, 'Columnas con cambios seleccionadas. Listo para actualizar.');
 
         Swal.fire({
             icon: 'info',
@@ -835,22 +1160,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Process Update
     processBtn.addEventListener('click', async () => {
+        if (!selectedFile) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Archivo Requerido',
+                text: 'Por favor arrastra o selecciona un archivo CSV primero.',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--amber, #f59e0b)'
+            });
+            return;
+        }
+
+        if (!isPreviewValid) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Vista Previa Obligatoria',
+                text: 'Es obligatorio generar y revisar la "Vista Previa" de los cambios antes de ejecutar la actualización en las sucursales.',
+                showCancelButton: true,
+                confirmButtonText: 'Generar Vista Previa Ahora',
+                cancelButtonText: 'Cancelar',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--amber, #f59e0b)'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    previewBtn.click();
+                }
+            });
+            return;
+        }
+
         const branches = Array.from(document.querySelectorAll('input[name="branches[]"]:checked')).map(cb => cb.value);
         const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
 
         if (branches.length === 0) {
-            Swal.fire('Atención', 'Selecciona al menos una sucursal.', 'warning');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sucursal Requerida',
+                text: 'Selecciona al menos una sucursal.',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--amber, #f59e0b)'
+            });
             return;
         }
 
         if (columns.length === 0) {
-            Swal.fire('Atención', 'Selecciona al menos una columna para actualizar.', 'warning');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Columnas Requeridas',
+                text: 'Selecciona al menos una columna para actualizar.',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--amber, #f59e0b)'
+            });
             return;
         }
 
+        const totalRowsText = (totalRowsInCsv > 0)
+            ? ` (${Number(totalRowsInCsv).toLocaleString()} artículos en total)`
+            : '';
+
         const result = await Swal.fire({
             title: '¿Confirmar actualización masiva?',
-            text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV. Esta acción no se puede deshacer.`,
+            text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV${totalRowsText}. Esta acción no se puede deshacer.`,
             icon: 'warning',
             showCancelButton: true,
             background: '#1a1d27',
@@ -882,17 +1256,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonErr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error del Servidor',
+                    text: 'El servidor no devolvió una respuesta válida (HTTP ' + response.status + ').',
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: 'var(--amber, #f59e0b)'
+                });
+                return;
+            }
 
             if (data.success) {
-                Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: data.message,
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: 'var(--emerald, #10b981)'
+                }).then(() => {
                     location.reload();
                 });
             } else {
-                Swal.fire('Error', data.message, 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message,
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: 'var(--rose, #f43f5e)'
+                });
             }
         } catch (error) {
-            Swal.fire('Error', 'Ocurrió un error en la conexión.', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Comunicación',
+                text: 'Ocurrió un error en la conexión con el servidor.',
+                background: '#1a1d27',
+                color: '#fff',
+                confirmButtonColor: 'var(--rose, #f43f5e)'
+            });
         }
     });
 

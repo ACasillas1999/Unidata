@@ -372,8 +372,12 @@ document.getElementById('form-editar-cliente').addEventListener('submit', async 
             return;
         }
 
-        const data = await res.json();
-        if (res.ok && data.success && data.sync_modal && window.renderUnidataSyncModal) {
+        let data = null;
+        try {
+            data = await res.json();
+        } catch (jsonErr) {}
+
+        if (res.ok && data && data.success && data.sync_modal && window.renderUnidataSyncModal) {
             window.renderUnidataSyncModal(data.sync_modal, () => {
                 // Al confirmar, recargar la pantalla para mostrar datos actualizados o navegar
                 window.location.reload();
@@ -381,7 +385,7 @@ document.getElementById('form-editar-cliente').addEventListener('submit', async 
             if (typeof recargarEstado === 'function') {
                 recargarEstado();
             }
-        } else if (!res.ok && res.status === 422 && data.errors) {
+        } else if (!res.ok && res.status === 422 && data && data.errors) {
             const errList = Object.values(data.errors).flat().map(e => `<li>${e}</li>`).join('');
             Swal.fire({
                 icon: 'error',
@@ -395,14 +399,21 @@ document.getElementById('form-editar-cliente').addEventListener('submit', async 
             Swal.fire({
                 icon: 'error',
                 title: 'Error al actualizar',
-                text: data.message || 'Ocurrió un error al procesar la actualización.',
+                text: (data && data.message) ? data.message : 'Ocurrió un error al procesar la actualización.',
                 background: '#0f172a',
                 color: '#fff',
                 confirmButtonColor: '#6366f1'
             });
         }
     } catch (err) {
-        form.submit();
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: err.message || 'No se pudo conectar con el servidor para actualizar el cliente.',
+            background: '#0f172a',
+            color: '#fff',
+            confirmButtonColor: '#6366f1'
+        });
     }
 });
 

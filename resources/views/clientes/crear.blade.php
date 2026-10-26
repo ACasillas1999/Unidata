@@ -349,12 +349,16 @@ document.getElementById('form-crear-cliente').addEventListener('submit', async f
             return;
         }
 
-        const data = await res.json();
-        if (res.ok && data.success && data.sync_modal && window.renderUnidataSyncModal) {
+        let data = null;
+        try {
+            data = await res.json();
+        } catch (jsonErr) {}
+
+        if (res.ok && data && data.success && data.sync_modal && window.renderUnidataSyncModal) {
             window.renderUnidataSyncModal(data.sync_modal, () => {
                 window.location.href = data.redirect || "{{ route('clientes.index') }}";
             });
-        } else if (!res.ok && res.status === 422 && data.errors) {
+        } else if (!res.ok && res.status === 422 && data && data.errors) {
             const errList = Object.values(data.errors).flat().map(e => `<li>${e}</li>`).join('');
             Swal.fire({
                 icon: 'error',
@@ -368,15 +372,21 @@ document.getElementById('form-crear-cliente').addEventListener('submit', async f
             Swal.fire({
                 icon: 'error',
                 title: 'Error al registrar',
-                text: data.message || 'Ocurrió un error al procesar el cliente.',
+                text: (data && data.message) ? data.message : 'Ocurrió un error al procesar el cliente.',
                 background: '#0f172a',
                 color: '#fff',
                 confirmButtonColor: '#6366f1'
             });
         }
     } catch (err) {
-        // Fallback a envío convencional
-        form.submit();
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: err.message || 'No se pudo conectar con el servidor para registrar el cliente.',
+            background: '#0f172a',
+            color: '#fff',
+            confirmButtonColor: '#6366f1'
+        });
     }
 });
 

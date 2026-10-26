@@ -22,12 +22,81 @@ class ArticulosController extends Controller
     ) {}
 
     /**
+     * Sanitiza recursivamente cualquier estructura de datos para asegurar codificación UTF-8 válida,
+     * convirtiendo mensajes o cadenas con codificaciones comunes de Windows (Windows-1252 / ISO-8859-1)
+     * y removiendo marcas de orden de bytes (BOM).
+     */
+    private function cleanUtf8(mixed $data): mixed
+    {
+        if (is_string($data)) {
+            // Eliminar BOM de UTF-8 si existe al inicio
+            $data = preg_replace('/^\xEF\xBB\xBF/', '', $data);
+            if (!mb_check_encoding($data, 'UTF-8')) {
+                $converted = @mb_convert_encoding($data, 'UTF-8', 'Windows-1252, ISO-8859-1, ASCII');
+                if ($converted !== false && mb_check_encoding($converted, 'UTF-8')) {
+                    return $converted;
+                }
+                return mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            }
+            return $data;
+        }
+
+        if (is_array($data)) {
+            $result = [];
+            foreach ($data as $k => $v) {
+                $cleanKey = is_string($k) ? $this->cleanUtf8($k) : $k;
+                $result[$cleanKey] = $this->cleanUtf8($v);
+            }
+            return $result;
+        }
+
+        if (is_object($data)) {
+            foreach ($data as $k => $v) {
+                $data->{$k} = $this->cleanUtf8($v);
+            }
+            return $data;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Normaliza cualquier variante de valor booleano o bandera (CSV / Excel / BD) a 0 o 1.
+     * Mapea afirmativos: '1', 'S', 'SI', 'SÍ', 'YES', 'Y', 'TRUE', 'VERDADERO', 'V', 'ACTIVO', 'ACTIVA', 'HABILITADO', 'HABILITADA', 'ON' => 1
+     * Mapea negativos/otros: 'N', 'NO', 'FALSO', 'FALSE', '0', 'INACTIVO', 'INACTIVA', vacío, null => 0
+     */
+    private function parseBooleanValue(mixed $val): int
+    {
+        if (is_bool($val)) {
+            return $val ? 1 : 0;
+        }
+
+        if (is_numeric($val)) {
+            return ((int)$val !== 0) ? 1 : 0;
+        }
+
+        $clean = mb_strtoupper(trim((string)$val), 'UTF-8');
+        if ($clean === '') {
+            return 0;
+        }
+        $clean = str_replace(['Á', 'É', 'Í', 'Ó', 'Ú'], ['A', 'E', 'I', 'O', 'U'], $clean);
+
+        $trueValues = [
+            '1', 'S', 'SI', 'YES', 'Y', 'TRUE', 'VERDADERO', 'V',
+            'ACTIVO', 'ACTIVA', 'HABILITADO', 'HABILITADA', 'ON'
+        ];
+
+        return in_array($clean, $trueValues, true) ? 1 : 0;
+    }
+
+    /**
      * Retorna los recursos necesarios para el mapeo de columnas (Normalización y diccionarios)
      */
     private function getMappingResources()
     {
         $normalize = function($str) {
             if (!$str) return '';
+            $str = $this->cleanUtf8($str);
             $str = mb_strtolower((string)$str, 'UTF-8');
             $str = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'u', 'n'], $str);
             return preg_replace('/[^a-z0-9]/', '', $str);
@@ -558,6 +627,15 @@ class ArticulosController extends Controller
         $columnsSelected  = $request->input('columns');
         $file = $request->file('csv_file');
 
+        // Validar que se haya ejecutado la vista previa obligatoria para este archivo
+        $uploadedHash = md5_file($file->getRealPath());
+        if ($request->session()->get('preview_completed_hash') !== $uploadedHash) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Es obligatorio generar y revisar la Vista Previa antes de ejecutar la actualización.'
+            ], 422);
+        }
+
         [$normalize, $standardMapping, $branchFieldMap] = $this->getMappingResources();
 
         try {
@@ -569,11 +647,25 @@ class ArticulosController extends Controller
             if (!$handle) throw new \Exception("No se pudo abrir el archivo guardado.");
 
             $rawHeaderLine = fgets($handle);
-            if (!$rawHeaderLine) throw new \Exception("Archivo vacío.");
+            if (!$rawHeaderLine) {
+                fclose($handle);
+                throw new \Exception("El archivo subido está completamente vacío.");
+            }
 
             $delimiter = (str_contains($rawHeaderLine, ';')) ? ';' : ',';
             rewind($handle);
             $headerOriginal = fgetcsv($handle, 0, $delimiter);
+
+            if (!$headerOriginal || empty($headerOriginal)) {
+                fclose($handle);
+                throw new \Exception("No se pudieron leer los encabezados del archivo CSV.");
+            }
+
+            // Sanitizar encabezados y remover BOM
+            $headerOriginal = array_map([$this, 'cleanUtf8'], $headerOriginal);
+            if (!empty($headerOriginal)) {
+                $headerOriginal[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$headerOriginal[0]);
+            }
 
             // Mapear qué índice del CSV corresponde a qué campo de BD
             $headerMap = [];
@@ -582,6 +674,14 @@ class ArticulosController extends Controller
                 if (isset($standardMapping[$normH])) {
                     $headerMap[$index] = $standardMapping[$normH];
                 }
+            }
+
+            if (!in_array('clave', $headerMap)) {
+                fclose($handle);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El archivo CSV debe incluir una columna válida para la clave del artículo (ej: "Clave" o "Código").'
+                ], 422);
             }
 
             $updatedCount = 0;
@@ -603,15 +703,20 @@ class ArticulosController extends Controller
             ]);
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
+                $row = array_map([$this, 'cleanUtf8'], $row);
                 $item = [];
                 foreach ($row as $index => $value) {
                     if (isset($headerMap[$index])) {
-                        $item[$headerMap[$index]] = trim($value);
+                        $item[$headerMap[$index]] = trim((string)$value);
                     }
                 }
 
-                $clave = $item['clave'] ?? null;
-                if (!$clave) continue;
+                $rawClave = $item['clave'] ?? null;
+                if (!$rawClave) continue;
+
+                // Normalizar clave eliminando guiones y espacios para que funcione acorde a la BD sin guiones
+                $clave = strtoupper(str_replace(['-', ' '], '', trim((string)$rawClave)));
+                $item['clave'] = $clave;
 
                 $updateDataMaster = [];
                 $updateDataBranch = [];
@@ -633,8 +738,11 @@ class ArticulosController extends Controller
 
                     if ($foundInUi) {
                         // 1. Manejo de booleanos (excluyendo color que es un entero de 0 a 9)
-                        if (in_array($field, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'mn_usd', 'protocolo'])) {
-                            $val = (in_array(strtoupper((string)$val), ['ACTIVO', '1', 'SI', 'SÍ', 'S', 'TRUE', 'VERDADERO'])) ? 1 : 0;
+                        $booleanFields = ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'];
+                        if (in_array($field, $booleanFields, true)) {
+                            $val = $this->parseBooleanValue($val);
+                        } elseif ($field === 'mn_usd') {
+                            $val = in_array(strtoupper(trim((string)$val)), ['1', 'U', 'USD', 'DLLS'], true) ? 'U' : 'M';
                         }
 
                         if ($field === 'color') {
@@ -675,8 +783,19 @@ class ArticulosController extends Controller
                 if (empty($updateDataMaster)) continue;
 
                 // --- GOBERNANZA: SOLO ACTUALIZACIONES ---
+                // Buscar por clave exacta o con fallback normalizado (sin guiones, espacios ni caracteres especiales)
                 $masterCurrent = DbMasterArticle::where('clave', $clave)->first();
+                if (!$masterCurrent) {
+                    $cleanClave = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$clave));
+                    if ($cleanClave !== '') {
+                        $masterCurrent = DbMasterArticle::where('clave', $cleanClave)
+                            ->orWhereRaw("REPLACE(REPLACE(REPLACE(clave, '-', ''), ' ', ''), '_', '') = ?", [$cleanClave])
+                            ->first();
+                    }
+                }
                 if (!$masterCurrent) continue; // Si no existe en el maestro, no se puede crear vía CSV
+
+                $canonicalClave = $masterCurrent->clave;
 
                 // --- AUTO-CÁLCULO SIEMPRE DE CAMPOS DERIVADOS VÍA FÓRMULA (2 DECIMALES) ---
                 $pLista = isset($updateDataMaster['precio_lista']) ? (float)$updateDataMaster['precio_lista'] : (float)($masterCurrent->precio_lista ?? 0);
@@ -701,15 +820,31 @@ class ArticulosController extends Controller
                 $updateDataMaster['precio_tope'] = $calcPrecioTope;
                 $updateDataBranch['PrecioTope']   = $calcPrecioTope;
 
+                // Si precio_lista <= 0 o precio_venta <= 0, des_precio_venta debe ser 0% (nunca 100%)
+                $pVenta = isset($updateDataMaster['precio_venta']) ? (float)$updateDataMaster['precio_venta'] : (float)($masterCurrent->precio_venta ?? 0);
+                if ($pLista <= 0 || $pVenta <= 0) {
+                    if (isset($updateDataMaster['des_precio_venta'])) {
+                        $updateDataMaster['des_precio_venta'] = 0;
+                        $updateDataBranch['Desc_Precio_Venta'] = 0;
+                    }
+                }
+
                 // --- AUDITORÍA ANTES DE ACTUALIZAR ---
                 $auditEntries = [];
                 if ($masterCurrent) {
                     foreach ($updateDataMaster as $field => $newVal) {
                         $oldVal = $masterCurrent->{$field};
-                        if ((string)$oldVal !== (string)$newVal) {
+                        $isDiff = false;
+                        if (in_array($field, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'], true)) {
+                            $isDiff = $this->parseBooleanValue($oldVal) !== $this->parseBooleanValue($newVal);
+                        } else {
+                            $isDiff = (string)$oldVal !== (string)$newVal;
+                        }
+
+                        if ($isDiff) {
                             $auditEntries[] = [
                                 'historial_id' => $historialId,
-                                'clave' => $clave,
+                                'clave' => $canonicalClave,
                                 'columna' => $field,
                                 'valor_anterior' => (string)$oldVal,
                                 'valor_nuevo' => (string)$newVal,
@@ -728,14 +863,27 @@ class ArticulosController extends Controller
                             try {
                                 $connection = $this->connectionManager->connect($suc);
 
-                                $sucCurrent = $connection->table('articulo')->where('Clave_Articulo', $clave)->first();
+                                $sucCurrent = $connection->table('articulo')->where('Clave_Articulo', $canonicalClave)->first();
+                                if (!$sucCurrent && $clave !== $canonicalClave) {
+                                    $sucCurrent = $connection->table('articulo')->where('Clave_Articulo', $clave)->first();
+                                }
+
                                 if ($sucCurrent) {
+                                    $sucClaveReal = $sucCurrent->Clave_Articulo;
                                     foreach ($updateDataBranch as $fieldPascal => $newVal) {
                                         $oldVal = $sucCurrent->{$fieldPascal} ?? null;
-                                        if ((string)$oldVal !== (string)$newVal) {
+                                        $fieldSnake = array_search($fieldPascal, $branchFieldMap, true) ?: $fieldPascal;
+                                        $isDiff = false;
+                                        if (in_array($fieldSnake, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'], true)) {
+                                            $isDiff = $this->parseBooleanValue($oldVal) !== $this->parseBooleanValue($newVal);
+                                        } else {
+                                            $isDiff = (string)$oldVal !== (string)$newVal;
+                                        }
+
+                                        if ($isDiff) {
                                             $auditEntries[] = [
                                                 'historial_id' => $historialId,
-                                                'clave' => $clave,
+                                                'clave' => $sucClaveReal,
                                                 'columna' => $fieldPascal,
                                                 'valor_anterior' => (string)$oldVal,
                                                 'valor_nuevo' => (string)$newVal,
@@ -745,21 +893,21 @@ class ArticulosController extends Controller
                                     }
                                     // Actualizar Sucursal
                                     $connection->table('articulo')
-                                        ->where('Clave_Articulo', $clave)
+                                        ->where('Clave_Articulo', $sucClaveReal)
                                         ->update($updateDataBranch);
                                 }
                                 $branchStats[$suc]['ok']++;
                             } catch (Throwable $e) {
                                 $branchStats[$suc]['fail']++;
                                 if (count($branchStats[$suc]['errors']) < 3) {
-                                    $branchStats[$suc]['errors'][] = "{$clave}: " . $this->friendlyDbError($e);
+                                    $branchStats[$suc]['errors'][] = "{$canonicalClave}: " . $this->friendlyDbError($e);
                                 }
                             }
                         }
                     }
 
-                    // Sync a PowerSales (solo campos que cambiaron en esta fila; ver storage/logs/powersales.log)
-                    $branchDataPs = array_merge(['Clave_Articulo' => $clave], $updateDataBranch);
+                    // Sync a PowerSales (con la clave canónica del maestro)
+                    $branchDataPs = array_merge(['Clave_Articulo' => $canonicalClave], $updateDataBranch);
                     $this->powerSales->syncArticulo($branchDataPs);
                     $this->powerSales->syncPriceListHeaders();
                     $this->powerSales->syncArticuloPriceListDetails($branchDataPs);
@@ -776,6 +924,13 @@ class ArticulosController extends Controller
             }
             fclose($handle);
 
+            if ($updatedCount === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.'
+                ], 422);
+            }
+
             // Actualizar el conteo final en el historial
             DB::table('csv_historial')
                 ->where('id', $historialId)
@@ -791,16 +946,20 @@ class ArticulosController extends Controller
                 $branchDetail[] = $line;
             }
 
-            return response()->json([
+            $request->session()->forget('preview_completed_hash');
+
+            $responsePayload = [
                 'success' => true,
                 'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail),
                 'branch_stats' => $branchStats
-            ]);
+            ];
+
+            return response()->json($this->cleanUtf8($responsePayload));
 
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar el archivo: ' . $e->getMessage()
+                'message' => 'Error al procesar el archivo: ' . $this->cleanUtf8($e->getMessage())
             ], 500);
         }
     }
@@ -822,10 +981,39 @@ class ArticulosController extends Controller
             [$normalize, $standardMapping, $branchFieldMap] = $this->getMappingResources();
 
             $handle = fopen($file->getRealPath(), "r");
+            if (!$handle) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo abrir el archivo CSV para lectura.'
+                ], 422);
+            }
+
             $rawHeaderLine = fgets($handle);
+            if (!$rawHeaderLine) {
+                fclose($handle);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El archivo subido está completamente vacío.'
+                ], 422);
+            }
+
             $delimiter = (str_contains($rawHeaderLine, ';')) ? ';' : ',';
             rewind($handle);
             $headerOriginal = fgetcsv($handle, 0, $delimiter);
+
+            if (!$headerOriginal || empty($headerOriginal)) {
+                fclose($handle);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudieron leer los encabezados del archivo CSV.'
+                ], 422);
+            }
+
+            // Sanitizar y limpiar codificación de los encabezados (eliminando BOM si existe)
+            $headerOriginal = array_map([$this, 'cleanUtf8'], $headerOriginal);
+            if (!empty($headerOriginal)) {
+                $headerOriginal[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$headerOriginal[0]);
+            }
 
             $headerMap = [];
             foreach ($headerOriginal as $index => $h) {
@@ -835,11 +1023,20 @@ class ArticulosController extends Controller
                 }
             }
 
+            if (!in_array('clave', $headerMap)) {
+                fclose($handle);
+                $colsFound = array_filter(array_map('trim', $headerOriginal));
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El archivo CSV debe incluir obligatoriamente una columna de clave (ej: "Clave" o "Código"). Columnas detectadas: ' . (empty($colsFound) ? 'ninguna' : implode(', ', $colsFound))
+                ], 422);
+            }
+
             // Columnas del CSV no reconocidas por el sistema
             $unrecognized = [];
             foreach ($headerOriginal as $index => $h) {
                 if (!isset($headerMap[$index])) {
-                    $display = trim(preg_replace('/[\x00-\x1F]/', '', $h));
+                    $display = trim(preg_replace('/[\x00-\x1F]/', '', (string)$h));
                     if ($display !== '') $unrecognized[] = $display;
                 }
             }
@@ -881,30 +1078,119 @@ class ArticulosController extends Controller
                 'id_impuesto_sat'     => 'ID Impuesto SAT',
             ];
 
-            while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
-                if ($count > 500) break; // Límite aumentado para previsualización
-                $count++;
+            // ── LECTURA RÁPIDA: CARGAR HASTA 500 FILAS PARA LA PREVIA Y CONTAR EL TOTAL DEL CSV ──
+            $maxPreviewRows = 500;
+            $previewRows = [];
+            $previewClaves = [];
+            $totalCsvRows = 0;
 
-                $csvItem = [];
-                foreach ($row as $index => $value) {
-                    if (isset($headerMap[$index])) {
-                        $csvItem[$headerMap[$index]] = trim($value);
+            while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
+                // Sanitizar celdas a UTF-8 limpio
+                $row = array_map([$this, 'cleanUtf8'], $row);
+
+                // Verificar que no sea una fila vacía
+                $nonEmpty = false;
+                foreach ($row as $v) {
+                    if (trim((string)$v) !== '') {
+                        $nonEmpty = true;
+                        break;
                     }
                 }
+                if (!$nonEmpty) continue;
 
-                $clave = $csvItem['clave'] ?? null;
-                if (!$clave) continue;
+                $totalCsvRows++;
 
-                $masterItem = DbMasterArticle::where('clave', $clave)->first();
+                // Solo recopilamos los primeros 500 artículos para la previsualización
+                if (count($previewRows) < $maxPreviewRows) {
+                    $csvItem = [];
+                    foreach ($row as $index => $value) {
+                        if (isset($headerMap[$index])) {
+                            $csvItem[$headerMap[$index]] = trim((string)$value);
+                        }
+                    }
+
+                    $rawClave = $csvItem['clave'] ?? null;
+                    if ($rawClave) {
+                        // Normalizar clave eliminando guiones y espacios para que no se inserten guiones y cuadre con la BD
+                        $cleanClave = strtoupper(str_replace(['-', ' '], '', trim((string)$rawClave)));
+                        $csvItem['clave'] = $cleanClave;
+                        $previewRows[] = $csvItem;
+                        $previewClaves[] = $cleanClave;
+                    }
+                }
+            }
+            fclose($handle);
+
+            if ($totalCsvRows === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El archivo CSV no contiene registros o filas de artículos para procesar (solo contiene los encabezados o filas vacías).'
+                ], 422);
+            }
+
+            if (empty($previewClaves)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron artículos con Clave válida en el archivo CSV. Asegúrese de que la columna "Clave" contenga datos.'
+                ], 422);
+            }
+
+            // ── BÚSQUEDA INTELIGENTE DE ARTÍCULOS EN LA BASE MAESTRA (Exacta y Normalizada) ──
+            $exactClaves = array_values(array_unique(array_filter($previewClaves)));
+            $cleanClaves = array_values(array_unique(array_filter(array_map(function($c) {
+                return strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$c));
+            }, $exactClaves))));
+
+            $searchClaves = array_values(array_unique(array_merge($exactClaves, $cleanClaves)));
+
+            $masterQuery = DbMasterArticle::whereIn('clave', $searchClaves);
+            if (!empty($cleanClaves)) {
+                $masterQuery->orWhereIn(DB::raw("REPLACE(REPLACE(REPLACE(clave, '-', ''), ' ', ''), '_', '')"), $cleanClaves);
+            }
+            $masterRecords = $masterQuery->get();
+
+            // Mapeos rápidos O(1) para resolución inmediata
+            $masterByExact = [];
+            $masterByClean = [];
+            foreach ($masterRecords as $m) {
+                $masterByExact[$m->clave] = $m;
+                $masterByExact[strtoupper(trim($m->clave))] = $m;
+                $cleanM = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$m->clave));
+                if (!isset($masterByClean[$cleanM])) {
+                    $masterByClean[$cleanM] = $m;
+                }
+            }
+
+            $resolveMaster = function($c) use (&$masterByExact, &$masterByClean) {
+                if (!$c) return null;
+                if (isset($masterByExact[$c])) return $masterByExact[$c];
+                $u = strtoupper(trim($c));
+                if (isset($masterByExact[$u])) return $masterByExact[$u];
+                $clean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$c));
+                if ($clean !== '' && isset($masterByClean[$clean])) return $masterByClean[$clean];
+                return null;
+            };
+
+            $diffs = [];
+            $colsUiNorm = array_map($normalize, $columnsSelected);
+            $changedCols = [];
+
+            foreach ($previewRows as $csvItem) {
+                $clave = $csvItem['clave'];
+                $masterItem = $resolveMaster($clave);
+
                 if (!$masterItem) {
                     // Nuevo artículo (no está en el maestro)
                     $diffs[] = [
-                        'clave'  => $clave,
-                        'status' => 'new',
-                        'data'   => $csvItem
+                        'clave'           => $clave,
+                        'canonical_clave' => $clave,
+                        'status'          => 'new',
+                        'data'            => $csvItem
                     ];
                     continue;
                 }
+
+                $canonicalClave = $masterItem->clave;
 
                 $rowDiff = [];
                 $hasDifference = false;
@@ -922,11 +1208,16 @@ class ArticulosController extends Controller
                     }
                     if (!$foundInUi) continue;
 
-                    if ($field === 'habilitado') {
-                        $csvVal = (in_array(strtoupper($csvVal), ['ACTIVO', '1', 'SI', 'SÍ', 'S'])) ? 1 : 0;
-                    }
-
+                    $booleanFields = ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'];
                     $masterVal = $masterItem->{$field};
+
+                    if (in_array($field, $booleanFields, true)) {
+                        $csvVal = $this->parseBooleanValue($csvVal);
+                        $masterVal = $this->parseBooleanValue($masterVal);
+                    } elseif ($field === 'mn_usd') {
+                        $csvVal = in_array(strtoupper(trim((string)$csvVal)), ['1', 'U', 'USD', 'DLLS'], true) ? 'U' : 'M';
+                        $masterVal = in_array(strtoupper(trim((string)$masterVal)), ['1', 'U', 'USD', 'DLLS'], true) ? 'U' : 'M';
+                    }
                     
                     // Comparación flexible (números vs strings, etc)
                     $isDifferent = false;
@@ -977,18 +1268,34 @@ class ArticulosController extends Controller
                     }
                 }
 
+                // Si precio_lista <= 0 o precio_venta <= 0, des_precio_venta debe ser 0% (nunca 100%)
+                $pVenta = isset($csvItem['precio_venta']) ? (float)$csvItem['precio_venta'] : (float)($masterItem->precio_venta ?? 0);
+                if ($pLista <= 0 || $pVenta <= 0) {
+                    if (isset($rowDiff['des_precio_venta'])) {
+                        $oldVal = round((float)($masterItem->des_precio_venta ?? 0), 2);
+                        if ($oldVal === 0.0) {
+                            unset($rowDiff['des_precio_venta']);
+                            if (empty($rowDiff)) {
+                                $hasDifference = false;
+                            }
+                        } else {
+                            $rowDiff['des_precio_venta']['new'] = '0.00';
+                        }
+                    }
+                }
+
                 if ($hasDifference) {
                     $diffs[] = [
-                        'clave'       => $clave,
-                        'description' => $masterItem->descripcion,
-                        'status'      => 'update',
-                        'diff'        => $rowDiff,
-                        'full_new'    => $csvItem,
-                        'master_data' => $masterItem->toArray()
+                        'clave'           => $canonicalClave,
+                        'canonical_clave' => $canonicalClave,
+                        'description'     => $masterItem->descripcion,
+                        'status'          => 'update',
+                        'diff'            => $rowDiff,
+                        'full_new'        => $csvItem,
+                        'master_data'     => $masterItem->toArray()
                     ];
                 }
             }
-            fclose($handle);
 
             // Construir mapa visible: header CSV → campo BD → label UI
             $columnMap = [];
@@ -1011,17 +1318,28 @@ class ArticulosController extends Controller
                 ];
             }
 
-            return response()->json([
+            $request->session()->put('preview_completed_hash', md5_file($file->getRealPath()));
+
+            $responsePayload = [
                 'success'      => true,
                 'diffs'        => $diffs,
                 'count'        => count($diffs),
+                'preview_rows' => count($previewRows),
+                'total_rows'   => $totalCsvRows,
+                'is_truncated' => ($totalCsvRows > $maxPreviewRows),
+                'max_preview'  => $maxPreviewRows,
                 'changed_cols' => array_keys($changedCols),
                 'column_map'   => $columnMap,
                 'unrecognized' => $unrecognized,
-            ]);
+            ];
+
+            return response()->json($this->cleanUtf8($responsePayload));
 
         } catch (Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => $this->cleanUtf8($e->getMessage())
+            ], 500);
         }
     }
     /**

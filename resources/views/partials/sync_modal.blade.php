@@ -151,7 +151,7 @@ window.renderUnidataSyncModal = function(syncData, callback) {
 @if(session('sync_modal'))
     @php
         $sm = session('sync_modal');
-        $syncJson = json_encode($sm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+        $syncJson = json_encode($sm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE) ?: '{}';
     @endphp
 
     <script>

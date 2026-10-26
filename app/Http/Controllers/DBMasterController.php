@@ -234,8 +234,10 @@ class DBMasterController extends Controller
 
             $pEspCalc                = $pLista * (100 - $dEsp) / 100;
             $data['precio_venta']    = round($pEspCalc * (1 + $pPV / 100), 2);
-            if ($pLista > 0) {
+            if ($pLista > 0 && ($data['precio_venta'] ?? 0) > 0) {
                 $data['des_precio_venta'] = round((1 - ($data['precio_venta'] / $pLista)) * 100, 2);
+            } else {
+                $data['des_precio_venta'] = 0;
             }
 
             $article->update($data);

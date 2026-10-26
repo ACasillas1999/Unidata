@@ -8,6 +8,7 @@ use App\Models\ClienteCampoSucursal;
 use App\Models\ClienteMaestro;
 use App\Services\BranchConnectionManager;
 use App\Services\PowerSalesService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -184,7 +185,7 @@ class ClientesController extends Controller
                 $resultados[] = [
                     'sucursal' => $branch->name,
                     'status'   => 'error',
-                    'message'  => $e->getMessage(),
+                    'message'  => $this->cleanUtf8($e->getMessage()),
                 ];
             }
         }
@@ -213,7 +214,7 @@ class ClientesController extends Controller
         }
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
+            return $this->jsonUtf8Response([
                 'success'    => true,
                 'message'    => 'Terminó con éxito',
                 'sync_modal' => [
@@ -232,8 +233,8 @@ class ClientesController extends Controller
 
         return redirect()->route('clientes.index')
             ->with('success', "Cliente #{$nuevoIdGlobal} creado exitosamente en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
-            ->with('resultados', $resultados)
-            ->with('sync_modal', [
+            ->with('resultados', $this->cleanUtf8($resultados))
+            ->with('sync_modal', $this->cleanUtf8([
                 'accion'     => 'crear',
                 'id_global'  => $nuevoIdGlobal,
                 'rfc'        => $dataMaestro['rfc'],
@@ -242,7 +243,7 @@ class ClientesController extends Controller
                 'total'      => $total,
                 'resultados' => $resultados,
                 'powersales' => $psResult,
-            ]);
+            ]));
 
     }
 
@@ -392,7 +393,7 @@ class ClientesController extends Controller
                 $resultados[] = [
                     'sucursal' => $branch->name,
                     'status'   => 'error',
-                    'message'  => $e->getMessage(),
+                    'message'  => $this->cleanUtf8($e->getMessage()),
                 ];
             }
         }
@@ -421,7 +422,7 @@ class ClientesController extends Controller
         }
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
+            return $this->jsonUtf8Response([
                 'success'    => true,
                 'message'    => 'Terminó con éxito',
                 'sync_modal' => [
@@ -440,8 +441,8 @@ class ClientesController extends Controller
 
         return redirect()->route('clientes.edit', $rfc)
             ->with('success', "Cliente actualizado en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
-            ->with('resultados', $resultados)
-            ->with('sync_modal', [
+            ->with('resultados', $this->cleanUtf8($resultados))
+            ->with('sync_modal', $this->cleanUtf8([
                 'accion'     => 'editar',
                 'id_global'  => $cliente->id_global,
                 'rfc'        => $cliente->rfc,
@@ -450,7 +451,7 @@ class ClientesController extends Controller
                 'total'      => $total,
                 'resultados' => $resultados,
                 'powersales' => $psResult,
-            ]);
+            ]));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -682,7 +683,7 @@ class ClientesController extends Controller
     {
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
         $estado  = $this->resolveEstadoSucursales($cliente);
-        return response()->json($estado);
+        return $this->jsonUtf8Response($estado);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -697,7 +698,7 @@ class ClientesController extends Controller
         if (file_exists($statusFile)) {
             $prev = json_decode(file_get_contents($statusFile), true);
             if (($prev['status'] ?? '') === 'running' && (time() - (int)($prev['updated_at'] ?? 0)) < 600) {
-                return response()->json(['status' => 'already_running', 'message' => 'Ya hay una sincronización en progreso.']);
+                return $this->jsonUtf8Response(['status' => 'already_running', 'message' => 'Ya hay una sincronización en progreso.']);
             }
         }
 
@@ -718,20 +719,20 @@ class ClientesController extends Controller
         $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:sync-clientes-maestro >> "' . $log . '" 2>&1';
         pclose(popen($cmd, 'r'));
 
-        return response()->json(['status' => 'started']);
+        return $this->jsonUtf8Response(['status' => 'started']);
     }
 
     public function syncStatus()
     {
         $file = \App\Console\Commands\SyncClientesMaestro::statusFile();
         if (!file_exists($file)) {
-            return response()->json(['status' => 'waiting', 'message' => 'Preparando...', 'step' => 0, 'total' => 0]);
+            return $this->jsonUtf8Response(['status' => 'waiting', 'message' => 'Preparando...', 'step' => 0, 'total' => 0]);
         }
 
         $content = file_get_contents($file);
         $data = json_decode($content, true);
 
-        return response()->json($data ?: ['status' => 'waiting', 'message' => 'Preparando...', 'step' => 0, 'total' => 0]);
+        return $this->jsonUtf8Response($data ?: ['status' => 'waiting', 'message' => 'Preparando...', 'step' => 0, 'total' => 0]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -743,50 +744,52 @@ class ClientesController extends Controller
      */
     private function prepareData(Request $request, int $idGlobal): array
     {
+        $input = $this->cleanUtf8($request->all());
+
         return [
             'id_global'         => $idGlobal,
-            'rfc'               => strtoupper(trim($request->input('rfc', ''))),
-            'razon_social'      => $request->input('razon_social', ''),
-            'email'             => trim($request->input('email', '')),
-            'calle'             => $request->input('calle', ''),
-            'exterior'          => $request->input('exterior', ''),
-            'interior'          => $request->input('interior', ''),
-            'colonia'           => $request->input('colonia', ''),
-            'cod_postal'        => (int) $request->input('cod_postal', 0),
-            'ciudad'            => $request->input('ciudad', ''),
-            'municipio'         => $request->input('municipio', ''),
-            'telefono1'         => $request->input('telefono1', ''),
-            'telefono2'         => $request->input('telefono2', ''),
-            'telefono3'         => $request->input('telefono3', ''),
-            'fax'               => $request->input('fax', ''),
-            'vendedor'          => $request->input('vendedor', ''),
-            'documentos'        => $request->input('documentos', ''),
-            'dias_pago'         => $request->input('dias_pago', ''),
-            'dias_revision'     => $request->input('dias_revision', ''),
-            'condicion_pago'    => $request->input('condicion_pago', ''),
-            'dias_credito'      => (int) $request->input('dias_credito', 0),
-            'limite_credito'    => (float) $request->input('limite_credito', 0),
+            'rfc'               => strtoupper(trim((string)($input['rfc'] ?? ''))),
+            'razon_social'      => (string)($input['razon_social'] ?? ''),
+            'email'             => trim((string)($input['email'] ?? '')),
+            'calle'             => (string)($input['calle'] ?? ''),
+            'exterior'          => (string)($input['exterior'] ?? ''),
+            'interior'          => (string)($input['interior'] ?? ''),
+            'colonia'           => (string)($input['colonia'] ?? ''),
+            'cod_postal'        => (int) ($input['cod_postal'] ?? 0),
+            'ciudad'            => (string)($input['ciudad'] ?? ''),
+            'municipio'         => (string)($input['municipio'] ?? ''),
+            'telefono1'         => (string)($input['telefono1'] ?? ''),
+            'telefono2'         => (string)($input['telefono2'] ?? ''),
+            'telefono3'         => (string)($input['telefono3'] ?? ''),
+            'fax'               => (string)($input['fax'] ?? ''),
+            'vendedor'          => (string)($input['vendedor'] ?? ''),
+            'documentos'        => (string)($input['documentos'] ?? ''),
+            'dias_pago'         => (string)($input['dias_pago'] ?? ''),
+            'dias_revision'     => (string)($input['dias_revision'] ?? ''),
+            'condicion_pago'    => (string)($input['condicion_pago'] ?? ''),
+            'dias_credito'      => (int) ($input['dias_credito'] ?? 0),
+            'limite_credito'    => (float) ($input['limite_credito'] ?? 0),
             'otorgo_credito'    => $request->boolean('otorgo_credito') ? 1 : 0,
-            'status'            => strtoupper($request->input('status', 'A')),
-            'cta_contable'      => $request->input('cta_contable', ''),
-            'fecha_alta'        => $request->input('fecha_alta') ?: now()->toDateString(),
-            'representante'     => $request->input('representante', ''),
-            'addenda'           => $request->input('addenda', ''),
-            'id_reg_id_trib'    => $request->input('id_reg_id_trib', ''),
-            'regimen_fiscal'    => $request->input('regimen_fiscal', ''),
-            'anticipos'         => $request->input('anticipos', 'D'),
-            'codigo_contpaq'    => (int) $request->input('codigo_contpaq', 0),
-            'clasificacion'     => (int) $request->input('clasificacion', 0),
+            'status'            => strtoupper((string)($input['status'] ?? 'A')),
+            'cta_contable'      => (string)($input['cta_contable'] ?? ''),
+            'fecha_alta'        => !empty($input['fecha_alta']) ? (string)$input['fecha_alta'] : now()->toDateString(),
+            'representante'     => (string)($input['representante'] ?? ''),
+            'addenda'           => (string)($input['addenda'] ?? ''),
+            'id_reg_id_trib'    => (string)($input['id_reg_id_trib'] ?? ''),
+            'regimen_fiscal'    => (string)($input['regimen_fiscal'] ?? ''),
+            'anticipos'         => (string)($input['anticipos'] ?? 'D'),
+            'codigo_contpaq'    => (int) ($input['codigo_contpaq'] ?? 0),
+            'clasificacion'     => (int) ($input['clasificacion'] ?? 0),
             'modificar_fpmpfac' => $request->boolean('modificar_fpmpfac') ? 1 : 0,
-            'identificador'     => $request->input('identificador', ''),
-            'id_opcion_bloqueo' => (int) $request->input('id_opcion_bloqueo', 0),
-            'observaciones_caja'=> $request->input('observaciones_caja', ''),
+            'identificador'     => (string)($input['identificador'] ?? ''),
+            'id_opcion_bloqueo' => (int) ($input['id_opcion_bloqueo'] ?? 0),
+            'observaciones_caja'=> (string)($input['observaciones_caja'] ?? ''),
             'sync'              => 0,
             'prefijo_descripcion' => 0,
-            'id_sugar'          => $request->input('id_sugar', ''),
-            'giro_principal'    => (int) $request->input('giro_principal', 0),
-            'asesor'            => $request->input('asesor', ''),
-            'ubicacion'         => $request->input('ubicacion', ''),
+            'id_sugar'          => (string)($input['id_sugar'] ?? ''),
+            'giro_principal'    => (int) ($input['giro_principal'] ?? 0),
+            'asesor'            => (string)($input['asesor'] ?? ''),
+            'ubicacion'         => (string)($input['ubicacion'] ?? ''),
         ];
     }
 
@@ -984,7 +987,7 @@ class ClientesController extends Controller
                     'name'    => $branch->name,
                     'found'   => false,
                     'metodo'  => null,
-                    'error'   => $e->getMessage(),
+                    'error'   => $this->cleanUtf8($e->getMessage()),
                 ];
             }
         }
@@ -1016,5 +1019,53 @@ class ClientesController extends Controller
         }
 
         return $catalogs;
+    }
+
+    /**
+     * Sanitiza recursivamente cualquier estructura de datos para asegurar codificación UTF-8 válida,
+     * convirtiendo mensajes o cadenas con codificaciones comunes de Windows (Windows-1252 / ISO-8859-1).
+     */
+    private function cleanUtf8(mixed $data): mixed
+    {
+        if (is_string($data)) {
+            if (!mb_check_encoding($data, 'UTF-8')) {
+                $converted = @mb_convert_encoding($data, 'UTF-8', 'Windows-1252, ISO-8859-1');
+                if ($converted !== false && mb_check_encoding($converted, 'UTF-8')) {
+                    return $converted;
+                }
+                return mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            }
+            return $data;
+        }
+
+        if (is_array($data)) {
+            $result = [];
+            foreach ($data as $k => $v) {
+                $cleanKey = is_string($k) ? $this->cleanUtf8($k) : $k;
+                $result[$cleanKey] = $this->cleanUtf8($v);
+            }
+            return $result;
+        }
+
+        if (is_object($data)) {
+            $arr = (array) $data;
+            return (object) $this->cleanUtf8($arr);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Retorna una respuesta JSON segura contra excepciones por caracteres mal codificados en UTF-8.
+     */
+    private function jsonUtf8Response(mixed $data, int $status = 200): JsonResponse
+    {
+        $clean = $this->cleanUtf8($data);
+        return response()->json(
+            $clean,
+            $status,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
     }
 }
