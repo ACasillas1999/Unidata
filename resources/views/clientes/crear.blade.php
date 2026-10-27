@@ -260,7 +260,7 @@
                     <div>
                         <label class="modal-label">Opción Bloqueo</label>
                         <select name="id_opcion_bloqueo" class="modal-input">
-                            @php($selBloqueo = (int) (old('id_opcion_bloqueo') ?: 6))
+                            @php($selBloqueo = (int) (old('id_opcion_bloqueo') ?? 0))
                             @foreach($catalogs['bloqueos'] as $key => $desc)
                                 <option value="{{ $key }}" {{ $selBloqueo == $key ? 'selected' : '' }}>
                                     {{ $desc }}

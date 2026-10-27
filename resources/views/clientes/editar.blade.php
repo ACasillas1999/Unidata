@@ -242,7 +242,7 @@
                             <div>
                                 <label class="modal-label">Opción Bloqueo</label>
                                 <select name="id_opcion_bloqueo" class="modal-input" {{ !($campos->where('campo','id_opcion_bloqueo')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }}>
-                                    @php($selBloqueo = (int) (old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) ?: 6))
+                                    @php($selBloqueo = (int) (old('id_opcion_bloqueo', $cliente->id_opcion_bloqueo) ?? 0))
                                     @foreach($catalogs['bloqueos'] as $key => $desc)
                                         <option value="{{ $key }}" {{ $selBloqueo == $key ? 'selected' : '' }}>
                                             {{ $desc }}

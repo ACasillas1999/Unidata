@@ -316,9 +316,10 @@ class ClientesController extends Controller
 
 
         // 2. Actualizar en todas las sucursales activas
-        $branches    = $this->connectionManager->getActiveBranches();
-        $resultados  = [];
-        $dataBranch  = $this->toBranchFormat($dataMaestro);
+        $branches          = $this->connectionManager->getActiveBranches();
+        $resultados        = [];
+        $saldosPorSucursal = [];
+        $dataBranch        = $this->toBranchFormat($dataMaestro);
 
         foreach ($branches as $branch) {
             try {
@@ -340,6 +341,9 @@ class ClientesController extends Controller
                 }
 
                 if ($found) {
+                    // Registrar el saldo contable real de esta sucursal (cada sucursal tiene su propio balance)
+                    $saldosPorSucursal[$branch->code] = (float)($found->Saldo_Actual ?? 0);
+
                     // Filtrar solo columnas que existen en esta sucursal
                     $columnasReales = $this->getBranchColumns($conn, 'clientes');
                     $dataFiltrada   = array_filter(
@@ -347,6 +351,10 @@ class ClientesController extends Controller
                         fn($key) => in_array($key, $columnasReales),
                         ARRAY_FILTER_USE_KEY
                     );
+
+                    // NUNCA sobreescribir Saldo_Actual en las sucursales:
+                    // Cada sucursal gestiona su propia cobranza y balance contable independiente en su ERP.
+                    unset($dataFiltrada['Saldo_Actual']);
 
                     // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
                     $codigoVendedorAsesor = (strtoupper($branch->name) === 'TAPATIA') ? 'EITSA' : strtoupper($branch->name);
@@ -401,15 +409,20 @@ class ClientesController extends Controller
         // Sync a PowerSales (no bloquea ni revierte si falla; ver storage/logs/powersales.log)
         // ─────────────────────────────────────────────────────────────────────────
         // NOTA PARA FUTURA EXPANSION MULTI-SUCURSAL EN POWERSALES:
-        // Por defecto se envia con BranchId = 9 (AIESA). Cuando desees replicar a mas sucursales:
+        // Por defecto se envia con BranchId = 9 (AIESA) tomando su propio Saldo_Actual.
+        // Cuando desees replicar a mas sucursales con su propio saldo:
         //
         // $mapaPowerSales = ['AIESA' => 9, 'DEASA' => 2, 'SEGSA' => 4, 'TAPATIA' => 6];
         // foreach ($branches as $b) {
         //     $psBranchId = $mapaPowerSales[$b->code] ?? 9;
-        //     $this->powerSales->syncCliente($dataBranch, $psBranchId);
+        //     $dataPs = $dataBranch;
+        //     $dataPs['Saldo_Actual'] = $saldosPorSucursal[$b->code] ?? 0.0;
+        //     $this->powerSales->syncCliente($dataPs, $psBranchId);
         // }
         // ─────────────────────────────────────────────────────────────────────────
-        $psResult = $this->powerSales->syncCliente($dataBranch);
+        $dataPowerSales = $dataBranch;
+        $dataPowerSales['Saldo_Actual'] = $saldosPorSucursal['AIESA'] ?? 0.0;
+        $psResult = $this->powerSales->syncCliente($dataPowerSales);
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
         $total    = count($resultados);
@@ -1016,6 +1029,26 @@ class ClientesController extends Controller
             }
         } catch (Throwable) {
             // Fallback a config('client_catalogs.giros')
+        }
+
+        try {
+            $estadosDb = \App\Models\PowerSalesMappingEstado::whereNotNull('magic_descripcion')
+                ->where('magic_descripcion', '!=', '')
+                ->pluck('magic_descripcion', 'magic_clave')
+                ->toArray();
+            if (!empty($estadosDb)) {
+                foreach ($estadosDb as $cve => $desc) {
+                    if (!isset($catalogs['estados'][$cve])) {
+                        $catalogs['estados'][$cve] = $desc;
+                    }
+                }
+            }
+        } catch (Throwable) {
+            // Fallback a config('client_catalogs.estados')
+        }
+
+        if (!empty($catalogs['estados'])) {
+            asort($catalogs['estados']);
         }
 
         return $catalogs;

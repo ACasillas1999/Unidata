@@ -141,6 +141,18 @@ class PowerSalesService
                 'auto_note'   => 'Automático — Valores enteros por defecto para evitar restricciones no-null en PowerSales',
             ],
             (object) [
+                'ps_field'    => 'AccountBalance',
+                'erp_column'  => 'Saldo_Actual',
+                'fixed_value' => '0',
+                'auto_note'   => 'Automático — Saldo actual del cliente (por defecto 0 para evitar restricciones no-null en PowerSales)',
+            ],
+            (object) [
+                'ps_field'    => 'CreditLimit',
+                'erp_column'  => 'Limite_Credito',
+                'fixed_value' => '0',
+                'auto_note'   => 'Automático — Límite de crédito del cliente (por defecto 0)',
+            ],
+            (object) [
                 'ps_field'    => 'IsEarlyOrderEnabled',
                 'erp_column'  => 'IdOpcionBloqueo',
                 'fixed_value' => null,
@@ -684,6 +696,20 @@ class PowerSalesService
                 }
             }
 
+            // Sanear AccountBalance y CreditLimit (campos numéricos obligatorios en la BD de PowerSales)
+            $rawBalance = $payload['AccountBalance'] ?? $branchData['Saldo_Actual'] ?? $branchData['saldo_actual'] ?? 0;
+            $payload['AccountBalance'] = (is_numeric($rawBalance) && $rawBalance !== '') ? (float)$rawBalance : 0.0;
+
+            $rawCreditLimit = $payload['CreditLimit'] ?? $branchData['Limite_Credito'] ?? $branchData['limite_credito'] ?? 0;
+            $payload['CreditLimit'] = (is_numeric($rawCreditLimit) && $rawCreditLimit !== '') ? (float)$rawCreditLimit : 0.0;
+
+            // Sanear Latitude y Longitude
+            $rawLat = $payload['Latitude'] ?? 0;
+            $payload['Latitude'] = (is_numeric($rawLat) && $rawLat !== '') ? (float)$rawLat : 0.0;
+
+            $rawLng = $payload['Longitude'] ?? 0;
+            $payload['Longitude'] = (is_numeric($rawLng) && $rawLng !== '') ? (float)$rawLng : 0.0;
+
             // Armar la dirección completa en Address1 e InvoiceAddress a partir de Calle, Exterior, Interior, Colonia, Cod_Postal
             $partesDireccion = [];
             if (!empty($branchData['Calle'])) {
@@ -819,6 +845,10 @@ class PowerSalesService
                 'LeftStreet'             => ' ',
                 'RightStreet'            => ' ',
                 'UniqueId'               => ' ',
+                'AccountBalance'         => 0.0,
+                'CreditLimit'            => 0.0,
+                'Latitude'               => 0.0,
+                'Longitude'              => 0.0,
             ];
 
             foreach ($defaults as $key => $defaultVal) {
