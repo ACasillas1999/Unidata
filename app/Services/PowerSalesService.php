@@ -189,10 +189,16 @@ class PowerSalesService
                 'auto_note'   => 'Automático — Toma el régimen fiscal del cliente (ej: 624)',
             ],
             (object) [
-                'ps_field'    => 'Address1 / InvoiceAddress',
+                'ps_field'    => 'Address1',
                 'erp_column'  => 'Calle, Exterior, Interior, Colonia, Cod_Postal',
                 'fixed_value' => null,
                 'auto_note'   => 'Automático — Concatena Calle, Núm. Exterior/Interior, Colonia y CP para PowerSales',
+            ],
+            (object) [
+                'ps_field'    => 'InvoiceAddress',
+                'erp_column'  => 'Cod_Postal',
+                'fixed_value' => null,
+                'auto_note'   => 'Automático — Envía únicamente el Código Postal (Cod_Postal)',
             ],
             (object) [
                 'ps_field'    => 'CityId / StateId',
@@ -710,7 +716,7 @@ class PowerSalesService
             $rawLng = $payload['Longitude'] ?? 0;
             $payload['Longitude'] = (is_numeric($rawLng) && $rawLng !== '') ? (float)$rawLng : 0.0;
 
-            // Armar la dirección completa en Address1 e InvoiceAddress a partir de Calle, Exterior, Interior, Colonia, Cod_Postal
+            // Armar la dirección completa en Address1 a partir de Calle, Exterior, Interior, Colonia, Cod_Postal
             $partesDireccion = [];
             if (!empty($branchData['Calle'])) {
                 $partesDireccion[] = trim((string)$branchData['Calle']);
@@ -737,9 +743,9 @@ class PowerSalesService
                 }
             }
 
-            if (empty($payload['InvoiceAddress'])) {
-                $payload['InvoiceAddress'] = !empty($payload['Address1']) ? $payload['Address1'] : $direccionCompleta;
-            }
+            // En InvoiceAddress se envía únicamente el Código Postal
+            $cp = trim((string)($branchData['Cod_Postal'] ?? $branchData['cod_postal'] ?? ''));
+            $payload['InvoiceAddress'] = ($cp !== '' && $cp !== '0') ? $cp : '';
 
             if (empty($payload['Address2'])) {
                 $municipio = $branchData['Municipio'] ?? $branchData['municipio'] ?? '';
