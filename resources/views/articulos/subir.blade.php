@@ -4,861 +4,1000 @@
 @section('breadcrumb', 'Artículos / Subir')
 
 @section('content')
-<div class="page-header" style="margin-bottom: 16px;">
-    <div class="page-header-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <div class="page-header-icon page-header-icon--amber" style="width: 40px; height: 40px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-            </div>
-            <div>
-                <h1 class="page-title" style="font-size: 20px;">Subir Artículos via CSV</h1>
-                <p class="page-subtitle" style="font-size: 12px;">Actualiza masivamente el catálogo en múltiples sucursales</p>
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; position: relative;">
-            <div class="dropdown-machotes" style="position: relative;">
-                <button type="button" id="btn-machotes" class="btn btn--secondary shadow-premium" style="background: rgba(16, 185, 129, 0.1); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: var(--radius-md);">
-                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Descargar Machote
-                    <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-                </button>
-                <div id="menu-machotes" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #181824; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; z-index: 999; min-width: 270px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); padding: 8px; backdrop-filter: blur(16px);">
-                    <a href="{{ route('articulos.subir.machote', ['tipo' => 'con_datos']) }}" class="machote-item" style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none; transition: background 0.2s;">
-                        <span style="font-size: 15px;">📊</span>
-                        <div>
-                            <div style="font-weight: 700;">Con Datos de Ejemplo</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">Valores numéricos limpios (el sistema calcula automáticamente)</div>
-                        </div>
-                    </a>
-                    <a href="{{ route('articulos.subir.machote', ['tipo' => 'vacio']) }}" class="machote-item" style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none; transition: background 0.2s;">
-                        <span style="font-size: 15px;">📄</span>
-                        <div>
-                            <div style="font-weight: 700;">Sin Datos (Solo Encabezados)</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">Plantilla limpia lista para llenar</div>
-                        </div>
-                    </a>
-                    <a href="{{ route('articulos.subir.machote', ['tipo' => 'catalogo']) }}" class="machote-item" style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 4px; transition: background 0.2s;">
-                        <span style="font-size: 15px;">📦</span>
-                        <div>
-                            <div style="font-weight: 700;">Catálogo Maestro Actual</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">Exporta artículos existentes formateados</div>
-                        </div>
-                    </a>
+    <div class="page-header" style="margin-bottom: 16px;">
+        <div class="page-header-content"
+            style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="page-header-icon page-header-icon--amber" style="width: 40px; height: 40px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width: 20px; height: 20px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="page-title" style="font-size: 20px;">Subir Artículos via CSV</h1>
+                    <p class="page-subtitle" style="font-size: 12px;">Actualiza masivamente el catálogo en múltiples
+                        sucursales</p>
                 </div>
             </div>
-            <a href="{{ route('articulos.historial') }}" class="btn btn--secondary shadow-premium" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; border-radius: var(--radius-md);">
-                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Ver Historial de Subidas
-            </a>
-        </div>
-    </div>
-</div>
-
-{{-- Layout Principal Grid: Sidebar de Configuración + Panel Central de Previsualización --}}
-<div class="upload-workspace-grid">
-    
-    {{-- SIDEBAR IZQUIERDO: CONFIGURACIÓN Y CONTROLES --}}
-    <div class="upload-sidebar">
-        
-        {{-- Card 1: Sucursales de Destino --}}
-        <div class="card card--dark" style="margin-bottom: 0;">
-            <div class="card-header card-header--row" style="padding: 12px 14px; background: rgba(56, 189, 248, 0.03); border-bottom: 1px solid rgba(56, 189, 248, 0.1);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 26px; height: 26px; background: var(--sky-bg); color: var(--sky); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    </div>
-                    <h4 style="font-size: 13px; font-weight: 800; color: white; margin: 0;">Sucursales</h4>
-                </div>
-                <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--sky); cursor: pointer; background: var(--sky-bg); padding: 2px 8px; border-radius: 5px; border: 1px solid var(--sky-border);">
-                    <input type="checkbox" id="select-all-branches" class="form-checkbox" style="width:13px; height:13px;">
-                    Todas
-                </label>
-            </div>
-            <div class="card-body" style="padding: 12px 14px;">
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
-                    @foreach($branches as $id => $name)
-                        <label class="checkbox-wrapper checkbox-wrapper--sky" style="padding: 6px 8px;">
-                            <input type="checkbox" name="branches[]" value="{{ $id }}" class="branch-checkbox form-checkbox" style="width:13px; height:13px;">
-                            <span class="checkbox-label" style="font-size: 11px;">{{ $name }}</span>
-                        </label>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        {{-- Card 2: Columnas a Actualizar --}}
-        <div class="card card--dark" style="margin-bottom: 0;">
-            <div class="card-header card-header--row" style="padding: 12px 14px; background: rgba(167, 139, 250, 0.03); border-bottom: 1px solid rgba(167, 139, 250, 0.1); justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 26px; height: 26px; background: var(--violet-bg); color: var(--violet-light); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"/></svg>
-                    </div>
-                    <h4 style="font-size: 13px; font-weight: 800; color: white; margin: 0;">Columnas</h4>
-                </div>
-                <div style="display: flex; gap: 6px;">
-                    <button type="button" id="btn-toggle-all-cols" class="btn-xs-ghost" title="Marcar/Desmarcar todas" style="font-size: 10px; padding: 2px 7px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); border-radius: 4px; cursor: pointer;">Toggle</button>
-                </div>
-            </div>
-
-            <div class="card-body" style="padding: 12px 14px;">
-                {{-- Leyenda informativa de fórmulas --}}
-                <div style="display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; margin-bottom: 10px; font-size: 9.5px;">
-                    <span style="color: #a78bfa; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">⚡ FÓRMULA = Cálculo auto</span>
-                    <span style="color: #fbbf24; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">🔄 DETONA = Dispara cálculos</span>
-                </div>
-
-                <div class="columns-scroll-container">
-                    @php
-                        $colsMap = [
-                            'Descripción'          => ['type' => 'normal'],
-                            'U.M.'                 => ['type' => 'normal'],
-                            'Línea'                => ['type' => 'normal'],
-                            'Clasificación'        => ['type' => 'normal'],
-                            'MN/USD'               => ['type' => 'normal'],
-                            'P. Lista'             => ['type' => 'trigger', 'title' => 'Dispara el cálculo de P4, P.Especial, P.Gerente, P.Tope'],
-                            'Desc. P. Venta'       => ['type' => 'formula', 'title' => 'Fórmula: Si P.Lista y P.Venta > 0: 100 - (P.Venta / P.Lista * 100), sino 0%'],
-                            'P. Venta'             => ['type' => 'normal'],
-                            'Desc. P. Espec'       => ['type' => 'trigger', 'title' => 'Dispara el cálculo de P.Especial'],
-                            'P. Especial'          => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - Desc.Espec) / 100'],
-                            'Desc. Precio 4'       => ['type' => 'trigger', 'title' => 'Dispara el cálculo de Precio 4'],
-                            'Precio 4'             => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - Desc.P4) / 100'],
-                            'Desc. Proveedor'      => ['type' => 'trigger', 'title' => 'Dispara el cálculo de Precio Gerente'],
-                            'Art. Kit'             => ['type' => 'normal'],
-                            'Mg Mín'               => ['type' => 'normal'],
-                            'Std Pack'             => ['type' => 'normal'],
-                            'Art. Serie'           => ['type' => 'normal'],
-                            'Color'                => ['type' => 'normal'],
-                            'Ubicación'            => ['type' => 'normal'],
-                            'Control Pedimentos'   => ['type' => 'normal'],
-                            'Protocolo'            => ['type' => 'normal'],
-                            'IDSAT'                => ['type' => 'normal'],
-                            'Peso'                 => ['type' => 'normal'],
-                            'Crítico'              => ['type' => 'normal'],
-                            'Estatus'              => ['type' => 'normal'],
-                            'Sustituto'            => ['type' => 'normal'],
-                            'Sustituto 1'          => ['type' => 'normal'],
-                            'Sustituto 2'          => ['type' => 'normal'],
-                            'Costo Venta'          => ['type' => 'normal'],
-                            '% Descuento'          => ['type' => 'trigger', 'title' => 'Dispara el cálculo de Precio Tope'],
-                            'Precio Tope'          => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - %Desc) / 100'],
-                        ];
-                    @endphp
-                    @foreach($colsMap as $colName => $meta)
-                        <label class="checkbox-wrapper" title="{{ $meta['title'] ?? '' }}" style="padding: 6px 8px; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="checkbox" name="columns[]" value="{{ $colName }}" class="form-checkbox" style="width:13px; height:13px;">
-                                <span class="checkbox-label" style="font-size: 11px;">{{ $colName }}</span>
+            <div style="display: flex; gap: 10px; position: relative;">
+                <div class="dropdown-machotes" style="position: relative;">
+                    <button type="button" id="btn-machotes" class="btn btn--secondary shadow-premium"
+                        style="background: rgba(16, 185, 129, 0.1); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: var(--radius-md);">
+                        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Descargar Machote
+                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div id="menu-machotes"
+                        style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #181824; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; z-index: 999; min-width: 270px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); padding: 8px; backdrop-filter: blur(16px);">
+                        <a href="{{ route('articulos.subir.machote', ['tipo' => 'con_datos']) }}" class="machote-item"
+                            style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none; transition: background 0.2s;">
+                            <span style="font-size: 15px;">📊</span>
+                            <div>
+                                <div style="font-weight: 700;">Con Datos de Ejemplo</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Valores numéricos limpios (el
+                                    sistema calcula automáticamente)</div>
                             </div>
-                            @if(($meta['type'] ?? '') === 'formula')
-                                <span style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.35); font-weight: 700; white-space: nowrap;">⚡ FÓRMULA</span>
-                            @elseif(($meta['type'] ?? '') === 'trigger')
-                                <span style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 700; white-space: nowrap;">🔄 DETONA</span>
-                            @endif
-                        </label>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        {{-- Card 3: Panel Fijo de Acciones en Sidebar --}}
-        <div class="card card--dark" style="margin-bottom: 0; padding: 12px 14px; background: rgba(245,158,11,0.02); border-color: rgba(245,158,11,0.2);">
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <button id="preview-btn" class="btn btn--ghost" style="width: 100%; padding: 8px 14px; justify-content: center; border-radius: var(--radius-md); font-size: 12px; font-weight: 700;">
-                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    Vista Previa
-                </button>
-                <button id="process-btn" class="btn btn--primary" style="width: 100%; padding: 9px 14px; justify-content: center; border-radius: var(--radius-md); font-size: 12px; font-weight: 800; box-shadow: 0 6px 14px -4px rgba(245,158,11,0.3); transition: all 0.25s ease;">
-                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    Ejecutar Actualización
-                </button>
-                <div id="preview-status-hint" style="font-size: 10.5px; text-align: center; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 4px; padding-top: 2px; transition: color 0.2s;">
-                    <span id="preview-status-icon" style="display: flex; align-items: center;">
-                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    </span>
-                    <span id="preview-status-text">Requiere Vista Previa para habilitar</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- PANEL CENTRAL PRINCIPAL: ARCHIVO, MAPEO Y PREVISUALIZACIÓN --}}
-    <div class="upload-main-content">
-        
-        {{-- Zona de Carga de Archivo (COMPACTA) --}}
-        <div class="card card--dark" style="margin-bottom: 12px;">
-            <div class="card-body" style="padding: 10px 14px;">
-                <div id="upload-container" class="glass" style="padding: 12px 16px; border: 1.5px dashed var(--border); border-radius: var(--radius-lg); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(255,255,255,0.01); position: relative; overflow: hidden;">
-                    <div class="glow-effect" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at center, rgba(245,158,11,0.05) 0%, transparent 70%); opacity: 0; transition: opacity 0.4s;"></div>
-                    <input type="file" id="csv_file_input" accept=".csv" style="display: none;">
-                    
-                    {{-- Estado Drop Zone Inicial --}}
-                    <div id="drop-zone" style="cursor: pointer; position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div class="upload-icon-wrapper" style="width: 36px; height: 36px; background: var(--amber-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--amber-border); transition: transform 0.3s; flex-shrink: 0;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px; color: var(--amber);">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
-                            </div>
-                            <div style="text-align: left;">
-                                <h3 style="font-size: 13px; font-weight: 700; color: white; margin: 0;">Arrastra tu archivo CSV o haz clic para seleccionar</h3>
-                                <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0;">Debe incluir la columna <strong>Clave</strong>.</p>
-                            </div>
-                        </div>
-                        <button class="btn btn--primary" style="padding: 6px 14px; font-size: 11px;">
-                            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                            Seleccionar CSV
-                        </button>
-                    </div>
-
-                    {{-- Estado Archivo Cargado (Ultra Compacto) --}}
-                    <div id="file-info" style="display: none; position: relative; z-index: 1; animation: slideIn 0.3s ease-out;">
-                        <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); padding: 6px 12px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="var(--emerald)" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span id="filename-badge" style="font-size: 12px; font-weight: 700; color: white;">archivo.csv</span>
-                                    <span id="filesize-badge" style="font-size: 10px; color: var(--emerald); font-weight: 600; background: rgba(16,185,129,0.15); padding: 2px 6px; border-radius: 4px;">0.0 KB</span>
+                        </a>
+                        <a href="{{ route('articulos.subir.machote', ['tipo' => 'vacio']) }}" class="machote-item"
+                            style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none; transition: background 0.2s;">
+                            <span style="font-size: 15px;">📄</span>
+                            <div>
+                                <div style="font-weight: 700;">Sin Datos (Solo Encabezados)</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Plantilla limpia lista para llenar
                                 </div>
                             </div>
-                            <button class="btn btn--ghost" style="padding: 4px 10px; font-size: 11px; border-radius: 5px; display: flex; align-items: center; gap: 4px;" id="change-file-btn" title="Cambiar archivo">
-                                <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                Cambiar
-                            </button>
-                        </div>
+                        </a>
+                        <a href="{{ route('articulos.subir.machote', ['tipo' => 'catalogo']) }}" class="machote-item"
+                            style="padding: 10px 12px; display: flex; align-items: center; gap: 10px; color: var(--text-main); font-size: 12px; font-weight: 500; border-radius: 6px; text-decoration: none; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 4px; transition: background 0.2s;">
+                            <span style="font-size: 15px;">📦</span>
+                            <div>
+                                <div style="font-weight: 700;">Catálogo Maestro Actual</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Exporta artículos existentes
+                                    formateados</div>
+                            </div>
+                        </a>
                     </div>
                 </div>
+                <a href="{{ route('articulos.historial') }}" class="btn btn--secondary shadow-premium"
+                    style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; padding: 6px 14px; display: flex; align-items: center; gap: 8px; border-radius: var(--radius-md);">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Ver Historial de Subidas
+                </a>
             </div>
         </div>
+    </div>
 
-        {{-- Mapeo de columnas CSV → BD (COMPACTO) --}}
-        <div id="colmap-container" class="card card--dark" style="display: none; margin-bottom: 12px; border-color: rgba(99,102,241,0.3);">
-            <div class="card-header card-header--row" style="padding: 8px 14px; background: rgba(99,102,241,0.03); justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 24px; height: 24px; background: var(--violet-bg); color: var(--violet-light); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                        <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.5"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-                    </div>
-                    <h4 class="card-title" style="color: var(--violet-light); font-size: 12px; margin: 0; font-weight: 700;">Mapeo de Columnas Detectadas</h4>
-                </div>
-                <button type="button" onclick="const p = document.getElementById('colmap-pills-wrapper'); p.style.display = (p.style.display === 'none') ? 'block' : 'none';" class="btn-xs-ghost" style="font-size: 10px; padding: 2px 8px; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; cursor: pointer;">Minimizar / Mostrar</button>
-            </div>
-            <div id="colmap-pills-wrapper" class="card-body" style="padding: 10px 14px;">
-                <div id="colmap-pills" style="display: flex; flex-wrap: wrap; gap: 5px; max-height: 110px; overflow-y: auto; padding-right: 4px;"></div>
-                <div id="colmap-unrecognized" style="display: none; margin-top: 8px; padding: 6px 10px; background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.2); border-radius: 6px;">
-                    <span style="font-size: 10px; font-weight: 700; color: var(--rose); margin-right: 6px;">NO RECONOCIDAS:</span>
-                    <span id="colmap-unrecognized-list" style="font-size: 10px; color: var(--text-muted);"></span>
-                </div>
-            </div>
-        </div>
+    {{-- Layout Principal Grid: Sidebar de Configuración + Panel Central de Previsualización --}}
+    <div class="upload-workspace-grid">
 
-        {{-- Previsualización de Cambios --}}
-        <div id="preview-container" class="card card--dark" style="display: none; flex-direction: column; border-color: var(--amber-border); box-shadow: 0 16px 36px -10px rgba(0,0,0,0.5);">
-            <div class="card-header card-header--row" style="padding: 10px 16px; background: rgba(245,158,11,0.03); justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 28px; height: 28px; background: var(--amber-bg); color: var(--amber); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                        <svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    </div>
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <h3 class="card-title" style="color: var(--amber-light); font-size: 14px; margin: 0;">Previsualización de Comparativa</h3>
-                            <span id="preview-badge-count" style="font-size: 10px; background: rgba(245,158,11,0.15); color: var(--amber); padding: 2px 7px; border-radius: 4px; font-weight: 700; display: none;">0 registros</span>
+        {{-- SIDEBAR IZQUIERDO: CONFIGURACIÓN Y CONTROLES --}}
+        <div class="upload-sidebar">
+
+            {{-- Card 1: Sucursales de Destino --}}
+            <div class="card card--dark" style="margin-bottom: 0;">
+                <div class="card-header card-header--row"
+                    style="padding: 12px 14px; background: rgba(56, 189, 248, 0.03); border-bottom: 1px solid rgba(56, 189, 248, 0.1);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 26px; height: 26px; background: var(--sky-bg); color: var(--sky); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                            </svg>
                         </div>
-                        <p class="card-subtitle" style="font-size: 10.5px; margin: 0;">Verifica los cambios calculados antes de ejecutar la actualización final</p>
+                        <h4 style="font-size: 13px; font-weight: 800; color: white; margin: 0;">Sucursales</h4>
+                    </div>
+                    <label
+                        style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--sky); cursor: pointer; background: var(--sky-bg); padding: 2px 8px; border-radius: 5px; border: 1px solid var(--sky-border);">
+                        <input type="checkbox" id="select-all-branches" class="form-checkbox"
+                            style="width:13px; height:13px;">
+                        Todas
+                    </label>
+                </div>
+                <div class="card-body" style="padding: 12px 14px;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                        @foreach($branches as $id => $name)
+                            <label class="checkbox-wrapper checkbox-wrapper--sky" style="padding: 6px 8px;">
+                                <input type="checkbox" name="branches[]" value="{{ $id }}" class="branch-checkbox form-checkbox"
+                                    style="width:13px; height:13px;">
+                                <span class="checkbox-label" style="font-size: 11px;">{{ $name }}</span>
+                            </label>
+                        @endforeach
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button id="select-changed-btn" class="btn btn--primary" style="padding: 5px 10px; font-size: 10.5px; background: var(--amber); border: none; display:none; border-radius: 5px;">
-                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                        Seleccionar solo campos con cambios
+            </div>
+
+            {{-- Card 2: Columnas a Actualizar --}}
+            <div class="card card--dark" style="margin-bottom: 0;">
+                <div class="card-header card-header--row"
+                    style="padding: 12px 14px; background: rgba(167, 139, 250, 0.03); border-bottom: 1px solid rgba(167, 139, 250, 0.1); justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 26px; height: 26px; background: var(--violet-bg); color: var(--violet-light); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path
+                                    d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18" />
+                            </svg>
+                        </div>
+                        <h4 style="font-size: 13px; font-weight: 800; color: white; margin: 0;">Columnas</h4>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" id="btn-toggle-all-cols" class="btn-xs-ghost" title="Marcar/Desmarcar todas"
+                            style="font-size: 10px; padding: 2px 7px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); border-radius: 4px; cursor: pointer;">Toggle</button>
+                    </div>
+                </div>
+
+                <div class="card-body" style="padding: 12px 14px;">
+                    {{-- Leyenda informativa de fórmulas --}}
+                    <div
+                        style="display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; margin-bottom: 10px; font-size: 9.5px;">
+                        <span
+                            style="color: #a78bfa; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">⚡
+                            FÓRMULA = Cálculo auto</span>
+                        <span
+                            style="color: #fbbf24; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">🔄
+                            DETONA = Dispara cálculos</span>
+                    </div>
+
+                    <div class="columns-scroll-container">
+                        @php
+                            $colsMap = [
+                                'Descripción' => ['type' => 'normal'],
+                                'U.M.' => ['type' => 'normal'],
+                                'Línea' => ['type' => 'normal'],
+                                'Clasificación' => ['type' => 'normal'],
+                                'MN/USD' => ['type' => 'normal'],
+                                'P. Lista' => ['type' => 'trigger', 'title' => 'Dispara el cálculo de P4, P.Especial, P.Gerente, P.Tope'],
+                                'Desc. P. Venta' => ['type' => 'formula', 'title' => 'Fórmula: Si P.Lista y P.Venta > 0: 100 - (P.Venta / P.Lista * 100), sino 0%'],
+                                'P. Venta' => ['type' => 'normal'],
+                                'Desc. P. Espec' => ['type' => 'trigger', 'title' => 'Dispara el cálculo de P.Especial'],
+                                'P. Especial' => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - Desc.Espec) / 100'],
+                                'Desc. Precio 4' => ['type' => 'trigger', 'title' => 'Dispara el cálculo de Precio 4'],
+                                'Precio 4' => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - Desc.P4) / 100'],
+                                'Desc. Proveedor' => ['type' => 'trigger', 'title' => 'Dispara el cálculo de Precio Gerente'],
+                                'Art. Kit' => ['type' => 'normal'],
+                                'Mg Mín' => ['type' => 'normal'],
+                                'Std Pack' => ['type' => 'normal'],
+                                'Art. Serie' => ['type' => 'normal'],
+                                'Color' => ['type' => 'normal'],
+                                'Ubicación' => ['type' => 'normal'],
+                                'Control Pedimentos' => ['type' => 'normal'],
+                                'Protocolo' => ['type' => 'normal'],
+                                'IDSAT' => ['type' => 'normal'],
+                                'Peso' => ['type' => 'normal'],
+                                'Crítico' => ['type' => 'normal'],
+                                'Estatus' => ['type' => 'normal'],
+                                'Sustituto' => ['type' => 'normal'],
+                                'Sustituto 1' => ['type' => 'normal'],
+                                'Sustituto 2' => ['type' => 'normal'],
+                                'Costo Venta' => ['type' => 'normal'],
+                                '% Descuento' => ['type' => 'trigger', 'title' => 'Dispara el cálculo de Precio Tope'],
+                                'Precio Tope' => ['type' => 'formula', 'title' => 'Fórmula: P.Lista * (100 - %Desc) / 100'],
+                            ];
+                        @endphp
+                        @foreach($colsMap as $colName => $meta)
+                            <label class="checkbox-wrapper" title="{{ $meta['title'] ?? '' }}"
+                                style="padding: 6px 8px; display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" name="columns[]" value="{{ $colName }}" class="form-checkbox"
+                                        style="width:13px; height:13px;">
+                                    <span class="checkbox-label" style="font-size: 11px;">{{ $colName }}</span>
+                                </div>
+                                @if(($meta['type'] ?? '') === 'formula')
+                                    <span
+                                        style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.35); font-weight: 700; white-space: nowrap;">⚡
+                                        FÓRMULA</span>
+                                @elseif(($meta['type'] ?? '') === 'trigger')
+                                    <span
+                                        style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 700; white-space: nowrap;">🔄
+                                        DETONA</span>
+                                @endif
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- Card 3: Panel Fijo de Acciones en Sidebar --}}
+            <div class="card card--dark"
+                style="margin-bottom: 0; padding: 12px 14px; background: rgba(245,158,11,0.02); border-color: rgba(245,158,11,0.2);">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button id="preview-btn" class="btn btn--ghost"
+                        style="width: 100%; padding: 8px 14px; justify-content: center; border-radius: var(--radius-md); font-size: 12px; font-weight: 700;">
+                        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        Vista Previa
                     </button>
-                    <button id="preview-header-process-btn" type="button" class="btn btn--primary" style="padding: 5px 12px; font-size: 10.5px; display: none; border-radius: 5px; font-weight: 700;">
-                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <button id="process-btn" class="btn btn--primary"
+                        style="width: 100%; padding: 9px 14px; justify-content: center; border-radius: var(--radius-md); font-size: 12px; font-weight: 800; box-shadow: 0 6px 14px -4px rgba(245,158,11,0.3); transition: all 0.25s ease;">
+                        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
                         Ejecutar Actualización
                     </button>
-                    <button onclick="document.getElementById('preview-container').style.display = 'none'; document.getElementById('preview-placeholder').style.display = 'block';" class="btn btn--ghost" style="padding: 4px 10px; font-size: 10.5px; border-radius: 5px;">Ocultar</button>
-                </div>
-            </div>
-
-            {{-- Banner Informativo para Archivos Pesados / Truncados a 500 filas --}}
-            <div id="preview-limit-banner" style="display: none; padding: 10px 16px; background: rgba(56, 189, 248, 0.08); border-bottom: 1px solid rgba(56, 189, 248, 0.2); font-size: 11.5px; color: #bae6fd; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 9px;">
-                    <span style="font-size: 16px;">⚡</span>
-                    <div>
-                        <strong style="color: white;">Archivo extenso detectado:</strong> Mostrando únicamente las primeras <strong style="color: var(--amber);" id="banner-preview-limit">500</strong> filas de <strong style="color: white;" id="banner-total-rows">0</strong> registros totales del CSV para optimizar la velocidad y fluidez.
-                        <span style="color: var(--text-muted); display: block; font-size: 10.5px; margin-top: 1px;">Al presionar <strong>"Ejecutar Actualización"</strong> se procesará la totalidad del archivo en las sucursales seleccionadas.</span>
+                    <div id="preview-status-hint"
+                        style="font-size: 10.5px; text-align: center; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 4px; padding-top: 2px; transition: color 0.2s;">
+                        <span id="preview-status-icon" style="display: flex; align-items: center;">
+                            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </span>
+                        <span id="preview-status-text">Requiere Vista Previa para habilitar</span>
                     </div>
                 </div>
-                <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--sky); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap;">
-                    Vista previa de 500 filas
+            </div>
+        </div>
+
+        {{-- PANEL CENTRAL PRINCIPAL: ARCHIVO, MAPEO Y PREVISUALIZACIÓN --}}
+        <div class="upload-main-content">
+
+            {{-- Zona de Carga de Archivo (COMPACTA) --}}
+            <div class="card card--dark" style="margin-bottom: 12px;">
+                <div class="card-body" style="padding: 10px 14px;">
+                    <div id="upload-container" class="glass"
+                        style="padding: 12px 16px; border: 1.5px dashed var(--border); border-radius: var(--radius-lg); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(255,255,255,0.01); position: relative; overflow: hidden;">
+                        <div class="glow-effect"
+                            style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at center, rgba(245,158,11,0.05) 0%, transparent 70%); opacity: 0; transition: opacity 0.4s;">
+                        </div>
+                        <input type="file" id="csv_file_input" accept=".csv" style="display: none;">
+
+                        {{-- Estado Drop Zone Inicial --}}
+                        <div id="drop-zone"
+                            style="cursor: pointer; position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="upload-icon-wrapper"
+                                    style="width: 36px; height: 36px; background: var(--amber-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--amber-border); transition: transform 0.3s; flex-shrink: 0;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                        style="width: 18px; height: 18px; color: var(--amber);">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                </div>
+                                <div style="text-align: left;">
+                                    <h3 style="font-size: 13px; font-weight: 700; color: white; margin: 0;">Arrastra tu
+                                        archivo CSV o haz clic para seleccionar</h3>
+                                    <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0;">Debe incluir la
+                                        columna <strong>Clave</strong>.</p>
+                                </div>
+                            </div>
+                            <button class="btn btn--primary" style="padding: 6px 14px; font-size: 11px;">
+                                <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path d="M12 5v14M5 12h14" />
+                                </svg>
+                                Seleccionar CSV
+                            </button>
+                        </div>
+
+                        {{-- Estado Archivo Cargado (Ultra Compacto) --}}
+                        <div id="file-info"
+                            style="display: none; position: relative; z-index: 1; animation: slideIn 0.3s ease-out;">
+                            <div
+                                style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); padding: 6px 12px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="var(--emerald)"
+                                        stroke-width="2.5">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <path d="m9 15 2 2 4-4" />
+                                    </svg>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span id="filename-badge"
+                                            style="font-size: 12px; font-weight: 700; color: white;">archivo.csv</span>
+                                        <span id="filesize-badge"
+                                            style="font-size: 10px; color: var(--emerald); font-weight: 600; background: rgba(16,185,129,0.15); padding: 2px 6px; border-radius: 4px;">0.0
+                                            KB</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn--ghost"
+                                    style="padding: 4px 10px; font-size: 11px; border-radius: 5px; display: flex; align-items: center; gap: 4px;"
+                                    id="change-file-btn" title="Cambiar archivo">
+                                    <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                    Cambiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card-body" style="flex: 1; overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
-                <div class="table-wrap">
-                    <table class="data-table" id="preview-table">
-                        <thead>
-                            <tr id="preview-header-row">
+
+            {{-- Mapeo de columnas CSV → BD (COMPACTO) --}}
+            <div id="colmap-container" class="card card--dark"
+                style="display: none; margin-bottom: 12px; border-color: rgba(99,102,241,0.3);">
+                <div class="card-header card-header--row"
+                    style="padding: 8px 14px; background: rgba(99,102,241,0.03); justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div
+                            style="width: 24px; height: 24px; background: var(--violet-bg); color: var(--violet-light); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                            </svg>
+                        </div>
+                        <h4 class="card-title"
+                            style="color: var(--violet-light); font-size: 12px; margin: 0; font-weight: 700;">Mapeo de
+                            Columnas Detectadas</h4>
+                    </div>
+                    <button type="button"
+                        onclick="const p = document.getElementById('colmap-pills-wrapper'); p.style.display = (p.style.display === 'none') ? 'block' : 'none';"
+                        class="btn-xs-ghost"
+                        style="font-size: 10px; padding: 2px 8px; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; cursor: pointer;">Minimizar
+                        / Mostrar</button>
+                </div>
+                <div id="colmap-pills-wrapper" class="card-body" style="padding: 10px 14px;">
+                    <div id="colmap-pills"
+                        style="display: flex; flex-wrap: wrap; gap: 5px; max-height: 110px; overflow-y: auto; padding-right: 4px;">
+                    </div>
+                    <div id="colmap-unrecognized"
+                        style="display: none; margin-top: 8px; padding: 6px 10px; background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.2); border-radius: 6px;">
+                        <span style="font-size: 10px; font-weight: 700; color: var(--rose); margin-right: 6px;">NO
+                            RECONOCIDAS:</span>
+                        <span id="colmap-unrecognized-list" style="font-size: 10px; color: var(--text-muted);"></span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Previsualización de Cambios --}}
+            <div id="preview-container" class="card card--dark"
+                style="display: none; flex-direction: column; border-color: var(--amber-border); box-shadow: 0 16px 36px -10px rgba(0,0,0,0.5);">
+                <div class="card-header card-header--row"
+                    style="padding: 10px 16px; background: rgba(245,158,11,0.03); justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div
+                            style="width: 28px; height: 28px; background: var(--amber-bg); color: var(--amber); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <polyline points="10 9 9 9 8 9" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <h3 class="card-title" style="color: var(--amber-light); font-size: 14px; margin: 0;">
+                                    Previsualización de Comparativa</h3>
+                                <span id="preview-badge-count"
+                                    style="font-size: 10px; background: rgba(245,158,11,0.15); color: var(--amber); padding: 2px 7px; border-radius: 4px; font-weight: 700; display: none;">0
+                                    registros</span>
+                            </div>
+                            <p class="card-subtitle" style="font-size: 10.5px; margin: 0;">Verifica los cambios calculados
+                                antes de ejecutar la actualización final</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="select-changed-btn" class="btn btn--primary"
+                            style="padding: 5px 10px; font-size: 10.5px; background: var(--amber); border: none; display:none; border-radius: 5px;">
+                            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor"
+                                stroke-width="2.5" style="margin-right:4px;">
+                                <path d="m9 11 3 3L22 4" />
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                            </svg>
+                            Seleccionar solo campos con cambios
+                        </button>
+                        <button id="preview-header-process-btn" type="button" class="btn btn--primary"
+                            style="padding: 5px 12px; font-size: 10.5px; display: none; border-radius: 5px; font-weight: 700;">
+                            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor"
+                                stroke-width="2.5" style="margin-right:4px;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                            </svg>
+                            Ejecutar Actualización
+                        </button>
+                        <button
+                            onclick="document.getElementById('preview-container').style.display = 'none'; document.getElementById('preview-placeholder').style.display = 'block';"
+                            class="btn btn--ghost"
+                            style="padding: 4px 10px; font-size: 10.5px; border-radius: 5px;">Ocultar</button>
+                    </div>
+                </div>
+
+                {{-- Banner Informativo para Archivos Pesados / Truncados a 500 filas --}}
+                <div id="preview-limit-banner"
+                    style="display: none; padding: 10px 16px; background: rgba(56, 189, 248, 0.08); border-bottom: 1px solid rgba(56, 189, 248, 0.2); font-size: 11.5px; color: #bae6fd; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 9px;">
+                        <span style="font-size: 16px;">⚡</span>
+                        <div>
+                            <strong style="color: white;">Archivo extenso detectado:</strong> Mostrando únicamente las
+                            primeras <strong style="color: var(--amber);" id="banner-preview-limit">500</strong> filas de
+                            <strong style="color: white;" id="banner-total-rows">0</strong> registros totales del CSV para
+                            optimizar la velocidad y fluidez.
+                            <span style="color: var(--text-muted); display: block; font-size: 10.5px; margin-top: 1px;">Al
+                                presionar <strong>"Ejecutar Actualización"</strong> se procesará la totalidad del archivo en
+                                las sucursales seleccionadas.</span>
+                        </div>
+                    </div>
+                    <div
+                        style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--sky); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap;">
+                        Vista previa de 500 filas
+                    </div>
+                </div>
+                <div class="card-body"
+                    style="flex: 1; overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
+                    <div class="table-wrap">
+                        <table class="data-table" id="preview-table">
+                            <thead>
+                                <tr id="preview-header-row">
+                                    {{-- Se llena con JS --}}
+                                </tr>
+                            </thead>
+                            <tbody id="preview-body" style="font-size: 11.5px;">
                                 {{-- Se llena con JS --}}
-                            </tr>
-                        </thead>
-                        <tbody id="preview-body" style="font-size: 11.5px;">
-                            {{-- Se llena con JS --}}
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        {{-- Estado inicial informativo (Placeholder antes de Previsualizar) --}}
-        <div id="preview-placeholder" class="card card--dark" style="padding: 28px 20px; text-align: center; border: 1px dashed rgba(255,255,255,0.08); background: rgba(255,255,255,0.005);">
-            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: var(--text-muted);">
-                <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            {{-- Estado inicial informativo (Placeholder antes de Previsualizar) --}}
+            <div id="preview-placeholder" class="card card--dark"
+                style="padding: 28px 20px; text-align: center; border: 1px dashed rgba(255,255,255,0.08); background: rgba(255,255,255,0.005);">
+                <div
+                    style="width: 40px; height: 40px; background: rgba(255,255,255,0.03); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                </div>
+                <h4 style="font-size: 14px; font-weight: 700; color: white; margin: 0 0 4px;">Panel de Previsualización</h4>
+                <p style="font-size: 11.5px; color: var(--text-muted); max-width: 400px; margin: 0 auto; line-height: 1.4;">
+                    Selecciona tu archivo CSV, ajusta las sucursales y columnas a modificar en el sidebar izquierdo, y
+                    presiona <strong>"Vista Previa"</strong> para comparar los datos.</p>
             </div>
-            <h4 style="font-size: 14px; font-weight: 700; color: white; margin: 0 0 4px;">Panel de Previsualización</h4>
-            <p style="font-size: 11.5px; color: var(--text-muted); max-width: 400px; margin: 0 auto; line-height: 1.4;">Selecciona tu archivo CSV, ajusta las sucursales y columnas a modificar en el sidebar izquierdo, y presiona <strong>"Vista Previa"</strong> para comparar los datos.</p>
+
         </div>
-
     </div>
-</div>
 
-<style>
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .upload-workspace-grid {
-        display: grid;
-        grid-template-columns: 340px minmax(0, 1fr);
-        gap: 16px;
-        align-items: start;
-    }
+    <style>
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
 
-    @media (max-width: 1024px) {
-        .upload-workspace-grid {
-            grid-template-columns: 1fr;
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-    }
 
-    .upload-sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        position: sticky;
-        top: 20px;
-    }
+        .upload-workspace-grid {
+            display: grid;
+            grid-template-columns: 340px minmax(0, 1fr);
+            gap: 16px;
+            align-items: start;
+        }
 
-    .columns-scroll-container {
-        max-height: 360px;
-        overflow-y: auto;
-        padding-right: 4px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
+        @media (max-width: 1024px) {
+            .upload-workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
-    .columns-scroll-container::-webkit-scrollbar,
-    #colmap-pills::-webkit-scrollbar {
-        width: 4px;
-        height: 4px;
-    }
-    .columns-scroll-container::-webkit-scrollbar-track,
-    #colmap-pills::-webkit-scrollbar-track {
-        background: rgba(255,255,255,0.02);
-        border-radius: 4px;
-    }
-    .columns-scroll-container::-webkit-scrollbar-thumb,
-    #colmap-pills::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.15);
-        border-radius: 4px;
-    }
+        .upload-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: sticky;
+            top: 20px;
+        }
 
-    .checkbox-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        background: rgba(255,255,255,0.02);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        transition: all 0.2s;
-        user-select: none;
-    }
-    .checkbox-wrapper:hover {
-        background: rgba(255,255,255,0.05);
-        border-color: var(--violet-light);
-    }
-    .checkbox-wrapper--sky:hover {
-        border-color: var(--sky);
-    }
-    
-    .checkbox-label {
-        font-size: 11px;
-        color: var(--text-secondary);
-        font-weight: 500;
-        transition: color 0.2s;
-    }
-    .checkbox-wrapper:has(.form-checkbox:checked) {
-        background: var(--violet-bg);
-        border-color: var(--violet);
-    }
-    .checkbox-wrapper--sky:has(.form-checkbox:checked) {
-        background: var(--sky-bg);
-        border-color: var(--sky);
-    }
-    .checkbox-wrapper:has(.form-checkbox:checked) .checkbox-label {
-        color: white;
-        font-weight: 700;
-    }
+        .columns-scroll-container {
+            max-height: 360px;
+            overflow-y: auto;
+            padding-right: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
 
-    .form-checkbox {
-        width: 14px; height: 14px; 
-        accent-color: var(--violet);
-        border: 1.5px solid var(--border);
-        border-radius: 3px;
-        background: var(--bg-page);
-        cursor: pointer;
-    }
-    .checkbox-wrapper--sky .form-checkbox {
-        accent-color: var(--sky);
-    }
+        .columns-scroll-container::-webkit-scrollbar,
+        #colmap-pills::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
 
-    #upload-container:hover {
-        border-color: var(--amber);
-        background: rgba(245,158,11,0.02);
-    }
-    #upload-container:hover .glow-effect {
-        opacity: 1;
-    }
-    #upload-container:hover .upload-icon-wrapper {
-        transform: scale(1.06);
-        background: var(--amber);
-        color: white;
-    }
-    #upload-container:hover .upload-icon-wrapper svg {
-        color: white;
-    }
-</style>
+        .columns-scroll-container::-webkit-scrollbar-track,
+        #colmap-pills::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+        }
+
+        .columns-scroll-container::-webkit-scrollbar-thumb,
+        #colmap-pills::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .checkbox-wrapper:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--violet-light);
+        }
+
+        .checkbox-wrapper--sky:hover {
+            border-color: var(--sky);
+        }
+
+        .checkbox-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .checkbox-wrapper:has(.form-checkbox:checked) {
+            background: var(--violet-bg);
+            border-color: var(--violet);
+        }
+
+        .checkbox-wrapper--sky:has(.form-checkbox:checked) {
+            background: var(--sky-bg);
+            border-color: var(--sky);
+        }
+
+        .checkbox-wrapper:has(.form-checkbox:checked) .checkbox-label {
+            color: white;
+            font-weight: 700;
+        }
+
+        .form-checkbox {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--violet);
+            border: 1.5px solid var(--border);
+            border-radius: 3px;
+            background: var(--bg-page);
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper--sky .form-checkbox {
+            accent-color: var(--sky);
+        }
+
+        #upload-container:hover {
+            border-color: var(--amber);
+            background: rgba(245, 158, 11, 0.02);
+        }
+
+        #upload-container:hover .glow-effect {
+            opacity: 1;
+        }
+
+        #upload-container:hover .upload-icon-wrapper {
+            transform: scale(1.06);
+            background: var(--amber);
+            color: white;
+        }
+
+        #upload-container:hover .upload-icon-wrapper svg {
+            color: white;
+        }
+    </style>
 @endsection
 
 @push('scripts')
-{{-- PapaParse para facilidad de parsing --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    {{-- PapaParse para facilidad de parsing --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('csv_file_input');
-    const fileInfo = document.getElementById('file-info');
-    const filenameBadge = document.getElementById('filename-badge');
-    const changeFileBtn = document.getElementById('change-file-btn');
-    const previewBtn = document.getElementById('preview-btn');
-    const processBtn = document.getElementById('process-btn');
-    const selectAllBranches = document.getElementById('select-all-branches');
-    const branchCheckboxes = document.querySelectorAll('.branch-checkbox');
-    const selectChangedBtn = document.getElementById('select-changed-btn');
-    const btnToggleAllCols = document.getElementById('btn-toggle-all-cols');
-    const previewPlaceholder = document.getElementById('preview-placeholder');
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('csv_file_input');
+            const fileInfo = document.getElementById('file-info');
+            const filenameBadge = document.getElementById('filename-badge');
+            const changeFileBtn = document.getElementById('change-file-btn');
+            const previewBtn = document.getElementById('preview-btn');
+            const processBtn = document.getElementById('process-btn');
+            const selectAllBranches = document.getElementById('select-all-branches');
+            const branchCheckboxes = document.querySelectorAll('.branch-checkbox');
+            const selectChangedBtn = document.getElementById('select-changed-btn');
+            const btnToggleAllCols = document.getElementById('btn-toggle-all-cols');
+            const previewPlaceholder = document.getElementById('preview-placeholder');
 
-    let currentData = null;
-    let selectedFile = null;
-    let lastChangedCols = [];
-    let isPreviewValid = false;
-    let totalRowsInCsv = 0;
+            let currentData = null;
+            let selectedFile = null;
+            let lastChangedCols = [];
+            let isPreviewValid = false;
+            let totalRowsInCsv = 0;
 
-    function setPreviewValid(valid, message = null) {
-        isPreviewValid = valid;
-        const hint = document.getElementById('preview-status-hint');
-        const text = document.getElementById('preview-status-text');
-        const iconContainer = document.getElementById('preview-status-icon');
-        const headerProcBtn = document.getElementById('preview-header-process-btn');
+            function setPreviewValid(valid, message = null) {
+                isPreviewValid = valid;
+                const hint = document.getElementById('preview-status-hint');
+                const text = document.getElementById('preview-status-text');
+                const iconContainer = document.getElementById('preview-status-icon');
+                const headerProcBtn = document.getElementById('preview-header-process-btn');
 
-        if (valid) {
-            processBtn.style.opacity = '1';
-            processBtn.style.filter = 'none';
-            processBtn.style.cursor = 'pointer';
-            processBtn.style.boxShadow = '0 6px 14px -4px rgba(245,158,11,0.4)';
-            if (headerProcBtn) headerProcBtn.style.display = 'inline-flex';
-            if (hint && text && iconContainer) {
-                hint.style.color = 'var(--emerald)';
-                iconContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-                text.textContent = message || 'Vista Previa verificada';
-            }
-        } else {
-            processBtn.style.opacity = '0.5';
-            processBtn.style.filter = 'grayscale(35%)';
-            processBtn.style.cursor = 'not-allowed';
-            processBtn.style.boxShadow = 'none';
-            if (headerProcBtn) headerProcBtn.style.display = 'none';
-            if (hint && text && iconContainer) {
-                hint.style.color = message ? 'var(--amber)' : 'var(--text-muted)';
-                iconContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-                text.textContent = message || 'Requiere Vista Previa para habilitar';
-            }
-        }
-    }
-
-    function invalidatePreview(reason) {
-        if (isPreviewValid) {
-            setPreviewValid(false, reason);
-        }
-    }
-
-    // Estado inicial: previsualización obligatoria requerida
-    setPreviewValid(false);
-
-    // Botón de actualización dentro del panel de previsualización
-    const previewHeaderProcessBtn = document.getElementById('preview-header-process-btn');
-    if (previewHeaderProcessBtn) {
-        previewHeaderProcessBtn.addEventListener('click', () => {
-            processBtn.click();
-        });
-    }
-
-    // Toggle All Columns
-    if (btnToggleAllCols) {
-        btnToggleAllCols.addEventListener('click', () => {
-            const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
-            const anyUnchecked = Array.from(columnCheckboxes).some(cb => !cb.checked);
-            columnCheckboxes.forEach(cb => cb.checked = anyUnchecked);
-            invalidatePreview('Columnas modificadas. Actualiza la Vista Previa.');
-        });
-    }
-
-    // Handle File Selection
-    dropZone.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            handleFile(e.target.files[0]);
-        }
-    });
-
-    changeFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.click();
-    });
-
-    // Drag and Drop
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.parentElement.style.borderColor = 'var(--amber)';
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.parentElement.style.borderColor = 'var(--border)';
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.parentElement.style.borderColor = 'var(--border)';
-        if (e.dataTransfer.files.length) {
-            handleFile(e.dataTransfer.files[0]);
-        }
-    });
-
-    function handleFile(file) {
-        if (!file.name.endsWith('.csv')) {
-            Swal.fire('Error', 'Por favor sube solo archivos .csv', 'error');
-            return;
-        }
-        selectedFile = file;
-        filenameBadge.textContent = file.name;
-        
-        // Formatear tamaño de archivo
-        const size = file.size / 1024;
-        document.getElementById('filesize-badge').textContent = size > 1024 
-            ? (size / 1024).toFixed(2) + ' MB' 
-            : size.toFixed(2) + ' KB';
-
-        dropZone.style.display = 'none';
-        fileInfo.style.display = 'flex';
-
-        // Ocultar previsualización anterior si existía
-        const previewContainer = document.getElementById('preview-container');
-        if (previewContainer) previewContainer.style.display = 'none';
-        if (previewPlaceholder) previewPlaceholder.style.display = 'block';
-
-        totalRowsInCsv = 0;
-        const limitBanner = document.getElementById('preview-limit-banner');
-        if (limitBanner) limitBanner.style.display = 'none';
-        const badgeCount = document.getElementById('preview-badge-count');
-        if (badgeCount) badgeCount.style.display = 'none';
-
-        invalidatePreview('Archivo nuevo cargado. Genera la Vista Previa.');
-
-        extractCsvHeaders(file, (headers) => {
-            syncCheckboxesWithCsvHeaders(headers);
-        });
-    }
-
-    // Select All Branches
-    selectAllBranches.addEventListener('change', () => {
-        branchCheckboxes.forEach(cb => cb.checked = selectAllBranches.checked);
-        invalidatePreview('Sucursales modificadas. Actualiza la Vista Previa.');
-    });
-
-    branchCheckboxes.forEach(cb => {
-        cb.addEventListener('change', () => {
-            invalidatePreview('Sucursales modificadas. Actualiza la Vista Previa.');
-        });
-    });
-
-    // ── Lógica de restricción y autocontrol de dependencias de fórmulas ──
-    const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
-    const formulaDependencies = {
-        'Precio Gerente': ['P. Lista', 'Desc. Proveedor'],
-        'Precio 4': ['P. Lista', 'Desc. Precio 4'],
-        'P. Especial': ['P. Lista', 'Desc. P. Espec'],
-        'Precio Tope': ['P. Lista', '% Descuento'],
-        'Desc. P. Venta': ['P. Lista', 'P. Venta']
-    };
-
-    // Función robusta para extraer los encabezados de cualquier CSV (detectando UTF-8, Windows-1252/ANSI de Excel, delimitador ; o , y BOM)
-    function extractCsvHeaders(file, callback) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const buffer = e.target.result;
-            let text = '';
-            try {
-                // Modo estricto UTF-8 para detectar si viene en ANSI / Windows-1252 de Excel
-                const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
-                text = utf8Decoder.decode(buffer);
-            } catch (err) {
-                try {
-                    const winDecoder = new TextDecoder('windows-1252');
-                    text = winDecoder.decode(buffer);
-                } catch (e2) {
-                    text = new TextDecoder('iso-8859-1').decode(buffer);
-                }
-            }
-
-            // Remover marcas de BOM
-            text = text.replace(/^\uFEFF/, '').replace(/^\xEF\xBB\xBF/, '');
-
-            // Obtener la primera línea no vacía
-            const lines = text.split(/\r\n|\n|\r/);
-            const firstLine = lines.find(l => l.trim().length > 0) || '';
-            if (!firstLine) {
-                callback([]);
-                return;
-            }
-
-            // Detectar delimitador: punto y coma ';' o coma ','
-            const delimiter = (firstLine.indexOf(';') !== -1) ? ';' : ',';
-
-            // Tokenizar respetando comillas
-            const rawHeaders = [];
-            let inQuotes = false;
-            let currentField = '';
-
-            for (let i = 0; i < firstLine.length; i++) {
-                const char = firstLine[i];
-                if (char === '"' || char === "'") {
-                    inQuotes = !inQuotes;
-                } else if (char === delimiter && !inQuotes) {
-                    rawHeaders.push(currentField.trim().replace(/^["']|["']$/g, ''));
-                    currentField = '';
+                if (valid) {
+                    processBtn.style.opacity = '1';
+                    processBtn.style.filter = 'none';
+                    processBtn.style.cursor = 'pointer';
+                    processBtn.style.boxShadow = '0 6px 14px -4px rgba(245,158,11,0.4)';
+                    if (headerProcBtn) headerProcBtn.style.display = 'inline-flex';
+                    if (hint && text && iconContainer) {
+                        hint.style.color = 'var(--emerald)';
+                        iconContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+                        text.textContent = message || 'Vista Previa verificada';
+                    }
                 } else {
-                    currentField += char;
-                }
-            }
-            if (currentField.length > 0) {
-                rawHeaders.push(currentField.trim().replace(/^["']|["']$/g, ''));
-            }
-
-            callback(rawHeaders);
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    function normalizeStr(str) {
-        return str ? str.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "") : "";
-    }
-
-    const COLUMN_ALIASES = {
-        'descripcion': 'Descripción',
-        'descripcionuniversal': 'Descripción',
-        'caracteristica': 'Descripción',
-        'um': 'U.M.',
-        'unidadmedida': 'U.M.',
-        'unidmed': 'U.M.',
-        'linea': 'Línea',
-        'clasificacion': 'Clasificación',
-        'mnusd': 'MN/USD',
-        'mn_usd': 'MN/USD',
-        'mu': 'MN/USD',
-        'moneda': 'MN/USD',
-        'plista': 'P. Lista',
-        'preciolista': 'P. Lista',
-        'descpventa': 'Desc. P. Venta',
-        'desprecioventa': 'Desc. P. Venta',
-        'descprecioventa': 'Desc. P. Venta',
-        'descpventaauto': 'Desc. P. Venta',
-        'descpventacalculado': 'Desc. P. Venta',
-        'pventa': 'P. Venta',
-        'precioventa': 'P. Venta',
-        'descpespec': 'Desc. P. Espec',
-        'descprecioespec': 'Desc. P. Espec',
-        'descuentoespecial': 'Desc. P. Espec',
-        'pespecial': 'P. Especial',
-        'precioespecial': 'P. Especial',
-        'pespecialauto': 'P. Especial',
-        'precioespecialauto': 'P. Especial',
-        'descprecio4': 'Desc. Precio 4',
-        'descp4': 'Desc. Precio 4',
-        'descuentoprecio4': 'Desc. Precio 4',
-        'precio4': 'Precio 4',
-        'p4': 'Precio 4',
-        'precio4auto': 'Precio 4',
-        'descproveedor': 'Desc. Proveedor',
-        'descprov': 'Desc. Proveedor',
-        'preciogerente': 'Precio Gerente',
-        'pgerente': 'Precio Gerente',
-        'artkit': 'Art. Kit',
-        'articulokit': 'Art. Kit',
-        'kit': 'Art. Kit',
-        'mgmin': 'Mg Mín',
-        'margenminimo': 'Mg Mín',
-        'stdpack': 'Std Pack',
-        'standardpack': 'Std Pack',
-        'artserie': 'Art. Serie',
-        'articuloserie': 'Art. Serie',
-        'serie': 'Art. Serie',
-        'color': 'Color',
-        'ubicacion': 'Ubicación',
-        'controlpedimentos': 'Control Pedimentos',
-        'pedimentos': 'Control Pedimentos',
-        'protocolo': 'Protocolo',
-        'idsat': 'IDSAT',
-        'clavesat': 'IDSAT',
-        'peso': 'Peso',
-        'critico': 'Crítico',
-        'estatus': 'Estatus',
-        'habilitado': 'Estatus',
-        'estado': 'Estatus',
-        'sustituto': 'Sustituto',
-        'sustituto1': 'Sustituto 1',
-        'sustituto2': 'Sustituto 2',
-        'costoventa': 'Costo Venta',
-        'costodeventa': 'Costo Venta',
-        'costo': 'Costo Venta',
-        'descuento': '% Descuento',
-        'porcetajedescuento': '% Descuento',
-        'porcentajedescuento': '% Descuento',
-        'preciotope': 'Precio Tope',
-        'preciotopeauto': 'Precio Tope'
-    };
-
-    function syncCheckboxesWithCsvHeaders(csvHeaders) {
-        if (!csvHeaders || !csvHeaders.length) return;
-
-        const targetSelectedLabels = new Set();
-
-        csvHeaders.forEach(h => {
-            const rawNorm = normalizeStr(h);
-            if (!rawNorm) return;
-
-            if (COLUMN_ALIASES[rawNorm]) {
-                targetSelectedLabels.add(COLUMN_ALIASES[rawNorm]);
-                return;
-            }
-
-            columnCheckboxes.forEach(cb => {
-                const cbNorm = normalizeStr(cb.value);
-                if (cbNorm === rawNorm || rawNorm.startsWith(cbNorm) || cbNorm.startsWith(rawNorm)) {
-                    targetSelectedLabels.add(cb.value);
-                }
-            });
-        });
-
-        let matchedCount = 0;
-        columnCheckboxes.forEach(cb => {
-            const shouldCheck = targetSelectedLabels.has(cb.value);
-            cb.checked = shouldCheck;
-            if (shouldCheck) matchedCount++;
-
-            const wrapper = cb.closest('.checkbox-wrapper');
-            if (wrapper) {
-                if (shouldCheck) {
-                    wrapper.style.borderColor = 'rgba(245, 158, 11, 0.45)';
-                    wrapper.style.background = 'rgba(245, 158, 11, 0.08)';
-                } else {
-                    wrapper.style.borderColor = '';
-                    wrapper.style.background = '';
-                }
-            }
-        });
-
-        // Activar automáticamente fórmulas si sus detonadores están seleccionados
-        Object.keys(formulaDependencies).forEach(formulaName => {
-            const deps = formulaDependencies[formulaName];
-            const allDepsChecked = deps.every(depName => {
-                const depCb = Array.from(columnCheckboxes).find(c => c.value === depName);
-                return depCb && depCb.checked;
-            });
-            if (allDepsChecked) {
-                const formulaCb = Array.from(columnCheckboxes).find(c => c.value === formulaName);
-                if (formulaCb) {
-                    formulaCb.checked = true;
-                    const wrapper = formulaCb.closest('.checkbox-wrapper');
-                    if (wrapper) {
-                        wrapper.style.borderColor = 'rgba(245, 158, 11, 0.45)';
-                        wrapper.style.background = 'rgba(245, 158, 11, 0.08)';
+                    processBtn.style.opacity = '0.5';
+                    processBtn.style.filter = 'grayscale(35%)';
+                    processBtn.style.cursor = 'not-allowed';
+                    processBtn.style.boxShadow = 'none';
+                    if (headerProcBtn) headerProcBtn.style.display = 'none';
+                    if (hint && text && iconContainer) {
+                        hint.style.color = message ? 'var(--amber)' : 'var(--text-muted)';
+                        iconContainer.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+                        text.textContent = message || 'Requiere Vista Previa para habilitar';
                     }
                 }
             }
-        });
 
-        if (matchedCount > 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Columnas Detectadas del CSV',
-                text: `Se seleccionaron automáticamente las ${matchedCount} columnas presentes en tu archivo CSV.`,
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3500,
-                background: '#1a1d27',
-                color: '#fff'
-            });
-        }
-    }
-
-    columnCheckboxes.forEach(cb => {
-        cb.addEventListener('change', (e) => {
-            invalidatePreview('Columnas modificadas. Actualiza la Vista Previa.');
-            const name = e.target.value;
-            const isChecked = e.target.checked;
-
-            const wrapper = cb.closest('.checkbox-wrapper');
-            if (wrapper) {
-                wrapper.style.borderColor = isChecked ? 'rgba(245, 158, 11, 0.45)' : '';
-                wrapper.style.background = isChecked ? 'rgba(245, 158, 11, 0.08)' : '';
+            function invalidatePreview(reason) {
+                if (isPreviewValid) {
+                    setPreviewValid(false, reason);
+                }
             }
 
-            if (isChecked && formulaDependencies[name]) {
-                const deps = formulaDependencies[name];
-                let autoSelected = [];
+            // Estado inicial: previsualización obligatoria requerida
+            setPreviewValid(false);
 
-                deps.forEach(depName => {
-                    const depCb = Array.from(columnCheckboxes).find(c => c.value === depName);
-                    if (depCb && !depCb.checked) {
-                        depCb.checked = true;
-                        autoSelected.push(depName);
+            // Botón de actualización dentro del panel de previsualización
+            const previewHeaderProcessBtn = document.getElementById('preview-header-process-btn');
+            if (previewHeaderProcessBtn) {
+                previewHeaderProcessBtn.addEventListener('click', () => {
+                    processBtn.click();
+                });
+            }
+
+            // Toggle All Columns
+            if (btnToggleAllCols) {
+                btnToggleAllCols.addEventListener('click', () => {
+                    const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
+                    const anyUnchecked = Array.from(columnCheckboxes).some(cb => !cb.checked);
+                    columnCheckboxes.forEach(cb => {
+                        if (typeof updateCheckboxVisual === 'function') {
+                            updateCheckboxVisual(cb, anyUnchecked);
+                        } else {
+                            cb.checked = anyUnchecked;
+                        }
+                    });
+                    invalidatePreview('Columnas modificadas. Actualiza la Vista Previa.');
+                });
+            }
+
+            // Handle File Selection
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            changeFileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+            });
+
+            // Drag and Drop
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.parentElement.style.borderColor = 'var(--amber)';
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.parentElement.style.borderColor = 'var(--border)';
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.parentElement.style.borderColor = 'var(--border)';
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            function handleFile(file) {
+                if (!file.name.endsWith('.csv')) {
+                    Swal.fire('Error', 'Por favor sube solo archivos .csv', 'error');
+                    return;
+                }
+                selectedFile = file;
+                filenameBadge.textContent = file.name;
+
+                // Formatear tamaño de archivo
+                const size = file.size / 1024;
+                document.getElementById('filesize-badge').textContent = size > 1024
+                    ? (size / 1024).toFixed(2) + ' MB'
+                    : size.toFixed(2) + ' KB';
+
+                dropZone.style.display = 'none';
+                fileInfo.style.display = 'flex';
+
+                // Ocultar previsualización anterior si existía
+                const previewContainer = document.getElementById('preview-container');
+                if (previewContainer) previewContainer.style.display = 'none';
+                if (previewPlaceholder) previewPlaceholder.style.display = 'block';
+
+                totalRowsInCsv = 0;
+                const limitBanner = document.getElementById('preview-limit-banner');
+                if (limitBanner) limitBanner.style.display = 'none';
+                const badgeCount = document.getElementById('preview-badge-count');
+                if (badgeCount) badgeCount.style.display = 'none';
+
+                invalidatePreview('Archivo nuevo cargado. Genera la Vista Previa.');
+
+                extractCsvHeaders(file, (headers) => {
+                    syncCheckboxesWithCsvHeaders(headers);
+                });
+            }
+
+            // Select All Branches
+            selectAllBranches.addEventListener('change', () => {
+                branchCheckboxes.forEach(cb => cb.checked = selectAllBranches.checked);
+                invalidatePreview('Sucursales modificadas. Actualiza la Vista Previa.');
+            });
+
+            branchCheckboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    invalidatePreview('Sucursales modificadas. Actualiza la Vista Previa.');
+                });
+            });
+
+            // ── Lógica de restricción y autocontrol de dependencias de fórmulas ──
+            const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
+            const formulaDependencies = {
+                'Precio Gerente': ['P. Lista', 'Desc. Proveedor'],
+                'Precio 4': ['P. Lista', 'Desc. Precio 4'],
+                'P. Especial': ['P. Lista', 'Desc. P. Espec'],
+                'Precio Tope': ['P. Lista', '% Descuento'],
+                'Desc. P. Venta': ['P. Lista', 'P. Venta']
+            };
+
+            /**
+             * Sincroniza el estado del checkbox y su estilo visual (borde y fondo naranja activo).
+             */
+            function updateCheckboxVisual(cb, isChecked) {
+                if (!cb) return;
+                cb.checked = Boolean(isChecked);
+                const wrapper = cb.closest('.checkbox-wrapper');
+                if (wrapper) {
+                    if (isChecked) {
+                        wrapper.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+                        wrapper.style.background = 'rgba(245, 158, 11, 0.08)';
+                    } else {
+                        wrapper.style.borderColor = '';
+                        wrapper.style.background = '';
+                    }
+                }
+            }
+
+            // Función robusta para extraer los encabezados de cualquier CSV (detectando UTF-8, Windows-1252/ANSI de Excel, delimitador ; o , y BOM)
+            function extractCsvHeaders(file, callback) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const buffer = e.target.result;
+                    let text = '';
+                    try {
+                        // Modo estricto UTF-8 para detectar si viene en ANSI / Windows-1252 de Excel
+                        const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+                        text = utf8Decoder.decode(buffer);
+                    } catch (err) {
+                        try {
+                            const winDecoder = new TextDecoder('windows-1252');
+                            text = winDecoder.decode(buffer);
+                        } catch (e2) {
+                            text = new TextDecoder('iso-8859-1').decode(buffer);
+                        }
+                    }
+
+                    // Remover marcas de BOM
+                    text = text.replace(/^\uFEFF/, '').replace(/^\xEF\xBB\xBF/, '');
+
+                    // Obtener la primera línea no vacía
+                    const lines = text.split(/\r\n|\n|\r/);
+                    const firstLine = lines.find(l => l.trim().length > 0) || '';
+                    if (!firstLine) {
+                        callback([]);
+                        return;
+                    }
+
+                    // Detectar delimitador: punto y coma ';' o coma ','
+                    const delimiter = (firstLine.indexOf(';') !== -1) ? ';' : ',';
+
+                    // Tokenizar respetando comillas
+                    const rawHeaders = [];
+                    let inQuotes = false;
+                    let currentField = '';
+
+                    for (let i = 0; i < firstLine.length; i++) {
+                        const char = firstLine[i];
+                        if (char === '"' || char === "'") {
+                            inQuotes = !inQuotes;
+                        } else if (char === delimiter && !inQuotes) {
+                            rawHeaders.push(currentField.trim().replace(/^["']|["']$/g, ''));
+                            currentField = '';
+                        } else {
+                            currentField += char;
+                        }
+                    }
+                    if (currentField.length > 0) {
+                        rawHeaders.push(currentField.trim().replace(/^["']|["']$/g, ''));
+                    }
+
+                    callback(rawHeaders);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            function normalizeStr(str) {
+                return str ? str.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "") : "";
+            }
+
+            const COLUMN_ALIASES = {
+                'descripcion': 'Descripción',
+                'descripcionuniversal': 'Descripción',
+                'caracteristica': 'Descripción',
+                'um': 'U.M.',
+                'unidadmedida': 'U.M.',
+                'unidmed': 'U.M.',
+                'linea': 'Línea',
+                'clasificacion': 'Clasificación',
+                'mnusd': 'MN/USD',
+                'mn_usd': 'MN/USD',
+                'mu': 'MN/USD',
+                'moneda': 'MN/USD',
+                'plista': 'P. Lista',
+                'preciolista': 'P. Lista',
+                'descpventa': 'Desc. P. Venta',
+                'desprecioventa': 'Desc. P. Venta',
+                'descprecioventa': 'Desc. P. Venta',
+                'descpventaauto': 'Desc. P. Venta',
+                'descpventacalculado': 'Desc. P. Venta',
+                'pventa': 'P. Venta',
+                'precioventa': 'P. Venta',
+                'descpespec': 'Desc. P. Espec',
+                'descprecioespec': 'Desc. P. Espec',
+                'descuentoespecial': 'Desc. P. Espec',
+                'pespecial': 'P. Especial',
+                'precioespecial': 'P. Especial',
+                'pespecialauto': 'P. Especial',
+                'precioespecialauto': 'P. Especial',
+                'descprecio4': 'Desc. Precio 4',
+                'descp4': 'Desc. Precio 4',
+                'descuentoprecio4': 'Desc. Precio 4',
+                'precio4': 'Precio 4',
+                'p4': 'Precio 4',
+                'precio4auto': 'Precio 4',
+                'descproveedor': 'Desc. Proveedor',
+                'descprov': 'Desc. Proveedor',
+                'preciogerente': 'Precio Gerente',
+                'pgerente': 'Precio Gerente',
+                'artkit': 'Art. Kit',
+                'articulokit': 'Art. Kit',
+                'kit': 'Art. Kit',
+                'mgmin': 'Mg Mín',
+                'margenminimo': 'Mg Mín',
+                'stdpack': 'Std Pack',
+                'standardpack': 'Std Pack',
+                'artserie': 'Art. Serie',
+                'articuloserie': 'Art. Serie',
+                'serie': 'Art. Serie',
+                'color': 'Color',
+                'ubicacion': 'Ubicación',
+                'controlpedimentos': 'Control Pedimentos',
+                'pedimentos': 'Control Pedimentos',
+                'protocolo': 'Protocolo',
+                'idsat': 'IDSAT',
+                'clavesat': 'IDSAT',
+                'peso': 'Peso',
+                'critico': 'Crítico',
+                'estatus': 'Estatus',
+                'habilitado': 'Estatus',
+                'estado': 'Estatus',
+                'sustituto': 'Sustituto',
+                'sustituto1': 'Sustituto 1',
+                'sustituto2': 'Sustituto 2',
+                'costoventa': 'Costo Venta',
+                'costodeventa': 'Costo Venta',
+                'costo': 'Costo Venta',
+                'descuento': '% Descuento',
+                'porcetajedescuento': '% Descuento',
+                'porcentajedescuento': '% Descuento',
+                'preciotope': 'Precio Tope',
+                'preciotopeauto': 'Precio Tope'
+            };
+
+            function syncCheckboxesWithCsvHeaders(csvHeaders) {
+                if (!csvHeaders || !csvHeaders.length) return;
+
+                const targetSelectedLabels = new Set();
+
+                csvHeaders.forEach(h => {
+                    const rawNorm = normalizeStr(h);
+                    if (!rawNorm) return;
+
+                    if (COLUMN_ALIASES[rawNorm]) {
+                        targetSelectedLabels.add(COLUMN_ALIASES[rawNorm]);
+                        return;
+                    }
+
+                    columnCheckboxes.forEach(cb => {
+                        const cbNorm = normalizeStr(cb.value);
+                        if (cbNorm === rawNorm || rawNorm.startsWith(cbNorm) || cbNorm.startsWith(rawNorm)) {
+                            targetSelectedLabels.add(cb.value);
+                        }
+                    });
+                });
+
+                let matchedCount = 0;
+                columnCheckboxes.forEach(cb => {
+                    const shouldCheck = targetSelectedLabels.has(cb.value);
+                    updateCheckboxVisual(cb, shouldCheck);
+                    if (shouldCheck) matchedCount++;
+                });
+
+                // Activar automáticamente fórmulas si sus detonadores están seleccionados
+                Object.keys(formulaDependencies).forEach(formulaName => {
+                    const deps = formulaDependencies[formulaName];
+                    const allDepsChecked = deps.every(depName => {
+                        const depCb = Array.from(columnCheckboxes).find(c => c.value === depName);
+                        return depCb && depCb.checked;
+                    });
+                    const formulaCb = Array.from(columnCheckboxes).find(c => c.value === formulaName);
+                    if (formulaCb) {
+                        updateCheckboxVisual(formulaCb, allDepsChecked);
                     }
                 });
 
-                if (autoSelected.length > 0) {
+                if (matchedCount > 0) {
                     Swal.fire({
                         icon: 'info',
-                        title: 'Campos Requeridos Activados',
-                        text: `Se activó automáticamente: ${autoSelected.join(', ')} para poder calcular "${name}".`,
+                        title: 'Columnas Detectadas del CSV',
+                        text: `Se seleccionaron automáticamente las ${matchedCount} columnas presentes en tu archivo CSV.`,
                         toast: true,
                         position: 'top-end',
                         showConfirmButton: false,
@@ -867,17 +1006,33 @@ document.addEventListener('DOMContentLoaded', () => {
                         color: '#fff'
                     });
                 }
-            } else if (!isChecked) {
-                Object.keys(formulaDependencies).forEach(formulaName => {
-                    const deps = formulaDependencies[formulaName];
-                    if (deps.includes(name)) {
-                        const formulaCb = Array.from(columnCheckboxes).find(c => c.value === formulaName);
-                        if (formulaCb && formulaCb.checked) {
-                            formulaCb.checked = false;
+            }
+
+            columnCheckboxes.forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    invalidatePreview('Columnas modificadas. Actualiza la Vista Previa.');
+                    const name = e.target.value;
+                    const isChecked = e.target.checked;
+
+                    updateCheckboxVisual(cb, isChecked);
+
+                    if (isChecked && formulaDependencies[name]) {
+                        const deps = formulaDependencies[name];
+                        let autoSelected = [];
+
+                        deps.forEach(depName => {
+                            const depCb = Array.from(columnCheckboxes).find(c => c.value === depName);
+                            if (depCb && !depCb.checked) {
+                                updateCheckboxVisual(depCb, true);
+                                autoSelected.push(depName);
+                            }
+                        });
+
+                        if (autoSelected.length > 0) {
                             Swal.fire({
-                                icon: 'warning',
-                                title: 'Fórmula Desactivada',
-                                text: `Se desmarcó "${formulaName}" porque desactivaste "${name}", necesario para su cálculo.`,
+                                icon: 'info',
+                                title: 'Campos Requeridos Activados',
+                                text: `Se activó automáticamente: ${autoSelected.join(', ')} para poder calcular "${name}".`,
                                 toast: true,
                                 position: 'top-end',
                                 showConfirmButton: false,
@@ -886,439 +1041,479 @@ document.addEventListener('DOMContentLoaded', () => {
                                 color: '#fff'
                             });
                         }
-                    }
-                });
-            }
-        });
-    });
-
-    // Preview Logic (Backend-powered)
-    previewBtn.addEventListener('click', async () => {
-        if (!selectedFile) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Archivo Requerido',
-                text: 'Sube o selecciona un archivo CSV primero.',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--amber, #f59e0b)'
-            });
-            return;
-        }
-
-        const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
-        if (columns.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Columnas Requeridas',
-                text: 'Selecciona al menos una columna para previsualizar los cambios.',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--amber, #f59e0b)'
-            });
-            return;
-        }
-
-        Swal.fire({
-            title: 'Generando comparativa...',
-            text: 'Estamos comparando tu CSV con la Base Maestra',
-            allowOutsideClick: false,
-            background: '#1a1d27',
-            color: '#fff',
-            didOpen: () => Swal.showLoading()
-        });
-
-        const formData = new FormData();
-        formData.append('csv_file', selectedFile);
-        columns.forEach(c => formData.append('columns[]', c));
-
-        try {
-            const response = await fetch('{{ route("articulos.subir.preview") }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: formData
-            });
-
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonErr) {
-                Swal.close();
-                invalidatePreview('Error al procesar la respuesta del servidor.');
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error del Servidor',
-                    text: 'El servidor no devolvió un formato válido (HTTP ' + response.status + ').',
-                    background: '#1a1d27',
-                    color: '#fff',
-                    confirmButtonColor: 'var(--amber, #f59e0b)'
-                });
-                return;
-            }
-            Swal.close();
-
-            if (!data.success) {
-                invalidatePreview('Error en previsualización.');
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Atención',
-                    text: data.message || 'Error en previsualización.',
-                    background: '#1a1d27',
-                    color: '#fff',
-                    confirmButtonColor: 'var(--amber, #f59e0b)'
-                });
-                return;
-            }
-
-            lastChangedCols = data.changed_cols || [];
-            selectChangedBtn.style.display = (lastChangedCols.length > 0) ? 'flex' : 'none';
-
-            // ── Renderizar mapeo de columnas ──
-            const colmapContainer = document.getElementById('colmap-container');
-            const colmapPills = document.getElementById('colmap-pills');
-            const colmapUnrecognized = document.getElementById('colmap-unrecognized');
-            const colmapUnrecognizedList = document.getElementById('colmap-unrecognized-list');
-
-            colmapPills.innerHTML = '';
-            if (data.column_map && data.column_map.length > 0) {
-                data.column_map.forEach(col => {
-                    const isSelected = col.selected;
-                    const pill = document.createElement('div');
-                    pill.style.cssText = `
-                        display: inline-flex; align-items: center; gap: 4px;
-                        padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;
-                        border: 1px solid ${isSelected ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'};
-                        background: ${isSelected ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)'};
-                        color: ${isSelected ? 'var(--emerald)' : 'var(--text-muted)'};
-                    `;
-                    pill.innerHTML = `
-                        <span style="color:var(--text-muted); font-weight:400;">${col.csv}</span>
-                        <svg viewBox="0 0 24 24" fill="none" width="9" height="9" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        <span style="font-family:monospace; font-size:9.5px;">${col.field}</span>
-                        ${isSelected ? '<svg viewBox="0 0 24 24" fill="none" width="9" height="9" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-                    `;
-                    pill.title = isSelected ? 'Seleccionada para actualizar' : 'En CSV pero NO seleccionada (no se actualizará)';
-                    colmapPills.appendChild(pill);
-                });
-            }
-
-            if (data.unrecognized && data.unrecognized.length > 0) {
-                colmapUnrecognizedList.textContent = data.unrecognized.join(', ');
-                colmapUnrecognized.style.display = 'block';
-            } else {
-                colmapUnrecognized.style.display = 'none';
-            }
-
-            colmapContainer.style.display = 'block';
-
-            const headerRow = document.getElementById('preview-header-row');
-            const body = document.getElementById('preview-body');
-            const previewContainer = document.getElementById('preview-container');
-
-            // Determinar columnas a mostrar (CLAVE fija al inicio + todas las demás columnas del CSV)
-            const activeCols = (data.column_map && data.column_map.length > 0)
-                ? data.column_map.filter(c => c.field !== 'clave')
-                : [];
-
-            let headerHtml = '<th style="padding:10px 12px; font-size:11px; white-space:nowrap; background:#181b26; position:sticky; left:0; z-index:2; border-right:1px solid var(--border);">CLAVE</th>';
-            activeCols.forEach(col => {
-                const isSelected = col.selected;
-                headerHtml += `<th style="padding:10px 12px; font-size:11px; white-space:nowrap; ${isSelected ? 'color:var(--text-main);' : 'color:var(--text-muted); opacity:0.6;'}">
-                    ${col.csv.toUpperCase()}
-                </th>`;
-            });
-            headerRow.innerHTML = headerHtml;
-            body.innerHTML = '';
-
-            if (!data.diffs || data.diffs.length === 0) {
-                body.innerHTML = `<tr><td colspan="${activeCols.length + 1}" style="padding:20px; text-align:center; color:var(--emerald);">✓ Todos los artículos coinciden con la Base Maestra. No hay cambios necesarios.</td></tr>`;
-            } else {
-                data.diffs.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.style.borderBottom = '1px solid var(--border-light)';
-
-                    // Columna 1: CLAVE (Limpia sin guiones para que coincida con la base de datos)
-                    const cleanClave = (item.canonical_clave || item.clave || '').toString().replace(/[-\s]/g, '');
-                    let rowHtml = `<td style="padding:8px 12px; font-family:monospace; vertical-align:middle; position:sticky; left:0; background:#141721; z-index:1; border-right:1px solid var(--border);">
-                        <div style="font-weight:bold; color:var(--amber); font-size:12px;">${cleanClave}</div>
-                        ${item.description ? `<div style="font-size:9.5px; color:var(--text-muted); white-space:nowrap; max-width:160px; overflow:hidden; text-overflow:ellipsis;">${item.description}</div>` : ''}
-                    </td>`;
-
-                    if (item.status === 'new') {
-                        activeCols.forEach(col => {
-                            const val = item.data ? (item.data[col.field] ?? item.data[col.csv] ?? '') : '';
-                            rowHtml += `<td style="padding:8px 12px; vertical-align:middle; background:rgba(56, 189, 248, 0.05); color:var(--sky); font-size:11px; white-space:nowrap;">
-                                <span style="font-size:9px; font-weight:bold; background:rgba(56,189,248,0.2); padding:1px 4px; border-radius:3px; margin-right:4px;">NUEVO</span> ${val}
-                            </td>`;
-                        });
-                    } else {
-                        // Artículo existente con cambios
-                        activeCols.forEach(col => {
-                            const field = col.field;
-                            const diff = item.diff ? item.diff[field] : null;
-
-                            if (diff) {
-                                // ¡CAMBIO DETECTADO EN ESTA COLUMNA! Destacar celda
-                                const isFormulaTag = (diff.is_formula || field === 'precio_gerente');
-                                rowHtml += `<td style="padding:6px 10px; vertical-align:middle; background:rgba(245, 158, 11, 0.14); border:1px solid rgba(245, 158, 11, 0.35); white-space:nowrap;">
-                                    <div style="display:flex; flex-direction:column; gap:2px;">
-                                        <span style="text-decoration:line-through; color:var(--rose); opacity:0.8; font-size:10px;">${diff.old ?? 'NULL'}</span>
-                                        <span style="color:var(--emerald); font-weight:800; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;">
-                                            ➜ ${diff.new} ${isFormulaTag ? '<span style="color:#a78bfa; font-size:9px;" title="Recálculo por fórmula">⚡</span>' : ''}
-                                        </span>
-                                    </div>
-                                </td>`;
-                            } else {
-                                // Sin cambios en esta columna
-                                let currentVal = '';
-                                if (item.master_data && item.master_data[field] !== undefined) {
-                                    currentVal = item.master_data[field];
-                                } else if (item.full_new && item.full_new[field] !== undefined) {
-                                    currentVal = item.full_new[field];
+                    } else if (isChecked) {
+                        // Si el usuario activó un detonador, verificar si completa los requisitos de alguna fórmula
+                        Object.keys(formulaDependencies).forEach(formulaName => {
+                            const deps = formulaDependencies[formulaName];
+                            if (deps.includes(name)) {
+                                const allDepsChecked = deps.every(depName => {
+                                    const depCb = Array.from(columnCheckboxes).find(c => c.value === depName);
+                                    return depCb && depCb.checked;
+                                });
+                                if (allDepsChecked) {
+                                    const formulaCb = Array.from(columnCheckboxes).find(c => c.value === formulaName);
+                                    if (formulaCb && !formulaCb.checked) {
+                                        updateCheckboxVisual(formulaCb, true);
+                                    }
                                 }
-
-                                if (currentVal === null || currentVal === undefined || currentVal === '') currentVal = '-';
-
-                                rowHtml += `<td style="padding:8px 12px; vertical-align:middle; color:var(--text-muted); font-size:11px; white-space:nowrap; opacity:0.85;">
-                                    ${currentVal}
-                                </td>`;
+                            }
+                        });
+                    } else if (!isChecked) {
+                        // Si el usuario desactivó un detonador, apagar de inmediato las fórmulas que dependen de él
+                        Object.keys(formulaDependencies).forEach(formulaName => {
+                            const deps = formulaDependencies[formulaName];
+                            if (deps.includes(name)) {
+                                const formulaCb = Array.from(columnCheckboxes).find(c => c.value === formulaName);
+                                if (formulaCb) {
+                                    const wasChecked = formulaCb.checked;
+                                    updateCheckboxVisual(formulaCb, false);
+                                    if (wasChecked) {
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: 'Fórmula Desactivada',
+                                            text: `Se desmarcó "${formulaName}" porque desactivaste "${name}", necesario para su cálculo.`,
+                                            toast: true,
+                                            position: 'top-end',
+                                            showConfirmButton: false,
+                                            timer: 3500,
+                                            background: '#1a1d27',
+                                            color: '#fff'
+                                        });
+                                    }
+                                }
                             }
                         });
                     }
-
-                    tr.innerHTML = rowHtml;
-                    body.appendChild(tr);
                 });
-            }
+            });
 
-            if (previewPlaceholder) previewPlaceholder.style.display = 'none';
-            previewContainer.style.display = 'flex';
-            previewContainer.scrollIntoView({ behavior: 'smooth' });
-
-            // Gestión del límite de 500 filas para archivos pesados
-            totalRowsInCsv = data.total_rows || (data.diffs ? data.diffs.length : 0);
-            const limitBanner = document.getElementById('preview-limit-banner');
-            const badgeCount = document.getElementById('preview-badge-count');
-
-            if (data.is_truncated) {
-                if (limitBanner) {
-                    limitBanner.style.display = 'flex';
-                    const previewLimitEl = document.getElementById('banner-preview-limit');
-                    const totalRowsEl = document.getElementById('banner-total-rows');
-                    if (previewLimitEl) previewLimitEl.textContent = Number(data.preview_rows || 500).toLocaleString();
-                    if (totalRowsEl) totalRowsEl.textContent = Number(data.total_rows || 0).toLocaleString();
+            // Preview Logic (Backend-powered)
+            previewBtn.addEventListener('click', async () => {
+                if (!selectedFile) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Archivo Requerido',
+                        text: 'Sube o selecciona un archivo CSV primero.',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    });
+                    return;
                 }
-                if (badgeCount) {
-                    badgeCount.style.display = 'inline-block';
-                    badgeCount.style.background = 'rgba(245,158,11,0.15)';
-                    badgeCount.style.color = 'var(--amber)';
-                    badgeCount.textContent = `${data.diffs.length} cambios en primeras ${data.preview_rows} filas (de ${Number(data.total_rows).toLocaleString()} totales)`;
+
+                const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
+                if (columns.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Columnas Requeridas',
+                        text: 'Selecciona al menos una columna para previsualizar los cambios.',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    });
+                    return;
                 }
-            } else {
-                if (limitBanner) limitBanner.style.display = 'none';
-                if (badgeCount) {
-                    badgeCount.style.display = 'inline-block';
-                    badgeCount.style.background = 'rgba(16,185,129,0.15)';
-                    badgeCount.style.color = 'var(--emerald)';
-                    badgeCount.textContent = `${data.diffs.length} cambios detectados (${data.total_rows || data.diffs.length} filas en CSV)`;
-                }
-            }
 
-            // Habilitar botón de actualización con estado verificado
-            setPreviewValid(true, 'Vista Previa verificada');
-
-        } catch (error) {
-            invalidatePreview('Error de conexión con el servidor.');
-            Swal.fire('Error', 'Fallo al conectar con el servidor para la vista previa.', 'error');
-        }
-    });
-
-    // Lógica para el botón mágico de selección
-    selectChangedBtn.addEventListener('click', () => {
-        if (!lastChangedCols.length) return;
-
-        const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
-        columnCheckboxes.forEach(cb => {
-            cb.checked = lastChangedCols.includes(cb.value);
-        });
-
-        // Al seleccionar las columnas calculadas en esta misma previa, se mantiene válida
-        setPreviewValid(true, 'Columnas con cambios seleccionadas. Listo para actualizar.');
-
-        Swal.fire({
-            icon: 'info',
-            title: 'Columnas Seleccionadas',
-            text: `Se han marcado automáticamente las ${lastChangedCols.length} columnas que presentan cambios en el CSV.`,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            background: '#1a1d27',
-            color: '#fff'
-        });
-    });
-
-    // Process Update
-    processBtn.addEventListener('click', async () => {
-        if (!selectedFile) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Archivo Requerido',
-                text: 'Por favor arrastra o selecciona un archivo CSV primero.',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--amber, #f59e0b)'
-            });
-            return;
-        }
-
-        if (!isPreviewValid) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Vista Previa Obligatoria',
-                text: 'Es obligatorio generar y revisar la "Vista Previa" de los cambios antes de ejecutar la actualización en las sucursales.',
-                showCancelButton: true,
-                confirmButtonText: 'Generar Vista Previa Ahora',
-                cancelButtonText: 'Cancelar',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--amber, #f59e0b)'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    previewBtn.click();
-                }
-            });
-            return;
-        }
-
-        const branches = Array.from(document.querySelectorAll('input[name="branches[]"]:checked')).map(cb => cb.value);
-        const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
-
-        if (branches.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Sucursal Requerida',
-                text: 'Selecciona al menos una sucursal.',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--amber, #f59e0b)'
-            });
-            return;
-        }
-
-        if (columns.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Columnas Requeridas',
-                text: 'Selecciona al menos una columna para actualizar.',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--amber, #f59e0b)'
-            });
-            return;
-        }
-
-        const totalRowsText = (totalRowsInCsv > 0)
-            ? ` (${Number(totalRowsInCsv).toLocaleString()} artículos en total)`
-            : '';
-
-        const result = await Swal.fire({
-            title: '¿Confirmar actualización masiva?',
-            text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV${totalRowsText}. Esta acción no se puede deshacer.`,
-            icon: 'warning',
-            showCancelButton: true,
-            background: '#1a1d27',
-            color: '#fff',
-            confirmButtonText: 'Sí, procesar',
-            cancelButtonText: 'Cancelar'
-        });
-
-        if (!result.isConfirmed) return;
-
-        const formData = new FormData();
-        formData.append('csv_file', selectedFile);
-        branches.forEach(b => formData.append('branches[]', b));
-        columns.forEach(c => formData.append('columns[]', c));
-
-        Swal.fire({
-            title: 'Procesando...',
-            text: 'Por favor no cierres la ventana.',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-
-        try {
-            const response = await fetch('{{ route("articulos.subir.proceso") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: formData
-            });
-
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonErr) {
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Error del Servidor',
-                    text: 'El servidor no devolvió una respuesta válida (HTTP ' + response.status + ').',
+                    title: 'Generando comparativa...',
+                    text: 'Estamos comparando tu CSV con la Base Maestra',
+                    allowOutsideClick: false,
                     background: '#1a1d27',
                     color: '#fff',
-                    confirmButtonColor: 'var(--amber, #f59e0b)'
+                    didOpen: () => Swal.showLoading()
                 });
-                return;
-            }
 
-            if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Éxito!',
-                    text: data.message,
-                    background: '#1a1d27',
-                    color: '#fff',
-                    confirmButtonColor: 'var(--emerald, #10b981)'
-                }).then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message,
-                    background: '#1a1d27',
-                    color: '#fff',
-                    confirmButtonColor: 'var(--rose, #f43f5e)'
-                });
-            }
-        } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error de Comunicación',
-                text: 'Ocurrió un error en la conexión con el servidor.',
-                background: '#1a1d27',
-                color: '#fff',
-                confirmButtonColor: 'var(--rose, #f43f5e)'
+                const formData = new FormData();
+                formData.append('csv_file', selectedFile);
+                columns.forEach(c => formData.append('columns[]', c));
+
+                try {
+                    const response = await fetch('{{ route("articulos.subir.preview") }}', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: formData
+                    });
+
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (jsonErr) {
+                        Swal.close();
+                        invalidatePreview('Error al procesar la respuesta del servidor.');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error del Servidor',
+                            text: 'El servidor no devolvió un formato válido (HTTP ' + response.status + ').',
+                            background: '#1a1d27',
+                            color: '#fff',
+                            confirmButtonColor: 'var(--amber, #f59e0b)'
+                        });
+                        return;
+                    }
+                    Swal.close();
+
+                    if (!data.success) {
+                        invalidatePreview('Error en previsualización.');
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Atención',
+                            text: data.message || 'Error en previsualización.',
+                            background: '#1a1d27',
+                            color: '#fff',
+                            confirmButtonColor: 'var(--amber, #f59e0b)'
+                        });
+                        return;
+                    }
+
+                    lastChangedCols = data.changed_cols || [];
+                    selectChangedBtn.style.display = (lastChangedCols.length > 0) ? 'flex' : 'none';
+
+                    // ── Renderizar mapeo de columnas ──
+                    const colmapContainer = document.getElementById('colmap-container');
+                    const colmapPills = document.getElementById('colmap-pills');
+                    const colmapUnrecognized = document.getElementById('colmap-unrecognized');
+                    const colmapUnrecognizedList = document.getElementById('colmap-unrecognized-list');
+
+                    colmapPills.innerHTML = '';
+                    if (data.column_map && data.column_map.length > 0) {
+                        data.column_map.forEach(col => {
+                            const isSelected = col.selected;
+                            const pill = document.createElement('div');
+                            pill.style.cssText = `
+                            display: inline-flex; align-items: center; gap: 4px;
+                            padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;
+                            border: 1px solid ${isSelected ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'};
+                            background: ${isSelected ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)'};
+                            color: ${isSelected ? 'var(--emerald)' : 'var(--text-muted)'};
+                        `;
+                            pill.innerHTML = `
+                            <span style="color:var(--text-muted); font-weight:400;">${col.csv}</span>
+                            <svg viewBox="0 0 24 24" fill="none" width="9" height="9" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            <span style="font-family:monospace; font-size:9.5px;">${col.field}</span>
+                            ${isSelected ? '<svg viewBox="0 0 24 24" fill="none" width="9" height="9" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                        `;
+                            pill.title = isSelected ? 'Seleccionada para actualizar' : 'En CSV pero NO seleccionada (no se actualizará)';
+                            colmapPills.appendChild(pill);
+                        });
+                    }
+
+                    if (data.unrecognized && data.unrecognized.length > 0) {
+                        colmapUnrecognizedList.textContent = data.unrecognized.join(', ');
+                        colmapUnrecognized.style.display = 'block';
+                    } else {
+                        colmapUnrecognized.style.display = 'none';
+                    }
+
+                    colmapContainer.style.display = 'block';
+
+                    const headerRow = document.getElementById('preview-header-row');
+                    const body = document.getElementById('preview-body');
+                    const previewContainer = document.getElementById('preview-container');
+
+                    // Determinar columnas a mostrar (CLAVE fija al inicio + todas las demás columnas del CSV)
+                    const activeCols = (data.column_map && data.column_map.length > 0)
+                        ? data.column_map.filter(c => c.field !== 'clave')
+                        : [];
+
+                    let headerHtml = '<th style="padding:10px 12px; font-size:11px; white-space:nowrap; background:#181b26; position:sticky; left:0; z-index:2; border-right:1px solid var(--border);">CLAVE</th>';
+                    activeCols.forEach(col => {
+                        const isSelected = col.selected;
+                        headerHtml += `<th style="padding:10px 12px; font-size:11px; white-space:nowrap; ${isSelected ? 'color:var(--text-main);' : 'color:var(--text-muted); opacity:0.6;'}">
+                        ${col.csv.toUpperCase()}
+                    </th>`;
+                    });
+                    headerRow.innerHTML = headerHtml;
+                    body.innerHTML = '';
+
+                    if (!data.diffs || data.diffs.length === 0) {
+                        body.innerHTML = `<tr><td colspan="${activeCols.length + 1}" style="padding:20px; text-align:center; color:var(--emerald);">✓ Todos los artículos coinciden con la Base Maestra. No hay cambios necesarios.</td></tr>`;
+                    } else {
+                        data.diffs.forEach(item => {
+                            const tr = document.createElement('tr');
+                            tr.style.borderBottom = '1px solid var(--border-light)';
+
+                            // Columna 1: CLAVE (Limpia sin guiones para que coincida con la base de datos)
+                            const cleanClave = (item.canonical_clave || item.clave || '').toString().replace(/[-\s]/g, '');
+                            let rowHtml = `<td style="padding:8px 12px; font-family:monospace; vertical-align:middle; position:sticky; left:0; background:#141721; z-index:1; border-right:1px solid var(--border);">
+                            <div style="font-weight:bold; color:var(--amber); font-size:12px;">${cleanClave}</div>
+                            ${item.description ? `<div style="font-size:9.5px; color:var(--text-muted); white-space:nowrap; max-width:160px; overflow:hidden; text-overflow:ellipsis;">${item.description}</div>` : ''}
+                        </td>`;
+
+                            if (item.status === 'new') {
+                                activeCols.forEach(col => {
+                                    const val = item.data ? (item.data[col.field] ?? item.data[col.csv] ?? '') : '';
+                                    rowHtml += `<td style="padding:8px 12px; vertical-align:middle; background:rgba(56, 189, 248, 0.05); color:var(--sky); font-size:11px; white-space:nowrap;">
+                                    <span style="font-size:9px; font-weight:bold; background:rgba(56,189,248,0.2); padding:1px 4px; border-radius:3px; margin-right:4px;">NUEVO</span> ${val}
+                                </td>`;
+                                });
+                            } else {
+                                // Artículo existente con cambios
+                                activeCols.forEach(col => {
+                                    const field = col.field;
+                                    const diff = item.diff ? item.diff[field] : null;
+
+                                    if (diff) {
+                                        // ¡CAMBIO DETECTADO EN ESTA COLUMNA! Destacar celda
+                                        const isFormulaTag = (diff.is_formula || field === 'precio_gerente');
+                                        rowHtml += `<td style="padding:6px 10px; vertical-align:middle; background:rgba(245, 158, 11, 0.14); border:1px solid rgba(245, 158, 11, 0.35); white-space:nowrap;">
+                                        <div style="display:flex; flex-direction:column; gap:2px;">
+                                            <span style="text-decoration:line-through; color:var(--rose); opacity:0.8; font-size:10px;">${diff.old ?? 'NULL'}</span>
+                                            <span style="color:var(--emerald); font-weight:800; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;">
+                                                ➜ ${diff.new} ${isFormulaTag ? '<span style="color:#a78bfa; font-size:9px;" title="Recálculo por fórmula">⚡</span>' : ''}
+                                            </span>
+                                        </div>
+                                    </td>`;
+                                    } else {
+                                        // Sin cambios en esta columna
+                                        let currentVal = '';
+                                        if (item.master_data && item.master_data[field] !== undefined) {
+                                            currentVal = item.master_data[field];
+                                        } else if (item.full_new && item.full_new[field] !== undefined) {
+                                            currentVal = item.full_new[field];
+                                        }
+
+                                        if (currentVal === null || currentVal === undefined || currentVal === '') currentVal = '-';
+
+                                        rowHtml += `<td style="padding:8px 12px; vertical-align:middle; color:var(--text-muted); font-size:11px; white-space:nowrap; opacity:0.85;">
+                                        ${currentVal}
+                                    </td>`;
+                                    }
+                                });
+                            }
+
+                            tr.innerHTML = rowHtml;
+                            body.appendChild(tr);
+                        });
+                    }
+
+                    if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+                    previewContainer.style.display = 'flex';
+                    previewContainer.scrollIntoView({ behavior: 'smooth' });
+
+                    // Gestión del límite de 500 filas para archivos pesados
+                    totalRowsInCsv = data.total_rows || (data.diffs ? data.diffs.length : 0);
+                    const limitBanner = document.getElementById('preview-limit-banner');
+                    const badgeCount = document.getElementById('preview-badge-count');
+
+                    if (data.is_truncated) {
+                        if (limitBanner) {
+                            limitBanner.style.display = 'flex';
+                            const previewLimitEl = document.getElementById('banner-preview-limit');
+                            const totalRowsEl = document.getElementById('banner-total-rows');
+                            if (previewLimitEl) previewLimitEl.textContent = Number(data.preview_rows || 500).toLocaleString();
+                            if (totalRowsEl) totalRowsEl.textContent = Number(data.total_rows || 0).toLocaleString();
+                        }
+                        if (badgeCount) {
+                            badgeCount.style.display = 'inline-block';
+                            badgeCount.style.background = 'rgba(245,158,11,0.15)';
+                            badgeCount.style.color = 'var(--amber)';
+                            badgeCount.textContent = `${data.diffs.length} cambios en primeras ${data.preview_rows} filas (de ${Number(data.total_rows).toLocaleString()} totales)`;
+                        }
+                    } else {
+                        if (limitBanner) limitBanner.style.display = 'none';
+                        if (badgeCount) {
+                            badgeCount.style.display = 'inline-block';
+                            badgeCount.style.background = 'rgba(16,185,129,0.15)';
+                            badgeCount.style.color = 'var(--emerald)';
+                            badgeCount.textContent = `${data.diffs.length} cambios detectados (${data.total_rows || data.diffs.length} filas en CSV)`;
+                        }
+                    }
+
+                    // Habilitar botón de actualización con estado verificado
+                    setPreviewValid(true, 'Vista Previa verificada');
+
+                } catch (error) {
+                    invalidatePreview('Error de conexión con el servidor.');
+                    Swal.fire('Error', 'Fallo al conectar con el servidor para la vista previa.', 'error');
+                }
             });
-        }
-    });
 
-    // Menú desplegable Machotes
-    const btnMachotes = document.getElementById('btn-machotes');
-    const menuMachotes = document.getElementById('menu-machotes');
-    if (btnMachotes && menuMachotes) {
-        btnMachotes.addEventListener('click', (e) => {
-            e.stopPropagation();
-            menuMachotes.style.display = (menuMachotes.style.display === 'block') ? 'none' : 'block';
-        });
+            // Lógica para el botón mágico de selección
+            selectChangedBtn.addEventListener('click', () => {
+                if (!lastChangedCols.length) return;
 
-        document.addEventListener('click', (e) => {
-            if (!menuMachotes.contains(e.target) && !btnMachotes.contains(e.target)) {
-                menuMachotes.style.display = 'none';
+                const columnCheckboxes = document.querySelectorAll('input[name="columns[]"]');
+                columnCheckboxes.forEach(cb => {
+                    updateCheckboxVisual(cb, lastChangedCols.includes(cb.value));
+                });
+
+                // Al seleccionar las columnas calculadas en esta misma previa, se mantiene válida
+                setPreviewValid(true, 'Columnas con cambios seleccionadas. Listo para actualizar.');
+
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Columnas Seleccionadas',
+                    text: `Se han marcado automáticamente las ${lastChangedCols.length} columnas que presentan cambios en el CSV.`,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    background: '#1a1d27',
+                    color: '#fff'
+                });
+            });
+
+            // Process Update
+            processBtn.addEventListener('click', async () => {
+                if (!selectedFile) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Archivo Requerido',
+                        text: 'Por favor arrastra o selecciona un archivo CSV primero.',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    });
+                    return;
+                }
+
+                if (!isPreviewValid) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Vista Previa Obligatoria',
+                        text: 'Es obligatorio generar y revisar la "Vista Previa" de los cambios antes de ejecutar la actualización en las sucursales.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Generar Vista Previa Ahora',
+                        cancelButtonText: 'Cancelar',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            previewBtn.click();
+                        }
+                    });
+                    return;
+                }
+
+                const branches = Array.from(document.querySelectorAll('input[name="branches[]"]:checked')).map(cb => cb.value);
+                const columns = Array.from(document.querySelectorAll('input[name="columns[]"]:checked')).map(cb => cb.value);
+
+                if (branches.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sucursal Requerida',
+                        text: 'Selecciona al menos una sucursal.',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    });
+                    return;
+                }
+
+                if (columns.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Columnas Requeridas',
+                        text: 'Selecciona al menos una columna para actualizar.',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    });
+                    return;
+                }
+
+                const totalRowsText = (totalRowsInCsv > 0)
+                    ? ` (${Number(totalRowsInCsv).toLocaleString()} artículos en total)`
+                    : '';
+
+                const result = await Swal.fire({
+                    title: '¿Confirmar actualización masiva?',
+                    text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV${totalRowsText}. Esta acción no se puede deshacer.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonText: 'Sí, procesar',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!result.isConfirmed) return;
+
+                const formData = new FormData();
+                formData.append('csv_file', selectedFile);
+                branches.forEach(b => formData.append('branches[]', b));
+                columns.forEach(c => formData.append('columns[]', c));
+
+                Swal.fire({
+                    title: 'Procesando...',
+                    text: 'Por favor no cierres la ventana.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                    const response = await fetch('{{ route("articulos.subir.proceso") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: formData
+                    });
+
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (jsonErr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error del Servidor',
+                            text: 'El servidor no devolvió una respuesta válida (HTTP ' + response.status + ').',
+                            background: '#1a1d27',
+                            color: '#fff',
+                            confirmButtonColor: 'var(--amber, #f59e0b)'
+                        });
+                        return;
+                    }
+
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: data.message,
+                            background: '#1a1d27',
+                            color: '#fff',
+                            confirmButtonColor: 'var(--emerald, #10b981)'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message,
+                            background: '#1a1d27',
+                            color: '#fff',
+                            confirmButtonColor: 'var(--rose, #f43f5e)'
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de Comunicación',
+                        text: 'Ocurrió un error en la conexión con el servidor.',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--rose, #f43f5e)'
+                    });
+                }
+            });
+
+            // Menú desplegable Machotes
+            const btnMachotes = document.getElementById('btn-machotes');
+            const menuMachotes = document.getElementById('menu-machotes');
+            if (btnMachotes && menuMachotes) {
+                btnMachotes.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    menuMachotes.style.display = (menuMachotes.style.display === 'block') ? 'none' : 'block';
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!menuMachotes.contains(e.target) && !btnMachotes.contains(e.target)) {
+                        menuMachotes.style.display = 'none';
+                    }
+                });
             }
         });
-    }
-});
-</script>
+    </script>
 @endpush

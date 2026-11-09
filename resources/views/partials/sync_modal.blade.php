@@ -38,7 +38,11 @@ window.renderUnidataSyncModal = function(syncData, callback) {
             const bgColor = isOk ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.12)';
             const borderColor = isOk ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.3)';
             const statusColor = isOk ? '#34d399' : '#f87171';
-            const statusText = isOk ? (res.local_id ? `✓ ID #${res.local_id}` : '✓ OK') : '✗ Error';
+            let tag = '';
+            if (isOk && res.accion === 'creado') {
+                tag = ' <span style="font-size:10px; opacity:0.85; font-weight:600;">(Alta)</span>';
+            }
+            const statusText = isOk ? (res.local_id ? `✓ ID #${res.local_id}${tag}` : `✓ OK${tag}`) : '✗ Error';
             const errorDetail = !isOk && res.message ? `<div style="font-size:10px; color:#fca5a5; margin-top:2px;">${res.message.substring(0, 45)}</div>` : '';
 
             branchListHtml += `

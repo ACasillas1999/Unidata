@@ -799,6 +799,7 @@ class ArticulosController extends Controller
 
                 // --- AUTO-CÁLCULO SIEMPRE DE CAMPOS DERIVADOS VÍA FÓRMULA (2 DECIMALES) ---
                 $pLista = isset($updateDataMaster['precio_lista']) ? (float)$updateDataMaster['precio_lista'] : (float)($masterCurrent->precio_lista ?? 0);
+                $pVenta = isset($updateDataMaster['precio_venta']) ? (float)$updateDataMaster['precio_venta'] : (float)($masterCurrent->precio_venta ?? 0);
                 $d4     = isset($updateDataMaster['desc_precio4']) ? (float)$updateDataMaster['desc_precio4'] : (float)($masterCurrent->desc_precio4 ?? 0);
                 $dEsp   = isset($updateDataMaster['desc_precio_espec']) ? (float)$updateDataMaster['desc_precio_espec'] : (float)($masterCurrent->desc_precio_espec ?? 0);
                 $dProv  = isset($updateDataMaster['desc_proveedor']) ? (float)$updateDataMaster['desc_proveedor'] : (float)($masterCurrent->desc_proveedor ?? 0);
@@ -820,14 +821,12 @@ class ArticulosController extends Controller
                 $updateDataMaster['precio_tope'] = $calcPrecioTope;
                 $updateDataBranch['PrecioTope']   = $calcPrecioTope;
 
-                // Si precio_lista <= 0 o precio_venta <= 0, des_precio_venta debe ser 0% (nunca 100%)
-                $pVenta = isset($updateDataMaster['precio_venta']) ? (float)$updateDataMaster['precio_venta'] : (float)($masterCurrent->precio_venta ?? 0);
-                if ($pLista <= 0 || $pVenta <= 0) {
-                    if (isset($updateDataMaster['des_precio_venta'])) {
-                        $updateDataMaster['des_precio_venta'] = 0;
-                        $updateDataBranch['Desc_Precio_Venta'] = 0;
-                    }
-                }
+                // Auto-cálculo de Desc. P. Venta a partir de P.Lista y P.Venta
+                $calcDescVenta = ($pLista > 0 && $pVenta > 0)
+                    ? round(100 - ($pVenta / $pLista * 100), 2)
+                    : 0.00;
+                $updateDataMaster['des_precio_venta'] = $calcDescVenta;
+                $updateDataBranch['Desc_Precio_Venta'] = $calcDescVenta;
 
                 // --- AUDITORÍA ANTES DE ACTUALIZAR ---
                 $auditEntries = [];
@@ -1242,21 +1241,29 @@ class ArticulosController extends Controller
 
                 // --- REVISAR RECÁLCULO OBLIGATORIO DE CAMPOS VÍA FÓRMULA (2 DECIMALES) ---
                 $pLista = isset($csvItem['precio_lista']) ? (float)$csvItem['precio_lista'] : (float)($masterItem->precio_lista ?? 0);
+                $pVenta = isset($csvItem['precio_venta']) ? (float)$csvItem['precio_venta'] : (float)($masterItem->precio_venta ?? 0);
                 $d4     = isset($csvItem['desc_precio4']) ? (float)$csvItem['desc_precio4'] : (float)($masterItem->desc_precio4 ?? 0);
                 $dEsp   = isset($csvItem['desc_precio_espec']) ? (float)$csvItem['desc_precio_espec'] : (float)($masterItem->desc_precio_espec ?? 0);
                 $dProv  = isset($csvItem['desc_proveedor']) ? (float)$csvItem['desc_proveedor'] : (float)($masterItem->desc_proveedor ?? 0);
                 $pDesc  = isset($csvItem['porcetaje_descuento']) ? (float)$csvItem['porcetaje_descuento'] : (float)($masterItem->porcetaje_descuento ?? 0);
 
+                // Calcular Desc. P. Venta vía fórmula si P.Lista > 0 y P.Venta > 0
+                $calcDescVenta = ($pLista > 0 && $pVenta > 0)
+                    ? round(100 - ($pVenta / $pLista * 100), 2)
+                    : 0.00;
+
                 $formulaFields = [
-                    'precio4'         => ['label' => 'Precio 4',       'new' => round($pLista * (100 - $d4) / 100, 2),    'old' => round((float)($masterItem->precio4 ?? 0), 2)],
-                    'precio_especial' => ['label' => 'P. Especial',     'new' => round($pLista * (100 - $dEsp) / 100, 2),  'old' => round((float)($masterItem->precio_especial ?? 0), 2)],
-                    'precio_gerente'  => ['label' => 'Precio Gerente',  'new' => round($pLista * (100 - $dProv) / 100, 2), 'old' => round((float)($masterItem->precio_gerente ?? 0), 2)],
-                    'precio_tope'     => ['label' => 'Precio Tope',     'new' => round($pLista * (100 - $pDesc) / 100, 2), 'old' => round((float)($masterItem->precio_tope ?? 0), 2)],
+                    'precio4'          => ['label' => 'Precio 4',       'triggers' => ['P. Lista', 'Desc. Precio 4'], 'new' => round($pLista * (100 - $d4) / 100, 2),    'old' => round((float)($masterItem->precio4 ?? 0), 2)],
+                    'precio_especial'  => ['label' => 'P. Especial',     'triggers' => ['P. Lista', 'Desc. P. Espec'],  'new' => round($pLista * (100 - $dEsp) / 100, 2),  'old' => round((float)($masterItem->precio_especial ?? 0), 2)],
+                    'precio_gerente'   => ['label' => 'Precio Gerente',  'triggers' => ['P. Lista', 'Desc. Proveedor'], 'new' => round($pLista * (100 - $dProv) / 100, 2), 'old' => round((float)($masterItem->precio_gerente ?? 0), 2)],
+                    'precio_tope'      => ['label' => 'Precio Tope',     'triggers' => ['P. Lista', '% Descuento'],     'new' => round($pLista * (100 - $pDesc) / 100, 2), 'old' => round((float)($masterItem->precio_tope ?? 0), 2)],
+                    'des_precio_venta' => ['label' => 'Desc. P. Venta',  'triggers' => ['P. Lista', 'P. Venta'],        'new' => $calcDescVenta,                            'old' => round((float)($masterItem->des_precio_venta ?? 0), 2)],
                 ];
 
                 foreach ($formulaFields as $fKey => $fInfo) {
-                    // Solo evaluar fórmulas si su columna o sus detonadores están seleccionados en la UI
-                    $isColSelected = in_array($fInfo['label'], $columnsSelected) || in_array('P. Lista', $columnsSelected);
+                    // Evaluar fórmulas si su columna o alguno de sus detonadores está seleccionado en la UI
+                    $triggers = $fInfo['triggers'] ?? ['P. Lista'];
+                    $isColSelected = in_array($fInfo['label'], $columnsSelected) || !empty(array_intersect($triggers, $columnsSelected));
                     if ($isColSelected && $fInfo['new'] !== $fInfo['old']) {
                         $hasDifference = true;
                         $rowDiff[$fKey] = [
@@ -1265,22 +1272,6 @@ class ArticulosController extends Controller
                             'is_formula' => true
                         ];
                         $changedCols[$fInfo['label']] = true;
-                    }
-                }
-
-                // Si precio_lista <= 0 o precio_venta <= 0, des_precio_venta debe ser 0% (nunca 100%)
-                $pVenta = isset($csvItem['precio_venta']) ? (float)$csvItem['precio_venta'] : (float)($masterItem->precio_venta ?? 0);
-                if ($pLista <= 0 || $pVenta <= 0) {
-                    if (isset($rowDiff['des_precio_venta'])) {
-                        $oldVal = round((float)($masterItem->des_precio_venta ?? 0), 2);
-                        if ($oldVal === 0.0) {
-                            unset($rowDiff['des_precio_venta']);
-                            if (empty($rowDiff)) {
-                                $hasDifference = false;
-                            }
-                        } else {
-                            $rowDiff['des_precio_venta']['new'] = '0.00';
-                        }
                     }
                 }
 
@@ -1567,10 +1558,14 @@ class ArticulosController extends Controller
                 }
             }
 
-            // SIEMPRE calcular precio_gerente con fórmula a 2 decimales
+            // SIEMPRE calcular precio_gerente y des_precio_venta con fórmula a 2 decimales
             $pLista = (float)($data['precio_lista'] ?? 0);
+            $pVenta = (float)($data['precio_venta'] ?? 0);
             $dProv  = (float)($data['desc_proveedor'] ?? 0);
             $data['precio_gerente'] = round($pLista * (100 - $dProv) / 100, 2);
+            if ($pLista > 0 && $pVenta > 0 && (!isset($data['des_precio_venta']) || (float)$data['des_precio_venta'] === 0.0)) {
+                $data['des_precio_venta'] = round(100 - ($pVenta / $pLista * 100), 2);
+            }
 
             // Extraer color_branch del array $data antes de crear en db_master
             $colorBranchMap = $data['color_branch'] ?? [];

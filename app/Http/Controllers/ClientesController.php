@@ -139,7 +139,7 @@ class ClientesController extends Controller
                 );
 
                 // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
-                $codigoVendedorAsesor = (strtoupper($branch->name) === 'TAPATIA') ? 'EITSA' : strtoupper($branch->name);
+                $codigoVendedorAsesor = $this->resolveCodigoVendedorAsesor($branch->name);
 
                 // Regla estricta para Asesor y Vendedor
                 if (in_array('Asesor', $columnasReales)) {
@@ -153,19 +153,42 @@ class ClientesController extends Controller
                                               : $codigoVendedorAsesor;
                 }
 
-                // Calcular el siguiente ID local (Cliente no es auto-increment, lo gestiona el ERP)
-                if (in_array('Cliente', $columnasReales)) {
-                    $maxCliente = $conn->table('clientes')->max('Cliente') ?? 0;
-                    $dataFiltrada['Cliente'] = (int)$maxCliente + 1;
-                }
+                // Verificar si el cliente ya existía en esta sucursal (por RFC)
+                $found = $conn->table('clientes')->where('RFC', $rfc)->first();
 
-                // Saldo inicial en 0 para nuevo cliente en la sucursal (no se replica desde formularios)
-                if (in_array('Saldo_Actual', $columnasReales)) {
-                    $dataFiltrada['Saldo_Actual'] = 0;
-                }
+                if ($found) {
+                    // YA EXISTÍA EN ESTA SUCURSAL: Vincular IdGlobal y actualizar datos
+                    if (in_array('IdGlobal', $columnasReales)) {
+                        $dataFiltrada['IdGlobal'] = $nuevoIdGlobal;
+                    }
+                    // Conservar ID local y saldo contable existente de la sucursal
+                    unset($dataFiltrada['Cliente']);
+                    unset($dataFiltrada['Saldo_Actual']);
 
-                $conn->table('clientes')->insert($dataFiltrada);
-                $localId = $dataFiltrada['Cliente'] ?? null;
+                    $conn->table('clientes')
+                        ->where('Cliente', $found->Cliente)
+                        ->update($dataFiltrada);
+
+                    $localId = $found->Cliente;
+                } else {
+                    // NO EXISTÍA EN ESTA SUCURSAL: Calcular siguiente ID local e insertar
+                    if (in_array('Cliente', $columnasReales)) {
+                        $maxCliente = $conn->table('clientes')->max('Cliente') ?? 0;
+                        $dataFiltrada['Cliente'] = (int)$maxCliente + 1;
+                    }
+
+                    if (in_array('IdGlobal', $columnasReales)) {
+                        $dataFiltrada['IdGlobal'] = $nuevoIdGlobal;
+                    }
+
+                    // Saldo inicial en 0 para nuevo cliente en la sucursal (no se replica desde formularios)
+                    if (in_array('Saldo_Actual', $columnasReales)) {
+                        $dataFiltrada['Saldo_Actual'] = 0;
+                    }
+
+                    $conn->table('clientes')->insert($dataFiltrada);
+                    $localId = $dataFiltrada['Cliente'] ?? null;
+                }
 
                 // Guardar/Actualizar en clientes_email de la sucursal si la tabla existe
                 $emailVal = trim($dataMaestro['email'] ?? '');
@@ -179,6 +202,7 @@ class ClientesController extends Controller
                 $resultados[] = [
                     'sucursal' => $branch->name,
                     'status'   => 'ok',
+                    'accion'   => $found ? 'actualizado' : 'creado',
                     'local_id' => $localId,
                 ];
             } catch (Throwable $e) {
@@ -305,6 +329,21 @@ class ClientesController extends Controller
             // RFC no se puede cambiar (es la llave de búsqueda)
         ]);
 
+        // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
+        if (empty($cliente->id_global) || (int) $cliente->id_global === 0) {
+            $branchesAll = $this->connectionManager->getActiveBranches();
+            $maxGlobal = (int) (ClienteMaestro::max('id_global') ?? 0);
+            foreach ($branchesAll as $b) {
+                try {
+                    $c = $this->connectionManager->connect($b->code);
+                    $maxSuc = $c->table('clientes')->max('IdGlobal') ?? 0;
+                    $maxGlobal = max($maxGlobal, (int) $maxSuc);
+                } catch (Throwable) {}
+            }
+            $cliente->id_global = $maxGlobal + 1;
+            $cliente->save();
+        }
+
         $dataMaestro = $this->prepareData($request, $cliente->id_global);
 
         // El RFC nunca cambia en edición — preservar el valor original
@@ -315,7 +354,7 @@ class ClientesController extends Controller
         $cliente->update($dataMaestro);
 
 
-        // 2. Actualizar en todas las sucursales activas
+        // 2. Actualizar en todas las sucursales activas (Upsert inteligente: actualiza si existe, inserta si no)
         $branches          = $this->connectionManager->getActiveBranches();
         $resultados        = [];
         $saldosPorSucursal = [];
@@ -340,46 +379,54 @@ class ClientesController extends Controller
                         ->first();
                 }
 
+                // Obtener columnas reales de la tabla en esta sucursal
+                $columnasReales = $this->getBranchColumns($conn, 'clientes');
+                $dataFiltrada   = array_filter(
+                    $dataBranch,
+                    fn($key) => in_array($key, $columnasReales),
+                    ARRAY_FILTER_USE_KEY
+                );
+
+                // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
+                $codigoVendedorAsesor = $this->resolveCodigoVendedorAsesor($branch->name);
+
+                // Regla estricta para Asesor y Vendedor
+                if (in_array('Asesor', $columnasReales)) {
+                    $dataFiltrada['Asesor'] = $codigoVendedorAsesor;
+                }
+                
+                if (in_array('Vendedor', $columnasReales)) {
+                    // Si el maestro dice TOP, se respeta TOP. Si no, va el nombre de la sucursal.
+                    $dataFiltrada['Vendedor'] = (strtoupper($dataMaestro['vendedor'] ?? '') === 'TOP') 
+                                              ? 'TOP' 
+                                              : $codigoVendedorAsesor;
+                }
+
                 if ($found) {
+                    // YA EXISTE EN ESTA SUCURSAL: ACTUALIZAR
                     // Registrar el saldo contable real de esta sucursal (cada sucursal tiene su propio balance)
                     $saldosPorSucursal[$branch->code] = (float)($found->Saldo_Actual ?? 0);
 
-                    // Filtrar solo columnas que existen en esta sucursal
-                    $columnasReales = $this->getBranchColumns($conn, 'clientes');
-                    $dataFiltrada   = array_filter(
-                        $dataBranch,
-                        fn($key) => in_array($key, $columnasReales),
-                        ARRAY_FILTER_USE_KEY
-                    );
-
-                    // NUNCA sobreescribir Saldo_Actual en las sucursales:
-                    // Cada sucursal gestiona su propia cobranza y balance contable independiente en su ERP.
+                    // NUNCA sobreescribir Saldo_Actual ni Cliente en las sucursales
                     unset($dataFiltrada['Saldo_Actual']);
+                    unset($dataFiltrada['Cliente']);
 
-                    // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
-                    $codigoVendedorAsesor = (strtoupper($branch->name) === 'TAPATIA') ? 'EITSA' : strtoupper($branch->name);
-
-                    // Regla estricta para Asesor y Vendedor
-                    if (in_array('Asesor', $columnasReales)) {
-                        $dataFiltrada['Asesor'] = $codigoVendedorAsesor;
-                    }
-                    
-                    if (in_array('Vendedor', $columnasReales)) {
-                        // Si el maestro dice TOP, se respeta TOP. Si no, va el nombre de la sucursal.
-                        $dataFiltrada['Vendedor'] = (strtoupper($dataMaestro['vendedor'] ?? '') === 'TOP') 
-                                                  ? 'TOP' 
-                                                  : $codigoVendedorAsesor;
+                    // Homologar IdGlobal si no lo tenía asignado
+                    if (in_array('IdGlobal', $columnasReales) && ($found->IdGlobal ?? 0) != $cliente->id_global) {
+                        $dataFiltrada['IdGlobal'] = $cliente->id_global;
                     }
 
                     $conn->table('clientes')
                         ->where('Cliente', $found->Cliente)
                         ->update($dataFiltrada);
 
+                    $localId = $found->Cliente;
+
                     // Guardar/Actualizar en clientes_email de la sucursal si la tabla existe
                     $emailVal = trim($dataMaestro['email'] ?? '');
                     if ($conn->getSchemaBuilder()->hasTable('clientes_email')) {
                         $conn->table('clientes_email')->updateOrInsert(
-                            ['Clave_Cliente' => (int)$found->Cliente],
+                            ['Clave_Cliente' => (int)$localId],
                             ['e_mail' => $emailVal]
                         );
                     }
@@ -387,14 +434,45 @@ class ClientesController extends Controller
                     $resultados[] = [
                         'sucursal' => $branch->name,
                         'status'   => 'ok',
-                        'metodo'   => $cliente->id_global > 0 && $found->IdGlobal == $cliente->id_global
+                        'accion'   => 'actualizado',
+                        'local_id' => $localId,
+                        'metodo'   => $cliente->id_global > 0 && ($found->IdGlobal ?? null) == $cliente->id_global
                             ? 'IdGlobal' : 'RFC',
                     ];
                 } else {
+                    // NO EXISTE EN ESTA SUCURSAL: ALTA AUTOMÁTICA (PROPAGAR A SUCURSAL FALTANTE)
+                    if (in_array('Cliente', $columnasReales)) {
+                        $maxCliente = $conn->table('clientes')->max('Cliente') ?? 0;
+                        $dataFiltrada['Cliente'] = (int)$maxCliente + 1;
+                    }
+
+                    if (in_array('IdGlobal', $columnasReales)) {
+                        $dataFiltrada['IdGlobal'] = $cliente->id_global;
+                    }
+
+                    // Saldo inicial en 0 para nuevo cliente en la sucursal
+                    if (in_array('Saldo_Actual', $columnasReales)) {
+                        $dataFiltrada['Saldo_Actual'] = 0;
+                    }
+
+                    $conn->table('clientes')->insert($dataFiltrada);
+                    $localId = $dataFiltrada['Cliente'] ?? null;
+
+                    // Guardar/Actualizar en clientes_email de la sucursal si la tabla existe
+                    $emailVal = trim($dataMaestro['email'] ?? '');
+                    if ($localId && $conn->getSchemaBuilder()->hasTable('clientes_email')) {
+                        $conn->table('clientes_email')->updateOrInsert(
+                            ['Clave_Cliente' => (int)$localId],
+                            ['e_mail' => $emailVal]
+                        );
+                    }
+
                     $resultados[] = [
                         'sucursal' => $branch->name,
-                        'status'   => 'not_found',
-                        'message'  => 'Cliente no encontrado en esta sucursal.',
+                        'status'   => 'ok',
+                        'accion'   => 'creado',
+                        'local_id' => $localId,
+                        'metodo'   => 'alta_nueva',
                     ];
                 }
             } catch (Throwable $e) {
@@ -902,56 +980,77 @@ class ClientesController extends Controller
     }
 
     /**
-     * Convierte de snake_case (maestro) a PascalCase (sucursal).
+     * Resuelve el código abreviado para Vendedor/Asesor respetando el límite de 6 caracteres del ERP.
+     */
+    private function resolveCodigoVendedorAsesor(string $branchName): string
+    {
+        $name = strtoupper(trim($branchName));
+        $map = [
+            'TAPATIA'     => 'EITSA',
+            'DIMEGSA'     => 'DIMEGS',
+            'VALLARTA'    => 'VALLAR',
+            'QUERETARO'   => 'QUERET',
+            'ILUMINACION' => 'ILU',
+        ];
+
+        return $map[$name] ?? substr($name, 0, 6);
+    }
+
+    /**
+     * Convierte de snake_case (maestro) a PascalCase (sucursal) protegiendo límites de caracteres.
      */
     private function toBranchFormat(array $data): array
     {
+        $fechaAlta = !empty($data['fecha_alta'])
+            ? substr(trim((string)$data['fecha_alta']), 0, 10)
+            : now()->toDateString();
+
         return [
-            'IdGlobal'          => $data['id_global'] ?? 0,
-            'RFC'               => $data['rfc'] ?? '',
-            'Razon_Social'      => $data['razon_social'] ?? '',
-            'Calle'             => $data['calle'] ?? '',
-            'Exterior'          => $data['exterior'] ?? '',
-            'Interior'          => $data['interior'] ?? '',
-            'Colonia'           => $data['colonia'] ?? '',
-            'Cod_Postal'        => $data['cod_postal'] ?? 0,
-            'Ciudad'            => $data['ciudad'] ?? '',
-            'Municipio'         => $data['municipio'] ?? '',
-            'Telefono1'         => $data['telefono1'] ?? '',
-            'Telfono2'          => $data['telefono2'] ?? '',   // typo real en la BD: "Telfono2"
-            'Telefono3'         => $data['telefono3'] ?? '',
-            'Fax'               => $data['fax'] ?? '',
-            'Vendedor'          => $data['vendedor'] ?? '',
-            'Documentos'        => $data['documentos'] ?? '',
-            'Dias_Pago'         => $data['dias_pago'] ?? '',
-            'Dias_Revision'     => $data['dias_revision'] ?? '',
-            'Condicion_Pago'    => $data['condicion_pago'] ?? '',
-            'Dias_Credito'      => $data['dias_credito'] ?? 0,
-            'Limite_Credito'    => $data['limite_credito'] ?? 0,
-            'OtorgoCreditO'     => $data['otorgo_credito'] ?? 0,
-            'OtorgoCredito'     => $data['otorgo_credito'] ?? 0,
-            'e_mail'            => $data['e_mail'] ?? $data['email'] ?? '',
-            'email'             => $data['email'] ?? $data['e_mail'] ?? '',
-            'Status'            => $data['status'] ?? 'A',
-            'Cta_Contable'      => $data['cta_contable'] ?? '',
-            'Fecha_Alta'        => $data['fecha_alta'] ?? now()->toDateString(),
-            'Representante'     => $data['representante'] ?? '',
-            'Addenda'           => $data['addenda'] ?? '',
-            'IdRegIdTrib'       => $data['id_reg_id_trib'] ?? '',
-            'RegimenFiscal'     => $data['regimen_fiscal'] ?? '',
-            'Anticipos'         => $data['anticipos'] ?? 'D',
-            'CodigoContpaq'     => $data['codigo_contpaq'] ?? 0,
-            'Clasificacion'     => $data['clasificacion'] ?? 0,
-            'ModificarFPMPFac'  => $data['modificar_fpmpfac'] ?? 0,
-            'Identificador'     => $data['identificador'] ?? '',
-            'IdOpcionBloqueo'   => $data['id_opcion_bloqueo'] ?? 0,
-            'ObservacionesCaja' => $data['observaciones_caja'] ?? '',
-            'Sync'              => $data['sync'] ?? 0,
-            'PrefijoDescripcion'=> $data['prefijo_descripcion'] ?? 0,
-            'IdSugar'           => $data['id_sugar'] ?? '',
-            'GiroPrincipal'     => $data['giro_principal'] ?? 0,
-            'Asesor'            => $data['asesor'] ?? '',
-            'Ubicacion'         => $data['ubicacion'] ?? '',
+            'IdGlobal'          => (int)($data['id_global'] ?? 0),
+            'RFC'               => substr(trim((string)($data['rfc'] ?? '')), 0, 14),
+            'Razon_Social'      => substr((string)($data['razon_social'] ?? ''), 0, 255),
+            'Calle'             => substr((string)($data['calle'] ?? ''), 0, 70),
+            'Exterior'          => substr((string)($data['exterior'] ?? ''), 0, 10),
+            'Interior'          => substr((string)($data['interior'] ?? ''), 0, 10),
+            'Colonia'           => substr((string)($data['colonia'] ?? ''), 0, 60),
+            'Cod_Postal'        => (int)($data['cod_postal'] ?? 0),
+            'Ciudad'            => substr((string)($data['ciudad'] ?? ''), 0, 4),
+            'Municipio'         => substr((string)($data['municipio'] ?? ''), 0, 30),
+            'Telefono1'         => substr((string)($data['telefono1'] ?? ''), 0, 15),
+            'Telfono2'          => substr((string)($data['telefono2'] ?? ''), 0, 15),   // typo real en la BD: "Telfono2"
+            'Telefono3'         => substr((string)($data['telefono3'] ?? ''), 0, 15),
+            'Fax'               => substr((string)($data['fax'] ?? ''), 0, 15),
+            'Vendedor'          => substr((string)($data['vendedor'] ?? ''), 0, 6),
+            'Documentos'        => substr((string)($data['documentos'] ?? ''), 0, 255),
+            'Dias_Pago'         => substr((string)($data['dias_pago'] ?? ''), 0, 6),
+            'Dias_Revision'     => substr((string)($data['dias_revision'] ?? ''), 0, 6),
+            'Condicion_Pago'    => substr((string)($data['condicion_pago'] ?? ''), 0, 4),
+            'Dias_Credito'      => (int)($data['dias_credito'] ?? 0),
+            'Limite_Credito'    => (float)($data['limite_credito'] ?? 0),
+            'OtorgoCreditO'     => (int)($data['otorgo_credito'] ?? 0),
+            'OtorgoCredito'     => (int)($data['otorgo_credito'] ?? 0),
+            'e_mail'            => (string)($data['e_mail'] ?? $data['email'] ?? ''),
+            'email'             => (string)($data['email'] ?? $data['e_mail'] ?? ''),
+            'Status'            => substr((string)($data['status'] ?? 'A'), 0, 1),
+            'Cta_Contable'      => substr((string)($data['cta_contable'] ?? ''), 0, 14),
+            'Fecha_Alta'        => $fechaAlta,
+            'Representante'     => substr((string)($data['representante'] ?? ''), 0, 60),
+            'Addenda'           => substr((string)($data['addenda'] ?? ''), 0, 15),
+            'IdRegIdTrib'       => substr((string)($data['id_reg_id_trib'] ?? ''), 0, 40),
+            'RegimenFiscal'     => substr((string)($data['regimen_fiscal'] ?? ''), 0, 3),
+            'Anticipos'         => substr((string)($data['anticipos'] ?? 'D'), 0, 1),
+            'CodigoContpaq'     => (int)($data['codigo_contpaq'] ?? 0),
+            'Clasificacion'     => (int)($data['clasificacion'] ?? 0),
+            'ModificarFPMPFac'  => (int)($data['modificar_fpmpfac'] ?? 0),
+            'Identificador'     => substr((string)($data['identificador'] ?? ''), 0, 10),
+            'IdOpcionBloqueo'   => (int)($data['id_opcion_bloqueo'] ?? 0),
+            'ObservacionesCaja' => substr((string)($data['observaciones_caja'] ?? ''), 0, 255),
+            'Sync'              => (int)($data['sync'] ?? 0),
+            'PrefijoDescripcion'=> (int)($data['prefijo_descripcion'] ?? 0),
+            'IdSugar'           => substr((string)($data['id_sugar'] ?? ''), 0, 36),
+            'GiroPrincipal'     => (int)($data['giro_principal'] ?? 0),
+            'Asesor'            => substr((string)($data['asesor'] ?? ''), 0, 6),
+            'Ubicacion'         => substr((string)($data['ubicacion'] ?? ''), 0, 3),
         ];
     }
 

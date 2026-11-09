@@ -188,7 +188,7 @@ class SyncClientesMaestro extends Command
                             );
 
                             // Mapeo específico para vendedores/asesores (por límite de caracteres del ERP)
-                            $codigoVendedorAsesor = (strtoupper($branch->name) === 'TAPATIA') ? 'EITSA' : strtoupper($branch->name);
+                            $codigoVendedorAsesor = $this->resolveCodigoVendedorAsesor($branch->name);
 
                             // Regla estricta para Asesor y Vendedor (igual que en ClientesController)
                             if (in_array('Asesor', $columnasReales)) {
@@ -219,51 +219,72 @@ class SyncClientesMaestro extends Command
     }
 
     /**
-     * Convierte de snake_case (maestro) a PascalCase (sucursal).
+     * Resuelve el código abreviado para Vendedor/Asesor respetando el límite de 6 caracteres del ERP.
+     */
+    private function resolveCodigoVendedorAsesor(string $branchName): string
+    {
+        $name = strtoupper(trim($branchName));
+        $map = [
+            'TAPATIA'     => 'EITSA',
+            'DIMEGSA'     => 'DIMEGS',
+            'VALLARTA'    => 'VALLAR',
+            'QUERETARO'   => 'QUERET',
+            'ILUMINACION' => 'ILU',
+        ];
+
+        return $map[$name] ?? substr($name, 0, 6);
+    }
+
+    /**
+     * Convierte de snake_case (maestro) a PascalCase (sucursal) protegiendo límites de caracteres.
      */
     private function toBranchFormat($data): array
     {
+        $fechaAlta = !empty($data->fecha_alta)
+            ? substr(trim((string)$data->fecha_alta), 0, 10)
+            : now()->toDateString();
+
         return [
-            'IdGlobal'          => $data->id_global,
-            'RFC'               => $data->rfc,
-            'Razon_Social'      => $data->razon_social,
-            'Calle'             => $data->calle,
-            'Exterior'          => $data->exterior,
-            'Interior'          => $data->interior,
-            'Colonia'           => $data->colonia,
-            'Cod_Postal'        => $data->cod_postal,
-            'Ciudad'            => $data->ciudad,
-            'Municipio'         => $data->municipio,
-            'Telefono1'         => $data->telefono1,
-            'Telefono2'         => $data->telefono2,
-            'Telefono3'         => $data->telefono3,
-            'Fax'               => $data->fax,
-            'Vendedor'          => $data->vendedor,
-            'Documentos'        => $data->documentos,
-            'Dias_Pago'         => $data->dias_pago,
-            'Dias_Revision'     => $data->dias_revision,
-            'Condicion_Pago'    => $data->condicion_pago,
-            'Dias_Credito'      => $data->dias_credito,
-            'Limite_Credito'    => $data->limite_credito,
-            'OtorgoCreditO'     => $data->otorgo_credito,
-            'Status'            => $data->status,
-            'Cta_Contable'      => $data->cta_contable,
-            'Fecha_Alta'        => $data->fecha_alta,
-            'Representante'     => $data->representante,
-            'Addenda'           => $data->addenda,
-            'IdRegIdTrib'       => $data->id_reg_id_trib,
-            'RegimenFiscal'     => $data->regimen_fiscal,
-            'Anticipos'         => $data->anticipos,
-            'CodigoContpaq'     => $data->codigo_contpaq,
-            'Clasificacion'     => $data->clasificacion,
-            'ModificarFPMPFac'  => $data->modificar_fpmpfac,
-            'Identificador'     => $data->identificador,
-            'IdOpcionBloqueo'   => $data->id_opcion_bloqueo,
-            'ObservacionesCaja' => $data->observaciones_caja,
-            'IdSugar'           => $data->id_sugar,
-            'GiroPrincipal'     => $data->giro_principal,
-            'Asesor'            => $data->asesor,
-            'Ubicacion'         => $data->ubicacion,
+            'IdGlobal'          => (int)($data->id_global ?? 0),
+            'RFC'               => substr(trim((string)($data->rfc ?? '')), 0, 14),
+            'Razon_Social'      => substr((string)($data->razon_social ?? ''), 0, 255),
+            'Calle'             => substr((string)($data->calle ?? ''), 0, 70),
+            'Exterior'          => substr((string)($data->exterior ?? ''), 0, 10),
+            'Interior'          => substr((string)($data->interior ?? ''), 0, 10),
+            'Colonia'           => substr((string)($data->colonia ?? ''), 0, 60),
+            'Cod_Postal'        => (int)($data->cod_postal ?? 0),
+            'Ciudad'            => substr((string)($data->ciudad ?? ''), 0, 4),
+            'Municipio'         => substr((string)($data->municipio ?? ''), 0, 30),
+            'Telefono1'         => substr((string)($data->telefono1 ?? ''), 0, 15),
+            'Telefono2'         => substr((string)($data->telefono2 ?? ''), 0, 15),
+            'Telefono3'         => substr((string)($data->telefono3 ?? ''), 0, 15),
+            'Fax'               => substr((string)($data->fax ?? ''), 0, 15),
+            'Vendedor'          => substr((string)($data->vendedor ?? ''), 0, 6),
+            'Documentos'        => substr((string)($data->documentos ?? ''), 0, 255),
+            'Dias_Pago'         => substr((string)($data->dias_pago ?? ''), 0, 6),
+            'Dias_Revision'     => substr((string)($data->dias_revision ?? ''), 0, 6),
+            'Condicion_Pago'    => substr((string)($data->condicion_pago ?? ''), 0, 4),
+            'Dias_Credito'      => (int)($data->dias_credito ?? 0),
+            'Limite_Credito'    => (float)($data->limite_credito ?? 0),
+            'OtorgoCreditO'     => (int)($data->otorgo_credito ?? 0),
+            'Status'            => substr((string)($data->status ?? 'A'), 0, 1),
+            'Cta_Contable'      => substr((string)($data->cta_contable ?? ''), 0, 14),
+            'Fecha_Alta'        => $fechaAlta,
+            'Representante'     => substr((string)($data->representante ?? ''), 0, 60),
+            'Addenda'           => substr((string)($data->addenda ?? ''), 0, 15),
+            'IdRegIdTrib'       => substr((string)($data->id_reg_id_trib ?? ''), 0, 40),
+            'RegimenFiscal'     => substr((string)($data->regimen_fiscal ?? ''), 0, 3),
+            'Anticipos'         => substr((string)($data->anticipos ?? 'D'), 0, 1),
+            'CodigoContpaq'     => (int)($data->codigo_contpaq ?? 0),
+            'Clasificacion'     => (int)($data->clasificacion ?? 0),
+            'ModificarFPMPFac'  => (int)($data->modificar_fpmpfac ?? 0),
+            'Identificador'     => substr((string)($data->identificador ?? ''), 0, 10),
+            'IdOpcionBloqueo'   => (int)($data->id_opcion_bloqueo ?? 0),
+            'ObservacionesCaja' => substr((string)($data->observaciones_caja ?? ''), 0, 255),
+            'IdSugar'           => substr((string)($data->id_sugar ?? ''), 0, 36),
+            'GiroPrincipal'     => (int)($data->giro_principal ?? 0),
+            'Asesor'            => substr((string)($data->asesor ?? ''), 0, 6),
+            'Ubicacion'         => substr((string)($data->ubicacion ?? ''), 0, 3),
         ];
     }
 }
