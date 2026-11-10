@@ -11,6 +11,7 @@ use App\Services\PowerSalesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
 
@@ -87,6 +88,7 @@ class ClientesController extends Controller
             'razon_social' => 'required|string|max:255',
             'status' => 'required|string|max:1',
         ]);
+        $this->validarCaracteresSucursal($request);
 
         $branches = $this->connectionManager->getActiveBranches();
 
@@ -332,6 +334,7 @@ class ClientesController extends Controller
             'status' => 'required|string|max:1',
             // RFC y razón social no se editan: se toman del cliente original (ver abajo)
         ]);
+        $this->validarCaracteresSucursal($request);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
         if (empty($cliente->id_global) || (int) $cliente->id_global === 0) {
@@ -729,6 +732,7 @@ class ClientesController extends Controller
     {
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
         $branch = Branch::findOrFail($branchId);
+        $this->validarCaracteresSucursal($request);
 
         // Conectar a la sucursal
         $conn = $this->connectionManager->connect($branch->code);
@@ -840,6 +844,44 @@ class ClientesController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Rechaza textos con caracteres que las sucursales no pueden guardar.
+     * Las tablas del ERP usan latin1 (Windows-1252): emojis y otros símbolos fuera de ese
+     * juego de caracteres hacen fallar el insert/update en las 4 sucursales (QA BUG-04 / RS06),
+     * mientras el maestro (utf8mb4) sí los acepta y el cliente quedaba a medias.
+     */
+    private function validarCaracteresSucursal(Request $request): void
+    {
+        $errores = [];
+
+        foreach ($request->except(['_token', '_method']) as $campo => $valor) {
+            if (!is_string($valor) || $valor === '') {
+                continue;
+            }
+            // Ida y vuelta a Windows-1252: lo que no exista en ese juego se pierde y ya no es igual
+            $idaVuelta = mb_convert_encoding(mb_convert_encoding($valor, 'Windows-1252', 'UTF-8'), 'UTF-8', 'Windows-1252');
+            if ($idaVuelta === $valor) {
+                continue;
+            }
+
+            $invalidos = [];
+            foreach (mb_str_split($valor) as $caracter) {
+                $vuelta = mb_convert_encoding(mb_convert_encoding($caracter, 'Windows-1252', 'UTF-8'), 'UTF-8', 'Windows-1252');
+                if ($vuelta !== $caracter) {
+                    $invalidos[$caracter] = true;
+                }
+            }
+
+            $nombre = str_replace('_', ' ', $campo);
+            $errores[$campo] = "El campo {$nombre} tiene caracteres que las sucursales no aceptan (por ejemplo emojis): "
+                . implode(' ', array_keys($invalidos)) . '. Quítalos e intenta de nuevo.';
+        }
+
+        if ($errores) {
+            throw ValidationException::withMessages($errores);
+        }
+    }
 
     /**
      * Busca un cliente que ya use el RFC o la razón social: primero en el maestro y,
