@@ -96,7 +96,8 @@ Route::post('/clientes/campos-sucursal',                   [ClientesController::
 Route::post('/clientes/sync',                              [ClientesController::class, 'sync'])->name('clientes.sync');
 Route::get('/clientes/sync/status',                        [ClientesController::class, 'syncStatus'])->name('clientes.sync.status');
 Route::get('/clientes/{rfc}/editar',                       [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
-Route::put('/clientes/{rfc}',                              [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '.+');
+// rfc sin "/": con '.+' esta ruta también atrapaba PUT /clientes/{rfc}/sucursal/{id} (404 en Editar por sucursal)
+Route::put('/clientes/{rfc}',                              [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '[^/]+');
 Route::delete('/clientes/{rfc}',                           [ClientesController::class, 'destroy'])->name('clientes.destroy')->where('rfc', '.+');
 Route::get('/clientes/{rfc}/estado',                       [ClientesController::class, 'estadoSucursales'])->name('clientes.estado')->where('rfc', '.+');
 Route::get('/clientes/{rfc}/sucursal/{branchId}',          [ClientesController::class, 'editSucursal'])->name('clientes.edit_sucursal')->where('rfc', '.+')->where('branchId', '[0-9]+');

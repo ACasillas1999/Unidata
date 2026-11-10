@@ -781,6 +781,15 @@ class ClientesController extends Controller
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
         $branch = Branch::findOrFail($branchId);
         $this->validarCaracteresSucursal($request);
+        // Largo máximo con los nombres de columna de la sucursal (DIR06 / BUG-10 en Editar por sucursal)
+        $request->validate(
+            array_map(fn(int $max) => "nullable|string|max:{$max}", self::LONGITUDES_CAMPOS_SUCURSAL),
+            $this->mensajesLongitud(),
+            array_combine(
+                array_keys(self::LONGITUDES_CAMPOS_SUCURSAL),
+                array_map(fn($c) => str_replace('_', ' ', $c), array_keys(self::LONGITUDES_CAMPOS_SUCURSAL))
+            )
+        );
 
         // Conectar a la sucursal
         $conn = $this->connectionManager->connect($branch->code);
@@ -918,6 +927,17 @@ class ClientesController extends Controller
         'id_reg_id_trib' => 'ID registro tributario', 'regimen_fiscal' => 'régimen fiscal',
         'identificador' => 'identificador', 'observaciones_caja' => 'observaciones de caja',
         'id_sugar' => 'ID Sugar', 'ubicacion' => 'país', 'fecha_alta' => 'fecha de alta', 'email' => 'correo electrónico',
+    ];
+
+    /** Mismos largos que LONGITUDES_CAMPOS, con los nombres de columna de la tabla clientes de sucursal. */
+    private const LONGITUDES_CAMPOS_SUCURSAL = [
+        'RFC' => 14, 'Razon_Social' => 255, 'Calle' => 70, 'Exterior' => 10, 'Interior' => 10,
+        'Colonia' => 60, 'Ciudad' => 4, 'Municipio' => 30, 'Telefono1' => 15, 'Telfono2' => 15,
+        'Telefono3' => 15, 'Fax' => 15, 'Vendedor' => 6, 'Documentos' => 255, 'Dias_Pago' => 6,
+        'Dias_Revision' => 6, 'Condicion_Pago' => 4, 'Status' => 1, 'Cta_Contable' => 14,
+        'Representante' => 60, 'Addenda' => 15, 'IdRegIdTrib' => 40, 'RegimenFiscal' => 3,
+        'Anticipos' => 1, 'Identificador' => 10, 'ObservacionesCaja' => 255, 'IdSugar' => 36,
+        'Asesor' => 6, 'Ubicacion' => 3,
     ];
 
     private function reglasLongitud(): array
