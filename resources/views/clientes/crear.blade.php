@@ -358,6 +358,8 @@ document.getElementById('form-crear-cliente').addEventListener('submit', async f
             window.renderUnidataSyncModal(data.sync_modal, () => {
                 window.location.href = data.redirect || "{{ route('clientes.index') }}";
             });
+        } else if (res.status === 409 && data && data.cliente_existente) {
+            mostrarClienteExistente(data.cliente_existente);
         } else if (!res.ok && res.status === 422 && data && data.errors) {
             const errList = Object.values(data.errors).flat().map(e => `<li>${e}</li>`).join('');
             Swal.fire({
@@ -389,6 +391,53 @@ document.getElementById('form-crear-cliente').addEventListener('submit', async f
         });
     }
 });
+
+// Escapa texto para insertarlo en HTML (la razón social puede traer < > & o comillas)
+function escapeHtml(texto) {
+    const div = document.createElement('div');
+    div.textContent = texto ?? '';
+    return div.innerHTML;
+}
+
+// Aviso cuando ya existe un cliente con el mismo RFC o la misma razón social.
+// "Cancelar" deja al usuario en el formulario con sus datos capturados.
+function mostrarClienteExistente(c) {
+    const porRfc = c.coincide.includes('rfc');
+    const porRazon = c.coincide.includes('razon_social');
+    const coincideEn = [porRfc ? 'RFC' : null, porRazon ? 'razón social' : null].filter(Boolean).join(' y ');
+
+    // Solo coincide la razón social: puede ser otra persona con el mismo nombre
+    const notaOtraPersona = (!porRfc && porRazon)
+        ? `<p style="margin:14px 0 0; font-size:12px; color:#fbbf24;">Si es <strong>otra persona o empresa</strong>, no se puede registrar con la misma razón social: las sucursales no lo permiten. Contacta al administrador.</p>`
+        : '';
+    const notaSinRfc = !c.edit_url
+        ? `<p style="margin:14px 0 0; font-size:12px; color:#fbbf24;">El cliente existente no tiene RFC, no se puede abrir para editar. Contacta al administrador.</p>`
+        : '';
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Ya existe un cliente con estos datos',
+        html: `<div style="text-align:left; font-size:13px;">
+                <p style="margin:0 0 6px;"><strong>RFC:</strong> ${escapeHtml(c.rfc || '(sin RFC)')}</p>
+                <p style="margin:0 0 6px;"><strong>Razón social:</strong> ${escapeHtml(c.razon_social)}</p>
+                <p style="margin:0 0 6px;"><strong>Coincide en:</strong> ${escapeHtml(coincideEn)}</p>
+                <p style="margin:0;"><strong>Encontrado en:</strong> ${escapeHtml(c.origen)}</p>
+                <p style="margin:14px 0 0; color:#cbd5e1;">Puedes revisarlo y actualizar sus datos. El RFC y la razón social no se pueden cambiar.</p>
+                ${notaOtraPersona}${notaSinRfc}
+               </div>`,
+        showConfirmButton: !!c.edit_url,
+        confirmButtonText: 'Ver / actualizar cliente',
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        background: '#0f172a',
+        color: '#fff',
+        confirmButtonColor: '#6366f1'
+    }).then(r => {
+        if (r.isConfirmed && c.edit_url) {
+            window.location.href = c.edit_url;
+        }
+    });
+}
 
 const ciudadesMap = @json($catalogs['ciudades']);
 const paisSelect = document.getElementById('pais-select');

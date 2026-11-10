@@ -71,8 +71,9 @@
                             </div>
                             @if($campos->where('campo','razon_social')->first()!== null)
                             <div style="grid-column: span 2;">
-                                <label class="modal-label">Razón Social *</label>
-                                <input type="text" name="razon_social" value="{{ old('razon_social', $cliente->razon_social) }}" {{ !($campos->where('campo','razon_social')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="255" class="modal-input" required>
+                                <label class="modal-label">Razón Social (no editable)</label>
+                                {{-- No editable: el servidor siempre conserva la razón social original (ClientesController::update) --}}
+                                <input type="text" value="{{ $cliente->razon_social }}" readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1" class="modal-input">
                             </div>
                             @endif
                             @if($campos->where('campo','status')->first()!== null)

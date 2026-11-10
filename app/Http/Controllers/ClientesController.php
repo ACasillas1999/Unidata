@@ -81,14 +81,7 @@ class ClientesController extends Controller
     {
         $rfc = strtoupper(trim($request->input('rfc', '')));
 
-        // 1. Detectar RFC duplicado ANTES de validar → ofrecer editar
-        $existente = ClienteMaestro::where('rfc', $rfc)->first();
-        if ($existente) {
-            return redirect()->route('clientes.edit', $rfc)
-                ->with('warning', "El RFC <strong>{$rfc}</strong> ya existe en el maestro. Puedes editarlo aquí y los cambios se propagarán a todas las sucursales.");
-        }
-
-        // 2. Validación básica
+        // 1. Validación básica
         $request->validate([
             'rfc' => 'required|string|max:14',
             'razon_social' => 'required|string|max:255',
@@ -96,6 +89,15 @@ class ClientesController extends Controller
         ]);
 
         $branches = $this->connectionManager->getActiveBranches();
+
+        // 1b. Cliente ya existente (mismo RFC o misma razón social) → avisar y ofrecer revisarlo.
+        // Se revisa ANTES de crear el maestro: las sucursales tienen índice único KRazon_Social y
+        // sin esta revisión el alta quedaba solo en el maestro reportando éxito (QA BUG-02 / D06).
+        $razonSocial = trim((string) $request->input('razon_social'));
+        $duplicado = $this->buscarClienteExistente($rfc, $razonSocial, $branches);
+        if ($duplicado) {
+            return $this->respuestaClienteExistente($request, $duplicado);
+        }
 
         // 2. Calcular siguiente IdGlobal de forma segura
         $maxGlobal = 0;
@@ -327,9 +329,8 @@ class ClientesController extends Controller
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
 
         $request->validate([
-            'razon_social' => 'required|string|max:255',
             'status' => 'required|string|max:1',
-            // RFC no se puede cambiar (es la llave de búsqueda)
+            // RFC y razón social no se editan: se toman del cliente original (ver abajo)
         ]);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
@@ -353,6 +354,9 @@ class ClientesController extends Controller
         // El RFC nunca cambia en edición — preservar el valor original
         // (el campo es readonly en el form, el navegador no lo envía)
         $dataMaestro['rfc'] = $cliente->rfc;
+        // La razón social tampoco cambia: es dato fiscal y en sucursales tiene índice único
+        // (KRazon_Social). Se fuerza aquí aunque el formulario la mande o la oculte.
+        $dataMaestro['razon_social'] = $cliente->razon_social;
 
         // 1. Actualizar maestro
         $cliente->update($dataMaestro);
@@ -836,6 +840,82 @@ class ClientesController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Busca un cliente que ya use el RFC o la razón social: primero en el maestro y,
+     * si no está ahí, en cada sucursal (puede haber clientes que no se han pasado al maestro).
+     * Devuelve null si no hay coincidencia.
+     *
+     * @return array{rfc: string, razon_social: string, coincide: string[], origen: string}|null
+     */
+    private function buscarClienteExistente(string $rfc, string $razonSocial, $branches): ?array
+    {
+        $armar = function (string $rfcEncontrado, string $razonEncontrada, string $origen) use ($rfc, $razonSocial): array {
+            $coincide = [];
+            if ($rfcEncontrado !== '' && strtoupper(trim($rfcEncontrado)) === $rfc) {
+                $coincide[] = 'rfc';
+            }
+            // Mismo criterio que MySQL (collation *_ci): sin distinguir mayúsculas/minúsculas
+            if (mb_strtoupper(trim($razonEncontrada)) === mb_strtoupper($razonSocial)) {
+                $coincide[] = 'razon_social';
+            }
+
+            return [
+                'rfc' => trim($rfcEncontrado),
+                'razon_social' => $razonEncontrada,
+                'coincide' => $coincide,
+                'origen' => $origen,
+            ];
+        };
+
+        // Maestro: se prefiere la coincidencia por RFC (es seguro que es el mismo contribuyente)
+        $enMaestro = ClienteMaestro::where('rfc', $rfc)->first(['rfc', 'razon_social'])
+            ?? ClienteMaestro::where('razon_social', $razonSocial)->first(['rfc', 'razon_social']);
+        if ($enMaestro) {
+            return $armar((string) $enMaestro->rfc, (string) $enMaestro->razon_social, 'maestro');
+        }
+
+        foreach ($branches as $branch) {
+            try {
+                $tabla = fn() => $this->connectionManager->connect($branch->code)->table('clientes');
+                $fila = $tabla()->where('RFC', $rfc)->first(['RFC', 'Razon_Social'])
+                    ?? $tabla()->where('Razon_Social', $razonSocial)->first(['RFC', 'Razon_Social']);
+            } catch (Throwable) {
+                continue; // sucursal inaccesible: no bloquea la revisión de las demás
+            }
+            if ($fila) {
+                return $armar((string) ($fila->RFC ?? ''), (string) ($fila->Razon_Social ?? ''), "sucursal {$branch->name}");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Respuesta cuando el cliente ya existe. Por AJAX (formulario de alta) devuelve 409 con los
+     * datos del cliente para que el usuario lo revise; sin AJAX conserva el comportamiento anterior.
+     */
+    private function respuestaClienteExistente(Request $request, array $duplicado)
+    {
+        // Solo se puede abrir Editar si el cliente existente tiene RFC (la ruta es por RFC)
+        $editUrl = $duplicado['rfc'] !== '' ? route('clientes.edit', $duplicado['rfc']) : null;
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'cliente_existente' => $duplicado + ['edit_url' => $editUrl],
+            ], 409);
+        }
+
+        if ($editUrl && in_array('rfc', $duplicado['coincide'], true)) {
+            return redirect($editUrl)
+                ->with('warning', "El RFC <strong>{$duplicado['rfc']}</strong> ya existe. Puedes editarlo aquí y los cambios se propagarán a todas las sucursales.");
+        }
+
+        return back()->withInput()->withErrors([
+            'razon_social' => "La razón social ya está registrada con el RFC {$duplicado['rfc']} ({$duplicado['origen']}).",
+        ]);
+    }
 
     /**
      * Prepara el array de datos en snake_case a partir del request (para maestro).
