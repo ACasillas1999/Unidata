@@ -82,8 +82,9 @@
                     @endif
                     @if($campos->where('campo','fecha_alta')->first()!== null)
                     <div>
-                        <label class="modal-label">Fecha de Alta</label>
-                        <input type="date" name="fecha_alta" value="{{ old('fecha_alta', now()->toDateString()) }}" class="modal-input">
+                        <label class="modal-label">Fecha de Alta (hoy)</label>
+                        {{-- Cliente nuevo: siempre la fecha de hoy; el servidor la fija aunque llegue otra (BUG-09) --}}
+                        <input type="date" name="fecha_alta" value="{{ now()->toDateString() }}" readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1" class="modal-input">
                     </div>
                     @endif
                     @if($campos->where('campo','giro_principal')->first()!== null)

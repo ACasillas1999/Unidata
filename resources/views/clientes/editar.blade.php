@@ -99,7 +99,9 @@
                             </div>
                             @endif
                             @if($campos->where('campo','fecha_alta')->first()!== null)
-                            <div><label class="modal-label">Fecha de Alta</label><input type="date" name="fecha_alta" value="{{ old('fecha_alta', $cliente->fecha_alta?->format('Y-m-d')) }}" class="modal-input"></div>
+                            <div><label class="modal-label">Fecha de Alta</label>
+                                {{-- Se respeta la más antigua: no se permite una fecha posterior a la registrada (BUG-09) --}}
+                                <input type="date" name="fecha_alta" value="{{ old('fecha_alta', $cliente->fecha_alta?->format('Y-m-d')) }}" min="{{ min('1970-01-01', $cliente->fecha_alta?->format('Y-m-d') ?? '1970-01-01') }}" max="{{ $cliente->fecha_alta?->format('Y-m-d') ?? now()->toDateString() }}" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','giro_principal')->first()!== null)
                             <div>

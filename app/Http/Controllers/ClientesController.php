@@ -124,6 +124,9 @@ class ClientesController extends Controller
 
         // 3. Preparar datos (snake_case para maestro)
         $dataMaestro = $this->prepareData($request, $nuevoIdGlobal);
+        // Cliente totalmente nuevo: la fecha de alta es la de hoy, no la que venga del formulario (QA BUG-09).
+        // (Un cliente que ya existe no llega aquí: lo detiene la revisión de cliente existente.)
+        $dataMaestro['fecha_alta'] = now()->toDateString();
 
         // 4. Insertar en maestro dentro de transacción
         $maestro = ClienteMaestro::create($dataMaestro);
@@ -337,6 +340,7 @@ class ClientesController extends Controller
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
         $this->validarNumeros($request);
+        $this->validarFechaAltaEdicion($request, $cliente);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
         if (empty($cliente->id_global) || (int) $cliente->id_global === 0) {
@@ -355,6 +359,9 @@ class ClientesController extends Controller
         }
 
         $dataMaestro = $this->prepareData($request, $cliente->id_global);
+        // Cliente existente: se respeta la fecha de alta más antigua (QA BUG-09)
+        $dataMaestro['fecha_alta'] = $this->fechaMasAntigua([$cliente->fecha_alta, $request->input('fecha_alta')])
+            ?? now()->toDateString();
 
         // El RFC nunca cambia en edición — preservar el valor original
         // (el campo es readonly en el form, el navegador no lo envía)
@@ -888,6 +895,58 @@ class ClientesController extends Controller
         ];
     }
 
+    /** Fecha mínima aceptada como fecha de alta (evita capturas absurdas como 1900). */
+    private const FECHA_ALTA_MINIMA = '1970-01-01';
+
+    /**
+     * En Editar, la fecha de alta debe ser real, no futura ni anterior a FECHA_ALTA_MINIMA,
+     * y no puede ser posterior a la ya registrada: se respeta la más antigua (QA BUG-09).
+     */
+    private function validarFechaAltaEdicion(Request $request, ClienteMaestro $cliente): void
+    {
+        $registrada = $this->fechaMasAntigua([$cliente->fecha_alta]);
+
+        // Si no se cambió la fecha, no se valida: un cliente viejo con fecha rara (ej. 1900)
+        // debe poder editarse en sus otros campos.
+        if ($registrada !== null && $request->input('fecha_alta') === $registrada) {
+            return;
+        }
+
+        $request->validate([
+            'fecha_alta' => 'nullable|date_format:Y-m-d|before_or_equal:today|after_or_equal:' . self::FECHA_ALTA_MINIMA,
+        ], [
+            'date_format' => 'La fecha de alta no es una fecha válida.',
+            'before_or_equal' => 'La fecha de alta no puede ser futura.',
+            'after_or_equal' => 'La fecha de alta no puede ser anterior a ' . self::FECHA_ALTA_MINIMA . '.',
+        ]);
+
+        $nueva = $this->fechaMasAntigua([$request->input('fecha_alta')]);
+        if ($registrada && $nueva && $nueva > $registrada) {
+            throw ValidationException::withMessages([
+                'fecha_alta' => "La fecha de alta no puede ser posterior a la ya registrada ({$registrada}); se respeta la más antigua.",
+            ]);
+        }
+    }
+
+    /**
+     * Devuelve la fecha (Y-m-d) más antigua de la lista, ignorando vacías, '0000-00-00' e inválidas.
+     */
+    private function fechaMasAntigua(array $fechas): ?string
+    {
+        $validas = [];
+        foreach ($fechas as $fecha) {
+            if ($fecha instanceof \DateTimeInterface) {
+                $fecha = $fecha->format('Y-m-d');
+            }
+            $fecha = substr(trim((string) $fecha), 0, 10);
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fecha, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+                $validas[] = $fecha;
+            }
+        }
+
+        return $validas ? min($validas) : null; // en formato Y-m-d el orden de texto = orden de fecha
+    }
+
     /**
      * Rangos de los campos numéricos (QA BUG-07): ninguno acepta negativos y, salvo el
      * límite de crédito (dinero, hasta 2 decimales), ninguno acepta decimales.
@@ -1118,6 +1177,16 @@ class ClientesController extends Controller
                 }
                 $nuevoIdGlobal = $maxGlobal + 1;
 
+                // Fecha de alta: la más antigua en que aparece en cualquier sucursal (QA BUG-09)
+                $fechasSucursales = [$row->Fecha_Alta ?? null];
+                foreach ($branches as $b) {
+                    try {
+                        $fechasSucursales[] = $this->connectionManager->connect($b->code)
+                            ->table('clientes')->where('RFC', $rfc)->min('Fecha_Alta');
+                    } catch (Throwable) {
+                    }
+                }
+
                 // Mapear campos del branch al maestro (PascalCase → snake_case)
                 return ClienteMaestro::create([
                     'id_global' => (int) ($row->IdGlobal ?? $nuevoIdGlobal),
@@ -1145,7 +1214,7 @@ class ClientesController extends Controller
                     'saldo_actual' => (float) ($row->Saldo_Actual ?? 0),
                     'status' => $row->Status ?? 'A',
                     'cta_contable' => $row->Cta_Contable ?? '',
-                    'fecha_alta' => $row->Fecha_Alta ?? now()->toDateString(),
+                    'fecha_alta' => $this->fechaMasAntigua($fechasSucursales) ?? now()->toDateString(),
                     'representante' => $row->Representante ?? '',
                     'addenda' => $row->Addenda ?? '',
                     'id_reg_id_trib' => $row->IdRegIdTrib ?? '',
