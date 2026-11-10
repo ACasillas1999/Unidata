@@ -254,7 +254,12 @@
                     <div><label class="modal-label">Código Contpaq</label><input type="number" min="0" step="1" name="codigo_contpaq" value="{{ old('codigo_contpaq', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','modificar_fpmpfac')->first() !== null)
-                    <div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Modificar FPMPFac</label>
+                        <select name="modificar_fpmpfac" class="modal-input">
+                            <option value="0" {{ (string) old('modificar_fpmpfac', '0') === '0' ? 'selected' : '' }}>0 - No</option>
+                            <option value="1" {{ (string) old('modificar_fpmpfac') === '1' ? 'selected' : '' }}>1 - Sí</option>
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','id_opcion_bloqueo')->first() !== null)
                     <div>
@@ -283,7 +288,12 @@
                     </div>
                     @endif
                     @if($campos->where('campo','sync')->first() !== null)
-                    <div><label class="modal-label">Sync</label><input type="number" name="sync" value="{{ old('sync', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Sync</label>
+                        <select name="sync" class="modal-input">
+                            <option value="0" {{ (string) old('sync', '0') === '0' ? 'selected' : '' }}>0 - No</option>
+                            <option value="1" {{ (string) old('sync') === '1' ? 'selected' : '' }}>1 - Sí</option>
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','prefijo_descripcion')->first() !== null)
                     <div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', 0) }}" class="modal-input"></div>

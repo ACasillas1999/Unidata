@@ -901,8 +901,12 @@ class ClientesController extends Controller
             'dias_credito' => 'nullable|integer|min:0|max:32767',          // smallint en BD
             'limite_credito' => 'nullable|numeric|min:0|decimal:0,2',
             'codigo_contpaq' => 'nullable|integer|min:0|max:2147483647',   // int en BD
+            // Banderas sí/no (QA BUG-12): solo 0 o 1, se capturan con desplegable
+            'sync' => 'nullable|in:0,1',
+            'modificar_fpmpfac' => 'nullable|in:0,1',
         ], [
             'cod_postal.digits_between' => 'El código postal debe tener solo dígitos (máximo 5), sin signos ni puntos.',
+            'in' => 'El campo :attribute solo puede ser 0 o 1.',
             'integer' => 'El campo :attribute debe ser un número entero, sin decimales.',
             'numeric' => 'El campo :attribute debe ser un número.',
             'decimal' => 'El campo :attribute admite máximo 2 decimales.',
@@ -913,6 +917,8 @@ class ClientesController extends Controller
             'dias_credito' => 'días de crédito',
             'limite_credito' => 'límite de crédito',
             'codigo_contpaq' => 'código Contpaq',
+            'sync' => 'Sync',
+            'modificar_fpmpfac' => 'Modificar FPMPFac',
         ]);
     }
 
@@ -1071,11 +1077,12 @@ class ClientesController extends Controller
             'anticipos' => (string) ($input['anticipos'] ?? 'D'),
             'codigo_contpaq' => (int) ($input['codigo_contpaq'] ?? 0),
             'clasificacion' => (int) ($input['clasificacion'] ?? 0),
-            'modificar_fpmpfac' => $request->boolean('modificar_fpmpfac') ? 1 : 0,
+            // Banderas 0/1 (validadas en validarNumeros): se guarda lo que se eligió (QA BUG-12)
+            'modificar_fpmpfac' => (int) ($input['modificar_fpmpfac'] ?? 0) === 1 ? 1 : 0,
             'identificador' => (string) ($input['identificador'] ?? ''),
             'id_opcion_bloqueo' => (int) ($input['id_opcion_bloqueo'] ?? 0),
             'observaciones_caja' => (string) ($input['observaciones_caja'] ?? ''),
-            'sync' => 0,
+            'sync' => (int) ($input['sync'] ?? 0) === 1 ? 1 : 0,
             'prefijo_descripcion' => 0,
             'id_sugar' => (string) ($input['id_sugar'] ?? ''),
             'giro_principal' => (int) ($input['giro_principal'] ?? 0),
