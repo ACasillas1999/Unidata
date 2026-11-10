@@ -69,8 +69,8 @@
                     @endif
                     @if($campos->where('campo','regimen_fiscal')->first()!== null)
                     <div>
-                        <label class="modal-label">Régimen Fiscal</label>
-                        <select name="regimen_fiscal" class="modal-input">
+                        <label class="modal-label">Régimen Fiscal * <span style="font-weight:400; opacity:0.7;">(CFDI 4.0)</span></label>
+                        <select name="regimen_fiscal" class="modal-input" required>
                             <option value="">Seleccione Régimen Fiscal...</option>
                             @foreach($catalogs['regimenes'] as $key => $desc)
                                 <option value="{{ $key }}" {{ old('regimen_fiscal') == $key ? 'selected' : '' }}>
@@ -127,7 +127,7 @@
                     <div><label class="modal-label">Colonia</label><input type="text" name="colonia" value="{{ old('colonia') }}" maxlength="60" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','cod_postal')->first()!== null)
-                    <div><label class="modal-label">Código Postal</label><input type="number" min="0" max="99999" step="1" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input"></div>
+                    <div><label class="modal-label">Código Postal * <span style="font-weight:400; opacity:0.7;">(CFDI 4.0)</span></label><input type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" title="5 dígitos, por ejemplo 04100" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input" required></div>
                     @endif
                     @if($campos->where('campo','ciudad')->first()!== null)
                     <div>

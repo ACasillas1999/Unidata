@@ -90,6 +90,7 @@ class ClientesController extends Controller
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
         $this->validarNumeros($request);
+        $this->validarDatosCfdi($request);
 
         $branches = $this->connectionManager->getActiveBranches();
 
@@ -893,6 +894,27 @@ class ClientesController extends Controller
             'required' => 'El campo :attribute es obligatorio.',
             'string' => 'El campo :attribute debe ser texto.',
         ];
+    }
+
+    /**
+     * Datos mínimos para poder facturar con CFDI 4.0: el SAT exige el régimen fiscal y el
+     * código postal del domicilio fiscal del receptor. Solo en alta: clientes viejos sin estos
+     * datos deben poder seguir editándose. (QA A03: con solo RFC y razón social se creaba un
+     * cliente que no se podía facturar.)
+     */
+    private function validarDatosCfdi(Request $request): void
+    {
+        $regimenes = array_keys(config('client_catalogs.regimenes', []));
+
+        $request->validate([
+            'regimen_fiscal' => 'required|in:' . implode(',', $regimenes),
+            'cod_postal' => 'required|digits:5',
+        ], [
+            'regimen_fiscal.required' => 'El régimen fiscal es obligatorio (lo exige CFDI 4.0 para facturar).',
+            'regimen_fiscal.in' => 'El régimen fiscal no está en el catálogo del SAT.',
+            'cod_postal.required' => 'El código postal es obligatorio (lo exige CFDI 4.0 para facturar).',
+            'cod_postal.digits' => 'El código postal debe tener exactamente 5 dígitos.',
+        ]);
     }
 
     /** Fecha mínima aceptada como fecha de alta (evita capturas absurdas como 1900). */
