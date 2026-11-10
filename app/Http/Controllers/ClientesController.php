@@ -83,10 +83,17 @@ class ClientesController extends Controller
         $rfc = strtoupper(trim($request->input('rfc', '')));
 
         // 1. Validación básica
+        $regexTelefono = 'regex:/^[+]?[0-9\s\-().]{7,15}$/';
         $request->validate(array_merge($this->reglasLongitud(), [
             'rfc' => 'required|string|max:14',
             'razon_social' => 'required|string|max:255',
             'status' => 'required|string|max:1',
+            'fecha_alta' => 'nullable|date',
+            'email' => 'nullable|string|max:255|email:filter',
+            'telefono1' => ['nullable', 'string', 'max:15', $regexTelefono],
+            'telefono2' => ['nullable', 'string', 'max:15', $regexTelefono],
+            'telefono3' => ['nullable', 'string', 'max:15', $regexTelefono],
+            'fax' => ['nullable', 'string', 'max:15', $regexTelefono],
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
 
@@ -243,10 +250,33 @@ class ClientesController extends Controller
             $detalleError .= " | [{$err['sucursal']}]: {$err['message']}";
         }
 
+        // Si falló en absolutamente todas las sucursales, revertir el registro en el maestro
+        // para no dejar al cliente huérfano y permitir reintentar el alta (QA BUG-01).
+        if ($total > 0 && $exitosos === 0) {
+            $maestro->delete();
+
+            $msgError = "No se pudo sincronizar el cliente en ninguna sucursal. Se canceló el alta en el maestro para permitir reintentar." . ($detalleError ? " Detalle:{$detalleError}" : '');
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return $this->jsonUtf8Response([
+                    'success' => false,
+                    'message' => $msgError,
+                ], 500);
+            }
+
+            return back()->withInput()->withErrors([
+                'rfc' => $msgError,
+            ]);
+        }
+
+        $mensajeResultado = ($exitosos === $total)
+            ? 'Terminó con éxito'
+            : "Cliente creado en {$exitosos}/{$total} sucursales";
+
         if ($request->ajax() || $request->wantsJson()) {
             return $this->jsonUtf8Response([
                 'success' => true,
-                'message' => 'Terminó con éxito',
+                'message' => $mensajeResultado,
                 'sync_modal' => [
                     'accion' => 'crear',
                     'id_global' => $nuevoIdGlobal,
@@ -261,8 +291,9 @@ class ClientesController extends Controller
             ]);
         }
 
+        $flashType = ($exitosos === $total) ? 'success' : 'warning';
         return redirect()->route('clientes.index')
-            ->with('success', "Cliente #{$nuevoIdGlobal} creado exitosamente en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
+            ->with($flashType, "Cliente #{$nuevoIdGlobal} creado exitosamente en {$exitosos}/{$total} sucursales." . ($detalleError ? " ERRORES:{$detalleError}" : ''))
             ->with('resultados', $this->cleanUtf8($resultados))
             ->with('sync_modal', $this->cleanUtf8([
                 'accion' => 'crear',
@@ -330,8 +361,15 @@ class ClientesController extends Controller
     {
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
 
+        $regexTelefono = 'regex:/^[+]?[0-9\s\-().]{7,15}$/';
         $request->validate(array_merge($this->reglasLongitud(), [
             'status' => 'required|string|max:1',
+            'fecha_alta' => 'nullable|date',
+            'email' => 'nullable|string|max:255|email:filter',
+            'telefono1' => ['nullable', 'string', 'max:15', $regexTelefono],
+            'telefono2' => ['nullable', 'string', 'max:15', $regexTelefono],
+            'telefono3' => ['nullable', 'string', 'max:15', $regexTelefono],
+            'fax' => ['nullable', 'string', 'max:15', $regexTelefono],
             // RFC y razón social no se editan: se toman del cliente original (ver abajo)
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
@@ -869,7 +907,7 @@ class ClientesController extends Controller
         'cta_contable' => 'cuenta contable', 'representante' => 'representante', 'addenda' => 'addenda',
         'id_reg_id_trib' => 'ID registro tributario', 'regimen_fiscal' => 'régimen fiscal',
         'identificador' => 'identificador', 'observaciones_caja' => 'observaciones de caja',
-        'id_sugar' => 'ID Sugar', 'ubicacion' => 'país',
+        'id_sugar' => 'ID Sugar', 'ubicacion' => 'país', 'fecha_alta' => 'fecha de alta', 'email' => 'correo electrónico',
     ];
 
     private function reglasLongitud(): array
@@ -883,6 +921,9 @@ class ClientesController extends Controller
             'max' => 'El campo :attribute admite máximo :max caracteres.',
             'required' => 'El campo :attribute es obligatorio.',
             'string' => 'El campo :attribute debe ser texto.',
+            'date' => 'El campo :attribute no es una fecha válida.',
+            'email' => 'El campo :attribute no tiene un formato válido (ejemplo: usuario@correo.com).',
+            'regex' => 'El campo :attribute solo puede contener números, espacios, guiones y paréntesis (mínimo 7 dígitos).',
         ];
     }
 

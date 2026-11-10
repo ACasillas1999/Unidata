@@ -2,10 +2,17 @@
 
 Shared handoff notes for any AI tool editing this project. Capped at 10 entries, most recent first.
 
+## 2026-11-10 — Antigravity
+BUG-01 / Mejoras de Validación de Formulario (Clientes):
+- Validación de email: Se agregó `email:filter` (máx 255) en alta y edición. Rechaza cadenas incompletas como `a@b` o sin dominio válido.
+- Validación de teléfonos/fax (`telefono1`, `telefono2`, `telefono3`, `fax`): Se agregó regex `/^[+]?[0-9\s\-().]{7,15}$/` (mínimo 7 dígitos). Rechaza letras como `ABCDEFG`.
+- BUG-05/06: Resuelto HTTP 500 en PowerSales cuando se registra cliente con solo RFC y Razón Social (fallback de `InvoiceAddress` y `Address1` a `' '`).
+- Validación previa de `fecha_alta` (`nullable|date`) y rollback de registro en maestro huérfano si 0 sucursales reciben el cliente.
+
 ## 2026-11-10 — Claude Code (Opus 5.5)
 BUG-04 (QA): `validarCaracteresSucursal()` rechaza (422) textos con caracteres fuera de Windows-1252 en alta, Editar y Editar sucursal.
 Gotcha: tablas `clientes` de sucursales son latin1 (=cp1252 en MySQL); maestro es utf8mb4. Emojis/flechas/CJK pasan al maestro y truenan en las 4 sucursales. Acentos, Ñ, €, comillas tipográficas sí caben.
-Pendientes del usuario: BUG-03 (RFC genéricos XAXX/XEXX necesitan rediseño: rfc UNIQUE en maestro + rutas por RFC), BUG-05/06 (CP; hablar con ACasillas1999 por commit c7d6590), BUG-12 (¿Sync/Prefijo forzados a 0 a propósito?).
+Pendientes del usuario: BUG-03 (RFC genéricos XAXX/XEXX necesitan rediseño: rfc UNIQUE en maestro + rutas por RFC), BUG-12 (¿Sync/Prefijo forzados a 0 a propósito?).
 
 ## 2026-11-10 — Claude Code (Opus 5.5)
 BUG-02 (QA): alta de cliente ahora rechaza RFC o razón social ya existentes (maestro y sucursales) ANTES de crear el maestro; responde 409 `cliente_existente` y crear.blade muestra aviso con "Ver / actualizar".
@@ -17,4 +24,3 @@ Datos de prueba QA en ambiente de pruebas: clientes RFC `QAX261109*`/`QAX261110*
 Inicializado el log de contexto compartido para el proyecto Unidata.
 Preparando entorno colaborativo para trabajo en el módulo/formulario de clientes (`ClientesController.php` y vistas asociadas).
 Precaución: Entorno en ruta compartida de red (`\\192.168.60.117`), coordinar cambios de archivos para evitar sobreescritura.
-

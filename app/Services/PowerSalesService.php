@@ -743,9 +743,9 @@ class PowerSalesService
                 }
             }
 
-            // En InvoiceAddress se envía únicamente el Código Postal
+            // En InvoiceAddress se envía únicamente el Código Postal (con fallback a ' ' si no hay CP para evitar error 500 en PowerSales por Column 'InvoiceAddress' cannot be null)
             $cp = trim((string)($branchData['Cod_Postal'] ?? $branchData['cod_postal'] ?? ''));
-            $payload['InvoiceAddress'] = ($cp !== '' && $cp !== '0') ? $cp : '';
+            $payload['InvoiceAddress'] = ($cp !== '' && $cp !== '0') ? $cp : ' ';
 
             if (empty($payload['Address2'])) {
                 $municipio = $branchData['Municipio'] ?? $branchData['municipio'] ?? '';
@@ -846,11 +846,13 @@ class PowerSalesService
                 'ProductListsId'         => 1,
                 'RouteId'                => 1,
                 'RouteNumber'            => 1,
+                'Address1'               => ' ',
                 'Address2'               => ' ',
                 'Cellphone'              => ' ',
                 'LeftStreet'             => ' ',
                 'RightStreet'            => ' ',
                 'UniqueId'               => ' ',
+                'InvoiceAddress'         => ' ',
                 'AccountBalance'         => 0.0,
                 'CreditLimit'            => 0.0,
                 'Latitude'               => 0.0,
