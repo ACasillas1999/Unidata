@@ -2,6 +2,12 @@
 
 Shared handoff notes for any AI tool editing this project. Capped at 10 entries, most recent first.
 
+## 2026-11-10 — Claude Code (Opus 5.5)
+Integrada rama `bug-07` en main: BUG-07 (rangos numéricos), BUG-12 (Sync/FPMPFac desplegable 0/1, ya no forzado a 0), BUG-09 (fecha alta = hoy en alta; en edición no posterior a la registrada; importar toma la más antigua de las sucursales), régimen fiscal + CP obligatorios por CFDI 4.0.
+Decisiones del usuario: CFDI solo se exige en ALTA (clientes viejos sin régimen/CP deben poder editarse). Fecha mínima 1970 (`FECHA_ALTA_MINIMA`), elegida por Claude, confirmar.
+Pendiente: BUG-06 (cod_postal es INTEGER en maestro y sucursales: 04100 se guarda 4100), BUG-03 (RFC genéricos), BUG-11, recorte por bytes en toBranchFormat (`substr` → `mb_substr`), ¿Prefijo Descripción también 0/1?
+Datos QA nuevos: QAX261110V01 (2863) y V02 (2864).
+
 ## 2026-11-10 — Antigravity
 BUG-01 / Mejoras de Validación de Formulario (Clientes):
 - Validación de email: Se agregó `email:filter` (máx 255) en alta y edición. Rechaza cadenas incompletas como `a@b` o sin dominio válido.
