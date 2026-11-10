@@ -89,6 +89,7 @@ class ClientesController extends Controller
             'status' => 'required|string|max:1',
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
+        $this->validarNumeros($request);
 
         $branches = $this->connectionManager->getActiveBranches();
 
@@ -335,6 +336,7 @@ class ClientesController extends Controller
             // RFC y razón social no se editan: se toman del cliente original (ver abajo)
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
+        $this->validarNumeros($request);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
         if (empty($cliente->id_global) || (int) $cliente->id_global === 0) {
@@ -884,6 +886,34 @@ class ClientesController extends Controller
             'required' => 'El campo :attribute es obligatorio.',
             'string' => 'El campo :attribute debe ser texto.',
         ];
+    }
+
+    /**
+     * Rangos de los campos numéricos (QA BUG-07): ninguno acepta negativos y, salvo el
+     * límite de crédito (dinero, hasta 2 decimales), ninguno acepta decimales.
+     * Antes "3.7" en días de crédito se guardaba como 3 sin aviso por el (int) de prepareData.
+     * El 0 inicial del CP (04100) es otro tema: BUG-06.
+     */
+    private function validarNumeros(Request $request): void
+    {
+        $request->validate([
+            'cod_postal' => 'nullable|digits_between:1,5',
+            'dias_credito' => 'nullable|integer|min:0|max:32767',          // smallint en BD
+            'limite_credito' => 'nullable|numeric|min:0|decimal:0,2',
+            'codigo_contpaq' => 'nullable|integer|min:0|max:2147483647',   // int en BD
+        ], [
+            'cod_postal.digits_between' => 'El código postal debe tener solo dígitos (máximo 5), sin signos ni puntos.',
+            'integer' => 'El campo :attribute debe ser un número entero, sin decimales.',
+            'numeric' => 'El campo :attribute debe ser un número.',
+            'decimal' => 'El campo :attribute admite máximo 2 decimales.',
+            'min' => 'El campo :attribute no puede ser negativo.',
+            'max' => 'El campo :attribute admite como máximo :max.',
+        ], [
+            'cod_postal' => 'código postal',
+            'dias_credito' => 'días de crédito',
+            'limite_credito' => 'límite de crédito',
+            'codigo_contpaq' => 'código Contpaq',
+        ]);
     }
 
     /**

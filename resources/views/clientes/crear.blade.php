@@ -126,7 +126,7 @@
                     <div><label class="modal-label">Colonia</label><input type="text" name="colonia" value="{{ old('colonia') }}" maxlength="60" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','cod_postal')->first()!== null)
-                    <div><label class="modal-label">Código Postal</label><input type="number" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input"></div>
+                    <div><label class="modal-label">Código Postal</label><input type="number" min="0" max="99999" step="1" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','ciudad')->first()!== null)
                     <div>
@@ -227,10 +227,10 @@
                     </div>
                     @endif
                     @if($campos->where('campo','dias_credito')->first() !== null)
-                    <div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Días de Crédito</label><input type="number" min="0" step="1" name="dias_credito" value="{{ old('dias_credito', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','limite_credito')->first() !== null)
-                    <div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Límite de Crédito</label><input type="number" min="0" step="0.01" name="limite_credito" value="{{ old('limite_credito', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','cta_contable')->first() !== null)
                     <div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable') }}" maxlength="14" class="modal-input"></div>
@@ -251,7 +251,7 @@
                     <div style="grid-column: span 2;"><label class="modal-label">Documentos</label><input type="text" name="documentos" value="{{ old('documentos') }}" maxlength="255" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','codigo_contpaq')->first() !== null)
-                    <div><label class="modal-label">Código Contpaq</label><input type="number" name="codigo_contpaq" value="{{ old('codigo_contpaq', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Código Contpaq</label><input type="number" min="0" step="1" name="codigo_contpaq" value="{{ old('codigo_contpaq', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','modificar_fpmpfac')->first() !== null)
                     <div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', 0) }}" class="modal-input"></div>
