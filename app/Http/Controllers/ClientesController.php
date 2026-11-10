@@ -83,11 +83,11 @@ class ClientesController extends Controller
         $rfc = strtoupper(trim($request->input('rfc', '')));
 
         // 1. Validación básica
-        $request->validate([
+        $request->validate(array_merge($this->reglasLongitud(), [
             'rfc' => 'required|string|max:14',
             'razon_social' => 'required|string|max:255',
             'status' => 'required|string|max:1',
-        ]);
+        ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
 
         $branches = $this->connectionManager->getActiveBranches();
@@ -330,10 +330,10 @@ class ClientesController extends Controller
     {
         $cliente = ClienteMaestro::where('rfc', $rfc)->firstOrFail();
 
-        $request->validate([
+        $request->validate(array_merge($this->reglasLongitud(), [
             'status' => 'required|string|max:1',
             // RFC y razón social no se editan: se toman del cliente original (ver abajo)
-        ]);
+        ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
@@ -844,6 +844,47 @@ class ClientesController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Largo máximo de cada campo de texto. Igual en clientes_maestro (migración
+     * create_clientes_maestro_table) y en las sucursales (ver recortes en toBranchFormat).
+     * Sin estas reglas, un texto más largo truena en el maestro con error 500 y SQL (QA BUG-10).
+     */
+    private const LONGITUDES_CAMPOS = [
+        'rfc' => 14, 'razon_social' => 255, 'calle' => 70, 'exterior' => 10, 'interior' => 10,
+        'colonia' => 60, 'ciudad' => 4, 'municipio' => 30, 'telefono1' => 15, 'telefono2' => 15,
+        'telefono3' => 15, 'fax' => 15, 'vendedor' => 6, 'documentos' => 255, 'dias_pago' => 6,
+        'dias_revision' => 6, 'condicion_pago' => 4, 'status' => 1, 'cta_contable' => 14,
+        'representante' => 60, 'addenda' => 15, 'id_reg_id_trib' => 40, 'regimen_fiscal' => 3,
+        'identificador' => 10, 'observaciones_caja' => 255, 'id_sugar' => 36, 'ubicacion' => 3,
+    ];
+
+    /** Nombres en español de los campos para los mensajes de validación. */
+    private const ETIQUETAS_CAMPOS = [
+        'rfc' => 'RFC', 'razon_social' => 'razón social', 'calle' => 'calle', 'exterior' => 'número exterior',
+        'interior' => 'número interior', 'colonia' => 'colonia', 'ciudad' => 'ciudad', 'municipio' => 'municipio',
+        'telefono1' => 'teléfono 1', 'telefono2' => 'teléfono 2', 'telefono3' => 'teléfono 3', 'fax' => 'fax',
+        'vendedor' => 'vendedor', 'documentos' => 'documentos', 'dias_pago' => 'días de pago',
+        'dias_revision' => 'días de revisión', 'condicion_pago' => 'condición de pago', 'status' => 'estatus',
+        'cta_contable' => 'cuenta contable', 'representante' => 'representante', 'addenda' => 'addenda',
+        'id_reg_id_trib' => 'ID registro tributario', 'regimen_fiscal' => 'régimen fiscal',
+        'identificador' => 'identificador', 'observaciones_caja' => 'observaciones de caja',
+        'id_sugar' => 'ID Sugar', 'ubicacion' => 'país',
+    ];
+
+    private function reglasLongitud(): array
+    {
+        return array_map(fn(int $max) => "nullable|string|max:{$max}", self::LONGITUDES_CAMPOS);
+    }
+
+    private function mensajesLongitud(): array
+    {
+        return [
+            'max' => 'El campo :attribute admite máximo :max caracteres.',
+            'required' => 'El campo :attribute es obligatorio.',
+            'string' => 'El campo :attribute debe ser texto.',
+        ];
+    }
 
     /**
      * Rechaza textos con caracteres que las sucursales no pueden guardar.
