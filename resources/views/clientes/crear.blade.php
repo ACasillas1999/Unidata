@@ -69,8 +69,8 @@
                     @endif
                     @if($campos->where('campo','regimen_fiscal')->first()!== null)
                     <div>
-                        <label class="modal-label">Régimen Fiscal</label>
-                        <select name="regimen_fiscal" class="modal-input">
+                        <label class="modal-label">Régimen Fiscal * <span style="font-weight:400; opacity:0.7;">(CFDI 4.0)</span></label>
+                        <select name="regimen_fiscal" class="modal-input" required>
                             <option value="">Seleccione Régimen Fiscal...</option>
                             @foreach($catalogs['regimenes'] as $key => $desc)
                                 <option value="{{ $key }}" {{ old('regimen_fiscal') == $key ? 'selected' : '' }}>
@@ -82,8 +82,9 @@
                     @endif
                     @if($campos->where('campo','fecha_alta')->first()!== null)
                     <div>
-                        <label class="modal-label">Fecha de Alta</label>
-                        <input type="date" name="fecha_alta" value="{{ old('fecha_alta', now()->toDateString()) }}" class="modal-input">
+                        <label class="modal-label">Fecha de Alta (hoy)</label>
+                        {{-- Cliente nuevo: siempre la fecha de hoy; el servidor la fija aunque llegue otra (BUG-09) --}}
+                        <input type="date" name="fecha_alta" value="{{ now()->toDateString() }}" readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1" class="modal-input">
                     </div>
                     @endif
                     @if($campos->where('campo','giro_principal')->first()!== null)
@@ -126,7 +127,7 @@
                     <div><label class="modal-label">Colonia</label><input type="text" name="colonia" value="{{ old('colonia') }}" maxlength="60" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','cod_postal')->first()!== null)
-                    <div><label class="modal-label">Código Postal</label><input type="number" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input"></div>
+                    <div><label class="modal-label">Código Postal * <span style="font-weight:400; opacity:0.7;">(CFDI 4.0)</span></label><input type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" title="5 dígitos, por ejemplo 04100" name="cod_postal" value="{{ old('cod_postal') }}" class="modal-input" required></div>
                     @endif
                     @if($campos->where('campo','ciudad')->first()!== null)
                     <div>
@@ -227,10 +228,10 @@
                     </div>
                     @endif
                     @if($campos->where('campo','dias_credito')->first() !== null)
-                    <div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Días de Crédito</label><input type="number" min="0" step="1" name="dias_credito" value="{{ old('dias_credito', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','limite_credito')->first() !== null)
-                    <div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Límite de Crédito</label><input type="number" min="0" step="0.01" name="limite_credito" value="{{ old('limite_credito', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','cta_contable')->first() !== null)
                     <div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable') }}" maxlength="14" class="modal-input"></div>
@@ -251,10 +252,15 @@
                     <div style="grid-column: span 2;"><label class="modal-label">Documentos</label><input type="text" name="documentos" value="{{ old('documentos') }}" maxlength="255" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','codigo_contpaq')->first() !== null)
-                    <div><label class="modal-label">Código Contpaq</label><input type="number" name="codigo_contpaq" value="{{ old('codigo_contpaq', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Código Contpaq</label><input type="number" min="0" step="1" name="codigo_contpaq" value="{{ old('codigo_contpaq', 0) }}" class="modal-input"></div>
                     @endif
                     @if($campos->where('campo','modificar_fpmpfac')->first() !== null)
-                    <div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Modificar FPMPFac</label>
+                        <select name="modificar_fpmpfac" class="modal-input">
+                            <option value="0" {{ (string) old('modificar_fpmpfac', '0') === '0' ? 'selected' : '' }}>0 - No</option>
+                            <option value="1" {{ (string) old('modificar_fpmpfac') === '1' ? 'selected' : '' }}>1 - Sí</option>
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','id_opcion_bloqueo')->first() !== null)
                     <div>
@@ -283,7 +289,12 @@
                     </div>
                     @endif
                     @if($campos->where('campo','sync')->first() !== null)
-                    <div><label class="modal-label">Sync</label><input type="number" name="sync" value="{{ old('sync', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Sync</label>
+                        <select name="sync" class="modal-input">
+                            <option value="0" {{ (string) old('sync', '0') === '0' ? 'selected' : '' }}>0 - No</option>
+                            <option value="1" {{ (string) old('sync') === '1' ? 'selected' : '' }}>1 - Sí</option>
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','prefijo_descripcion')->first() !== null)
                     <div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', 0) }}" class="modal-input"></div>

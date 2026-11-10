@@ -99,7 +99,9 @@
                             </div>
                             @endif
                             @if($campos->where('campo','fecha_alta')->first()!== null)
-                            <div><label class="modal-label">Fecha de Alta</label><input type="date" name="fecha_alta" value="{{ old('fecha_alta', $cliente->fecha_alta?->format('Y-m-d')) }}" class="modal-input"></div>
+                            <div><label class="modal-label">Fecha de Alta</label>
+                                {{-- Se respeta la más antigua: no se permite una fecha posterior a la registrada (BUG-09) --}}
+                                <input type="date" name="fecha_alta" value="{{ old('fecha_alta', $cliente->fecha_alta?->format('Y-m-d')) }}" min="{{ min('1970-01-01', $cliente->fecha_alta?->format('Y-m-d') ?? '1970-01-01') }}" max="{{ $cliente->fecha_alta?->format('Y-m-d') ?? now()->toDateString() }}" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','giro_principal')->first()!== null)
                             <div>
@@ -138,7 +140,7 @@
                             <div><label class="modal-label">Colonia</label><input type="text" name="colonia" value="{{ old('colonia', $cliente->colonia) }}" {{ !($campos->where('campo','colonia')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="60" class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','cod_postal')->first()!== null)
-                            <div><label class="modal-label">Código Postal</label><input type="number" name="cod_postal" value="{{ old('cod_postal', $cliente->cod_postal) }}" {{ !($campos->where('campo','cod_postal')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>
+                            <div><label class="modal-label">Código Postal</label><input type="number" min="0" max="99999" step="1" name="cod_postal" value="{{ old('cod_postal', $cliente->cod_postal) }}" {{ !($campos->where('campo','cod_postal')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>
                             @endif
                             @if($campos->where('campo','ciudad')->first()!== null)
                             <div>
@@ -221,8 +223,8 @@
                                 </select>
                             </div>
                             @endif
-                            @if($campos->where('campo','dias_credito')->first() !== null)<div><label class="modal-label">Días de Crédito</label><input type="number" name="dias_credito" value="{{ old('dias_credito', $cliente->dias_credito) }}" {{ !($campos->where('campo','dias_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
-                            @if($campos->where('campo','limite_credito')->first() !== null)<div><label class="modal-label">Límite de Crédito</label><input type="number" step="0.01" name="limite_credito" value="{{ old('limite_credito', $cliente->limite_credito) }}" {{ !($campos->where('campo','limite_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','dias_credito')->first() !== null)<div><label class="modal-label">Días de Crédito</label><input type="number" min="0" step="1" name="dias_credito" value="{{ old('dias_credito', $cliente->dias_credito) }}" {{ !($campos->where('campo','dias_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','limite_credito')->first() !== null)<div><label class="modal-label">Límite de Crédito</label><input type="number" min="0" step="0.01" name="limite_credito" value="{{ old('limite_credito', $cliente->limite_credito) }}" {{ !($campos->where('campo','limite_credito')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
                             @if($campos->where('campo','cta_contable')->first() !== null)<div><label class="modal-label">Cuenta Contable</label><input type="text" name="cta_contable" value="{{ old('cta_contable', $cliente->cta_contable) }}" {{ !($campos->where('campo','cta_contable')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="14" class="modal-input"></div>@endif
                         </div>
                     </div>
@@ -237,8 +239,14 @@
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
                             @if($campos->where('campo','documentos')->first() !== null)<div style="grid-column: span 2;"><label class="modal-label">Documentos</label><input type="text" name="documentos" value="{{ old('documentos', $cliente->documentos) }}" {{ !($campos->where('campo','documentos')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="255" class="modal-input"></div>@endif
-                            @if($campos->where('campo','codigo_contpaq')->first() !== null)<div><label class="modal-label">Código Contpaq</label><input type="number" name="codigo_contpaq" value="{{ old('codigo_contpaq', $cliente->codigo_contpaq) }}" {{ !($campos->where('campo','codigo_contpaq')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
-                            @if($campos->where('campo','modificar_fpmpfac')->first() !== null)<div><label class="modal-label">Modificar FPMPFac</label><input type="number" name="modificar_fpmpfac" value="{{ old('modificar_fpmpfac', $cliente->modificar_fpmpfac) }}" {{ !($campos->where('campo','modificar_fpmpfac')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','codigo_contpaq')->first() !== null)<div><label class="modal-label">Código Contpaq</label><input type="number" min="0" step="1" name="codigo_contpaq" value="{{ old('codigo_contpaq', $cliente->codigo_contpaq) }}" {{ !($campos->where('campo','codigo_contpaq')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','modificar_fpmpfac')->first() !== null)<div><label class="modal-label">Modificar FPMPFac</label>
+                                @php($selFpm = (string) (int) old('modificar_fpmpfac', $cliente->modificar_fpmpfac))
+                                <select name="modificar_fpmpfac" class="modal-input" {{ !($campos->where('campo','modificar_fpmpfac')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }}>
+                                    <option value="0" {{ $selFpm !== '1' ? 'selected' : '' }}>0 - No</option>
+                                    <option value="1" {{ $selFpm === '1' ? 'selected' : '' }}>1 - Sí</option>
+                                </select>
+                            </div>@endif
                             @if($campos->where('campo','id_opcion_bloqueo')->first() !== null)
                             <div>
                                 <label class="modal-label">Opción Bloqueo</label>
@@ -265,7 +273,13 @@
                                 </select>
                             </div>
                             @endif
-                            @if($campos->where('campo','sync')->first() !== null)<div><label class="modal-label">Sync</label><input type="number" name="sync" value="{{ old('sync', $cliente->sync) }}" {{ !($campos->where('campo','sync')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','sync')->first() !== null)<div><label class="modal-label">Sync</label>
+                                @php($selSync = (string) (int) old('sync', $cliente->sync))
+                                <select name="sync" class="modal-input" {{ !($campos->where('campo','sync')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }}>
+                                    <option value="0" {{ $selSync !== '1' ? 'selected' : '' }}>0 - No</option>
+                                    <option value="1" {{ $selSync === '1' ? 'selected' : '' }}>1 - Sí</option>
+                                </select>
+                            </div>@endif
                             @if($campos->where('campo','prefijo_descripcion')->first() !== null)<div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', $cliente->prefijo_descripcion) }}" {{ !($campos->where('campo','prefijo_descripcion')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
                             @if($campos->where('campo','id_sugar')->first() !== null)<div><label class="modal-label">ID Sugar</label><input type="text" name="id_sugar" value="{{ old('id_sugar', $cliente->id_sugar) }}" {{ !($campos->where('campo','id_sugar')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="36" class="modal-input"></div>@endif
                         </div>

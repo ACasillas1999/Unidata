@@ -96,6 +96,8 @@ class ClientesController extends Controller
             'fax' => ['nullable', 'string', 'max:15', $regexTelefono],
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
+        $this->validarNumeros($request);
+        $this->validarDatosCfdi($request);
 
         $branches = $this->connectionManager->getActiveBranches();
 
@@ -130,6 +132,9 @@ class ClientesController extends Controller
 
         // 3. Preparar datos (snake_case para maestro)
         $dataMaestro = $this->prepareData($request, $nuevoIdGlobal);
+        // Cliente totalmente nuevo: la fecha de alta es la de hoy, no la que venga del formulario (QA BUG-09).
+        // (Un cliente que ya existe no llega aquí: lo detiene la revisión de cliente existente.)
+        $dataMaestro['fecha_alta'] = now()->toDateString();
 
         // 4. Insertar en maestro dentro de transacción
         $maestro = ClienteMaestro::create($dataMaestro);
@@ -373,6 +378,8 @@ class ClientesController extends Controller
             // RFC y razón social no se editan: se toman del cliente original (ver abajo)
         ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
+        $this->validarNumeros($request);
+        $this->validarFechaAltaEdicion($request, $cliente);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
         if (empty($cliente->id_global) || (int) $cliente->id_global === 0) {
@@ -391,6 +398,9 @@ class ClientesController extends Controller
         }
 
         $dataMaestro = $this->prepareData($request, $cliente->id_global);
+        // Cliente existente: se respeta la fecha de alta más antigua (QA BUG-09)
+        $dataMaestro['fecha_alta'] = $this->fechaMasAntigua([$cliente->fecha_alta, $request->input('fecha_alta')])
+            ?? now()->toDateString();
 
         // El RFC nunca cambia en edición — preservar el valor original
         // (el campo es readonly en el form, el navegador no lo envía)
@@ -928,6 +938,113 @@ class ClientesController extends Controller
     }
 
     /**
+     * Datos mínimos para poder facturar con CFDI 4.0: el SAT exige el régimen fiscal y el
+     * código postal del domicilio fiscal del receptor. Solo en alta: clientes viejos sin estos
+     * datos deben poder seguir editándose. (QA A03: con solo RFC y razón social se creaba un
+     * cliente que no se podía facturar.)
+     */
+    private function validarDatosCfdi(Request $request): void
+    {
+        $regimenes = array_keys(config('client_catalogs.regimenes', []));
+
+        $request->validate([
+            'regimen_fiscal' => 'required|in:' . implode(',', $regimenes),
+            'cod_postal' => 'required|digits:5',
+        ], [
+            'regimen_fiscal.required' => 'El régimen fiscal es obligatorio (lo exige CFDI 4.0 para facturar).',
+            'regimen_fiscal.in' => 'El régimen fiscal no está en el catálogo del SAT.',
+            'cod_postal.required' => 'El código postal es obligatorio (lo exige CFDI 4.0 para facturar).',
+            'cod_postal.digits' => 'El código postal debe tener exactamente 5 dígitos.',
+        ]);
+    }
+
+    /** Fecha mínima aceptada como fecha de alta (evita capturas absurdas como 1900). */
+    private const FECHA_ALTA_MINIMA = '1970-01-01';
+
+    /**
+     * En Editar, la fecha de alta debe ser real, no futura ni anterior a FECHA_ALTA_MINIMA,
+     * y no puede ser posterior a la ya registrada: se respeta la más antigua (QA BUG-09).
+     */
+    private function validarFechaAltaEdicion(Request $request, ClienteMaestro $cliente): void
+    {
+        $registrada = $this->fechaMasAntigua([$cliente->fecha_alta]);
+
+        // Si no se cambió la fecha, no se valida: un cliente viejo con fecha rara (ej. 1900)
+        // debe poder editarse en sus otros campos.
+        if ($registrada !== null && $request->input('fecha_alta') === $registrada) {
+            return;
+        }
+
+        $request->validate([
+            'fecha_alta' => 'nullable|date_format:Y-m-d|before_or_equal:today|after_or_equal:' . self::FECHA_ALTA_MINIMA,
+        ], [
+            'date_format' => 'La fecha de alta no es una fecha válida.',
+            'before_or_equal' => 'La fecha de alta no puede ser futura.',
+            'after_or_equal' => 'La fecha de alta no puede ser anterior a ' . self::FECHA_ALTA_MINIMA . '.',
+        ]);
+
+        $nueva = $this->fechaMasAntigua([$request->input('fecha_alta')]);
+        if ($registrada && $nueva && $nueva > $registrada) {
+            throw ValidationException::withMessages([
+                'fecha_alta' => "La fecha de alta no puede ser posterior a la ya registrada ({$registrada}); se respeta la más antigua.",
+            ]);
+        }
+    }
+
+    /**
+     * Devuelve la fecha (Y-m-d) más antigua de la lista, ignorando vacías, '0000-00-00' e inválidas.
+     */
+    private function fechaMasAntigua(array $fechas): ?string
+    {
+        $validas = [];
+        foreach ($fechas as $fecha) {
+            if ($fecha instanceof \DateTimeInterface) {
+                $fecha = $fecha->format('Y-m-d');
+            }
+            $fecha = substr(trim((string) $fecha), 0, 10);
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fecha, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+                $validas[] = $fecha;
+            }
+        }
+
+        return $validas ? min($validas) : null; // en formato Y-m-d el orden de texto = orden de fecha
+    }
+
+    /**
+     * Rangos de los campos numéricos (QA BUG-07): ninguno acepta negativos y, salvo el
+     * límite de crédito (dinero, hasta 2 decimales), ninguno acepta decimales.
+     * Antes "3.7" en días de crédito se guardaba como 3 sin aviso por el (int) de prepareData.
+     * El 0 inicial del CP (04100) es otro tema: BUG-06.
+     */
+    private function validarNumeros(Request $request): void
+    {
+        $request->validate([
+            'cod_postal' => 'nullable|digits_between:1,5',
+            'dias_credito' => 'nullable|integer|min:0|max:32767',          // smallint en BD
+            'limite_credito' => 'nullable|numeric|min:0|decimal:0,2',
+            'codigo_contpaq' => 'nullable|integer|min:0|max:2147483647',   // int en BD
+            // Banderas sí/no (QA BUG-12): solo 0 o 1, se capturan con desplegable
+            'sync' => 'nullable|in:0,1',
+            'modificar_fpmpfac' => 'nullable|in:0,1',
+        ], [
+            'cod_postal.digits_between' => 'El código postal debe tener solo dígitos (máximo 5), sin signos ni puntos.',
+            'in' => 'El campo :attribute solo puede ser 0 o 1.',
+            'integer' => 'El campo :attribute debe ser un número entero, sin decimales.',
+            'numeric' => 'El campo :attribute debe ser un número.',
+            'decimal' => 'El campo :attribute admite máximo 2 decimales.',
+            'min' => 'El campo :attribute no puede ser negativo.',
+            'max' => 'El campo :attribute admite como máximo :max.',
+        ], [
+            'cod_postal' => 'código postal',
+            'dias_credito' => 'días de crédito',
+            'limite_credito' => 'límite de crédito',
+            'codigo_contpaq' => 'código Contpaq',
+            'sync' => 'Sync',
+            'modificar_fpmpfac' => 'Modificar FPMPFac',
+        ]);
+    }
+
+    /**
      * Rechaza textos con caracteres que las sucursales no pueden guardar.
      * Las tablas del ERP usan latin1 (Windows-1252): emojis y otros símbolos fuera de ese
      * juego de caracteres hacen fallar el insert/update en las 4 sucursales (QA BUG-04 / RS06),
@@ -1082,11 +1199,12 @@ class ClientesController extends Controller
             'anticipos' => (string) ($input['anticipos'] ?? 'D'),
             'codigo_contpaq' => (int) ($input['codigo_contpaq'] ?? 0),
             'clasificacion' => (int) ($input['clasificacion'] ?? 0),
-            'modificar_fpmpfac' => $request->boolean('modificar_fpmpfac') ? 1 : 0,
+            // Banderas 0/1 (validadas en validarNumeros): se guarda lo que se eligió (QA BUG-12)
+            'modificar_fpmpfac' => (int) ($input['modificar_fpmpfac'] ?? 0) === 1 ? 1 : 0,
             'identificador' => (string) ($input['identificador'] ?? ''),
             'id_opcion_bloqueo' => (int) ($input['id_opcion_bloqueo'] ?? 0),
             'observaciones_caja' => (string) ($input['observaciones_caja'] ?? ''),
-            'sync' => 0,
+            'sync' => (int) ($input['sync'] ?? 0) === 1 ? 1 : 0,
             'prefijo_descripcion' => 0,
             'id_sugar' => (string) ($input['id_sugar'] ?? ''),
             'giro_principal' => (int) ($input['giro_principal'] ?? 0),
@@ -1122,6 +1240,16 @@ class ClientesController extends Controller
                 }
                 $nuevoIdGlobal = $maxGlobal + 1;
 
+                // Fecha de alta: la más antigua en que aparece en cualquier sucursal (QA BUG-09)
+                $fechasSucursales = [$row->Fecha_Alta ?? null];
+                foreach ($branches as $b) {
+                    try {
+                        $fechasSucursales[] = $this->connectionManager->connect($b->code)
+                            ->table('clientes')->where('RFC', $rfc)->min('Fecha_Alta');
+                    } catch (Throwable) {
+                    }
+                }
+
                 // Mapear campos del branch al maestro (PascalCase → snake_case)
                 return ClienteMaestro::create([
                     'id_global' => (int) ($row->IdGlobal ?? $nuevoIdGlobal),
@@ -1149,7 +1277,7 @@ class ClientesController extends Controller
                     'saldo_actual' => (float) ($row->Saldo_Actual ?? 0),
                     'status' => $row->Status ?? 'A',
                     'cta_contable' => $row->Cta_Contable ?? '',
-                    'fecha_alta' => $row->Fecha_Alta ?? now()->toDateString(),
+                    'fecha_alta' => $this->fechaMasAntigua($fechasSucursales) ?? now()->toDateString(),
                     'representante' => $row->Representante ?? '',
                     'addenda' => $row->Addenda ?? '',
                     'id_reg_id_trib' => $row->IdRegIdTrib ?? '',
