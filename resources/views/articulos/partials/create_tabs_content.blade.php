@@ -78,6 +78,7 @@
 
     <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 32px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
         <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+            <input type="hidden" name="habilitado" value="0">
             <input type="checkbox" name="habilitado" value="1" {{ old('habilitado', '1') == '1' ? 'checked' : '' }} style="width:18px; height:18px; accent-color: var(--emerald);">
             <div style="display:flex; flex-direction:column;">
                 <span style="font-size: 13px; font-weight: 700; color: white;">Habilitado</span>
