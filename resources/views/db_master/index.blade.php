@@ -76,6 +76,12 @@
     </div>
     @endif
 
+    @if(session('warning'))
+    <div class="alert alert--warning shadow-premium" style="margin-bottom:16px; border-left: 4px solid #f59e0b; padding: 12px 16px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-radius: 6px; word-break: break-word;">
+        <strong>Atención:</strong> {{ session('warning') }}
+    </div>
+    @endif
+
     @if(session('error') || $error)
     <div class="alert alert--error shadow-premium" style="margin-bottom:16px; border-left: 4px solid var(--rose); padding: 12px 16px; background: rgba(244, 63, 94, 0.1); color: var(--rose); border-radius: 6px;">
         <p style="font-weight: 700; font-size: 13px; margin:0;">{{ session('error') ?? $error }}</p>

@@ -1469,13 +1469,25 @@ class ArticulosController extends Controller
      */
     public function storeManual(\Illuminate\Http\Request $request)
     {
+        // ART-03: las tablas de las sucursales son latin1; un emoji u otro símbolo fuera de ese
+        // juego se guarda en el maestro pero las sucursales lo rechazan (error 3988).
+        $latin1 = function ($attribute, $value, $fail) {
+            if (!is_string($value) || $value === '') {
+                return;
+            }
+            $ida = mb_convert_encoding($value, 'Windows-1252', 'UTF-8');
+            if (mb_convert_encoding($ida, 'UTF-8', 'Windows-1252') !== $value) {
+                $fail('El campo :attribute tiene caracteres no permitidos (emojis o símbolos especiales).');
+            }
+        };
+
         $data = $request->validate([
             // ART-09: caracteres que usan las claves reales de las sucursales; bloquea < > | ? # & , ; \ ' ` e invisibles
             'clave'               => ['required', 'string', 'max:40', 'regex:/^[A-Za-z0-9Ññ\/.\-+*"_() ]+$/u', 'unique:db_master.Articulos,clave'],
-            'descripcion'         => 'required|string|max:200',
-            'unidad_medida'       => 'required|string|max:4',
-            'linea'               => 'required|string|max:4',
-            'clasificacion'       => 'required|string|max:6',
+            'descripcion'         => ['required', 'string', 'max:200', $latin1],
+            'unidad_medida'       => ['required', 'string', 'max:4', $latin1],
+            'linea'               => ['required', 'string', 'max:4', $latin1],
+            'clasificacion'       => ['required', 'string', 'max:6', $latin1],
             'area'                => 'required|integer',
             'mn_usd'              => 'required|boolean',
             'precio_lista'        => 'nullable|numeric|min:0',
@@ -1497,14 +1509,14 @@ class ArticulosController extends Controller
             'color_branch'        => 'nullable|array',
             'color_branch.*'      => 'nullable|integer|between:0,9',
             'protocolo'           => 'nullable|boolean',
-            'idsat'               => 'nullable|string|max:25',
+            'idsat'               => ['nullable', 'string', 'max:25', $latin1],
             'id_impuesto_sat'     => 'nullable|string|max:3',
             'iva'                 => 'nullable|numeric',
             'precio_minimo'       => 'nullable|numeric|min:0',
             'desc_precio_minimo'  => 'nullable|numeric|between:0,100',
-            'sustituto'           => 'nullable|string',
-            'sustituto1'          => 'nullable|string',
-            'sustituto2'          => 'nullable|string',
+            'sustituto'           => ['nullable', 'string', $latin1],
+            'sustituto1'          => ['nullable', 'string', $latin1],
+            'sustituto2'          => ['nullable', 'string', $latin1],
             'costo_promedio'      => 'nullable|numeric',
             'costo_promedio_ant'  => 'nullable|numeric',
             'costo_ult_compra'    => 'nullable|numeric',
@@ -1514,7 +1526,7 @@ class ArticulosController extends Controller
             'en_promocion'        => 'nullable|boolean',
             'critico'             => 'nullable|boolean',
             'control_pedimentos'  => 'nullable|boolean',
-            'ubicacion'           => 'nullable|string|max:10',
+            'ubicacion'           => ['nullable', 'string', 'max:10', $latin1],
             'peso'                => 'nullable|numeric|min:0',
             'std_pack'            => 'nullable|numeric|gt:0',
             'inventario_maximo'   => 'nullable|numeric',
