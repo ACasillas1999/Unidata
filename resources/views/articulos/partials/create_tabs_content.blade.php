@@ -126,7 +126,7 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Lista <span style="color:var(--rose)">*</span></label>
-            <input type="number" step="0.0001" id="precio_lista" name="precio_lista" value="{{ old('precio_lista', 0) }}" class="modal-input" required>
+            <input type="number" step="0.0001" id="precio_lista" name="precio_lista" min="0" value="{{ old('precio_lista', 0) }}" class="modal-input" required>
         </div>
         <div class="form-group">
             <label class="modal-label">Costo Venta</label>
@@ -140,7 +140,7 @@
         <!-- FILA 2: PRECIO 4 -->
         <div class="form-group">
             <label class="modal-label">Desc. Precio 4 (%)</label>
-            <input type="number" step="0.01" id="desc_precio4" name="desc_precio4" value="{{ old('desc_precio4', 0) }}" class="modal-input">
+            <input type="number" step="0.01" id="desc_precio4" name="desc_precio4" min="0" max="100" value="{{ old('desc_precio4', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio 4 (Resultado)</label>
@@ -152,7 +152,7 @@
         <!-- FILA 3: PRECIO ESPECIAL -->
         <div class="form-group">
             <label class="modal-label">Desc. Especial (%)</label>
-            <input type="number" step="0.01" id="desc_precio_espec" name="desc_precio_espec" value="{{ old('desc_precio_espec', 0) }}" class="modal-input">
+            <input type="number" step="0.01" id="desc_precio_espec" name="desc_precio_espec" min="0" max="100" value="{{ old('desc_precio_espec', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Especial</label>
@@ -178,7 +178,7 @@
         <!-- FILA 5: PRECIO TOPE Y DESCUENTOS (PROVEEDOR) -->
         <div class="form-group">
             <label class="modal-label">Desc. Proveedor (%)</label>
-            <input type="number" step="0.01" id="desc_proveedor" name="desc_proveedor" value="{{ old('desc_proveedor', 0) }}" class="modal-input">
+            <input type="number" step="0.01" id="desc_proveedor" name="desc_proveedor" min="0" max="100" value="{{ old('desc_proveedor', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Proveedor (Gerente)</label>
@@ -186,7 +186,7 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Porcentaje Descuento (Pricing)</label>
-            <input type="number" step="0.01" id="porcetaje_descuento" name="porcetaje_descuento" value="{{ old('porcetaje_descuento', 0) }}" class="modal-input">
+            <input type="number" step="0.01" id="porcetaje_descuento" name="porcetaje_descuento" min="0" max="100" value="{{ old('porcetaje_descuento', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Precio Tope</label>
