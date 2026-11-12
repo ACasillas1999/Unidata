@@ -36,6 +36,12 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; color: var(--rose); font-size: 13px; word-break: break-word;">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <form action="{{ route('articulos.storeManual') }}" method="POST" id="create-article-form">
         @csrf
 
