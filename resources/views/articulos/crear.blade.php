@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
     calculatePrices();
 });
 
-document.getElementById('create-article-form').addEventListener('submit', function(e) {
+function mostrarCreando() {
     Swal.fire({
         title: 'Creando Artículo...',
         text: 'Se está procesando el alta en el sistema maestro.',
@@ -149,6 +149,40 @@ document.getElementById('create-article-form').addEventListener('submit', functi
             Swal.showLoading();
         }
     });
+}
+
+document.getElementById('create-article-form').addEventListener('submit', function(e) {
+    const form = this;
+    const costoInput = form.querySelector('[name="costo_venta"]');
+    const costo = parseFloat(costoInput ? costoInput.value : 0) || 0;
+    const precioVenta = parseFloat(document.getElementById('precio_venta').value) || 0;
+
+    // ART-08: costo mayor que precio de venta = margen negativo, pedir confirmación
+    if (costo > 0 && costo > precioVenta) {
+        e.preventDefault();
+        const fmt = n => n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        Swal.fire({
+            icon: 'warning',
+            title: 'Margen negativo',
+            html: `El costo (<b>$${fmt(costo)}</b>) es mayor que el precio de venta (<b>$${fmt(precioVenta)}</b>).<br>` +
+                  `Se perderían <b>$${fmt(costo - precioVenta)}</b> por pieza.<br><br>¿Guardar de todos modos?`,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, guardar',
+            cancelButtonText: 'Revisar',
+            reverseButtons: true,
+            focusCancel: true,
+        }).then(result => {
+            if (result.isConfirmed) {
+                mostrarCreando();
+                form.submit();
+            } else if (costoInput) {
+                costoInput.focus();
+            }
+        });
+        return;
+    }
+
+    mostrarCreando();
 });
 </script>
 @endpush
