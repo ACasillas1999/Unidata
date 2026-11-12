@@ -213,11 +213,11 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Peso (kg)</label>
-            <input type="number" step="0.001" name="peso" value="{{ old('peso', 0) }}" class="modal-input">
+            <input type="number" step="0.001" name="peso" min="0" value="{{ old('peso', 0) }}" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Std Pack</label>
-            <input type="number" step="0.01" name="std_pack" value="{{ old('std_pack', 1) }}" class="modal-input">
+            <input type="number" step="0.01" name="std_pack" min="0.01" value="{{ old('std_pack', 1) }}" class="modal-input">
         </div>
     </div>
 </div>
