@@ -609,9 +609,9 @@ function openEditModal(row) {
         @endforeach
     @endif
 
-    document.getElementById('edit-protocolo').checked = !!row.protocolo;
-    document.getElementById('edit-articulo_kit').checked = !!row.articulo_kit;
-    document.getElementById('edit-articulo_serie').checked = !!row.articulo_serie;
+    document.getElementById('edit-protocolo').checked = (row.protocolo == 1);
+    document.getElementById('edit-articulo_kit').checked = (row.articulo_kit == 1);
+    document.getElementById('edit-articulo_serie').checked = (row.articulo_serie == 1);
     document.getElementById('edit-habilitado').checked = (row.habilitado == 1);
     
     // Precios
@@ -661,9 +661,9 @@ function openEditModal(row) {
     document.getElementById('edit-sustituto').value = row.sustituto || '';
     document.getElementById('edit-sustituto1').value = row.sustituto1 || '';
     document.getElementById('edit-sustituto2').value = row.sustituto2 || '';
-    document.getElementById('edit-en_promocion').checked = !!row.en_promocion;
-    document.getElementById('edit-critico').checked = !!row.critico;
-    document.getElementById('edit-control_pedimentos').checked = !!row.control_pedimentos;
+    document.getElementById('edit-en_promocion').checked = (row.en_promocion == 1);
+    document.getElementById('edit-critico').checked = (row.critico == 1);
+    document.getElementById('edit-control_pedimentos').checked = (row.control_pedimentos == 1);
 
     // Reset tabs to first one
     document.querySelector('.modal-tab').click();
