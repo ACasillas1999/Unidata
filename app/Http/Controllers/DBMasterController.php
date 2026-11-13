@@ -162,12 +162,24 @@ class DBMasterController extends Controller
             return response()->json(['success' => false, 'message' => 'Artículo no encontrado.'], 404);
         }
 
+        // ED-04: si la clave tiene caracteres que las sucursales (latin1) no aceptan, el artículo
+        // no puede existir ahí; guardar solo el maestro lo dejaría distinto a las sucursales.
+        if (!\App\Rules\Latin1::cabe((string) $article->clave)) {
+            return response()->json([
+                'success' => false,
+                'message' => "La clave \"{$article->clave}\" tiene caracteres que las sucursales no aceptan (emojis o símbolos especiales), "
+                           . 'así que este artículo no se puede replicar. Hay que darlo de alta de nuevo con una clave válida.',
+            ], 422);
+        }
+
+        $latin1 = new \App\Rules\Latin1();
+
         $data = $request->validate([
-            'descripcion'         => 'nullable|string|max:200',
-            'linea'               => 'sometimes|required|string|max:4',
-            'clasificacion'       => 'sometimes|required|string|max:6',
+            'descripcion'         => ['nullable', 'string', 'max:200', $latin1],
+            'linea'               => ['sometimes', 'required', 'string', 'max:4', $latin1],
+            'clasificacion'       => ['sometimes', 'required', 'string', 'max:6', $latin1],
             'area'                => 'sometimes|required|integer',
-            'unidad_medida'       => 'sometimes|required|string|max:4',
+            'unidad_medida'       => ['sometimes', 'required', 'string', 'max:4', $latin1],
             'color'               => 'nullable|integer|between:0,9',
             'color_branch'        => 'nullable|array',
             'color_branch.*'      => 'nullable|integer|between:0,9',
@@ -197,19 +209,19 @@ class DBMasterController extends Controller
             'inventario_maximo'   => 'nullable|numeric',
             'inventario_minimo'   => 'nullable|numeric',
             'punto_reorden'       => 'nullable|numeric',
-            'ubicacion'           => 'nullable|string|max:10',
+            'ubicacion'           => ['nullable', 'string', 'max:10', $latin1],
             'peso'                => 'nullable|numeric',
             'std_pack'            => 'nullable|numeric',
             'costo_ult_compra'    => 'nullable|numeric',
             'fecha_ult_compra'    => 'nullable|date',
             'costo_compra_ant'    => 'nullable|numeric',
-            'idsat'               => 'nullable|string|max:25',
+            'idsat'               => ['nullable', 'string', 'max:25', $latin1],
             'id_impuesto_sat'     => 'nullable|string|max:3',
             'iva'                 => 'nullable|numeric',
             'id_tipo_factor'      => 'nullable|string|max:10',
-            'sustituto'           => 'nullable|string',
-            'sustituto1'          => 'nullable|string',
-            'sustituto2'          => 'nullable|string',
+            'sustituto'           => ['nullable', 'string', $latin1],
+            'sustituto1'          => ['nullable', 'string', $latin1],
+            'sustituto2'          => ['nullable', 'string', $latin1],
             'en_promocion'        => 'nullable|boolean',
             'critico'             => 'nullable|boolean',
             'control_pedimentos'  => 'nullable|boolean',

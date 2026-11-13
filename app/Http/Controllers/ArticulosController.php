@@ -1475,17 +1475,8 @@ class ArticulosController extends Controller
             $request->merge(['clave' => preg_replace('/ {2,}/', ' ', $request->input('clave'))]);
         }
 
-        // ART-03: las tablas de las sucursales son latin1; un emoji u otro símbolo fuera de ese
-        // juego se guarda en el maestro pero las sucursales lo rechazan (error 3988).
-        $latin1 = function ($attribute, $value, $fail) {
-            if (!is_string($value) || $value === '') {
-                return;
-            }
-            $ida = mb_convert_encoding($value, 'Windows-1252', 'UTF-8');
-            if (mb_convert_encoding($ida, 'UTF-8', 'Windows-1252') !== $value) {
-                $fail('El campo :attribute tiene caracteres no permitidos (emojis o símbolos especiales).');
-            }
-        };
+        // ART-03: las sucursales son latin1; ver App\Rules\Latin1
+        $latin1 = new \App\Rules\Latin1();
 
         $data = $request->validate([
             // ART-09: caracteres que usan las claves reales de las sucursales; bloquea < > | ? # & , ; \ ' ` e invisibles
