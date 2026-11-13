@@ -89,7 +89,6 @@ class ClientesController extends Controller
             'razon_social' => 'required|string|max:255',
             'status' => 'required|string|max:1',
             'fecha_alta' => 'nullable|date',
-            'email' => 'nullable|string|max:255|email:filter',
             'telefono1' => ['nullable', 'string', 'max:15', $regexTelefono],
             'telefono2' => ['nullable', 'string', 'max:15', $regexTelefono],
             'telefono3' => ['nullable', 'string', 'max:15', $regexTelefono],
@@ -98,6 +97,7 @@ class ClientesController extends Controller
         $this->validarCaracteresSucursal($request);
         $this->validarNumeros($request);
         $this->validarDatosCfdi($request);
+        $emailNormalizado = $this->validarYNormalizarEmails($request);
 
         $branches = $this->connectionManager->getActiveBranches();
 
@@ -131,7 +131,7 @@ class ClientesController extends Controller
         $nuevoIdGlobal = $maxGlobal + 1;
 
         // 3. Preparar datos (snake_case para maestro)
-        $dataMaestro = $this->prepareData($request, $nuevoIdGlobal);
+        $dataMaestro = $this->prepareData($request, $nuevoIdGlobal, $emailNormalizado);
         // Cliente totalmente nuevo: la fecha de alta es la de hoy, no la que venga del formulario (QA BUG-09).
         // (Un cliente que ya existe no llega aquí: lo detiene la revisión de cliente existente.)
         $dataMaestro['fecha_alta'] = now()->toDateString();
@@ -191,8 +191,7 @@ class ClientesController extends Controller
                 } else {
                     // NO EXISTÍA EN ESTA SUCURSAL: Calcular siguiente ID local e insertar
                     if (in_array('Cliente', $columnasReales)) {
-                        $maxCliente = $conn->table('clientes')->max('Cliente') ?? 0;
-                        $dataFiltrada['Cliente'] = (int) $maxCliente + 1;
+                        $dataFiltrada['Cliente'] = $this->calcularSiguienteClienteSucursal($conn);
                     }
 
                     if (in_array('IdGlobal', $columnasReales)) {
@@ -370,7 +369,6 @@ class ClientesController extends Controller
         $request->validate(array_merge($this->reglasLongitud(), [
             'status' => 'required|string|max:1',
             'fecha_alta' => 'nullable|date',
-            'email' => 'nullable|string|max:255|email:filter',
             'telefono1' => ['nullable', 'string', 'max:15', $regexTelefono],
             'telefono2' => ['nullable', 'string', 'max:15', $regexTelefono],
             'telefono3' => ['nullable', 'string', 'max:15', $regexTelefono],
@@ -380,6 +378,7 @@ class ClientesController extends Controller
         $this->validarCaracteresSucursal($request);
         $this->validarNumeros($request);
         $this->validarFechaAltaEdicion($request, $cliente);
+        $emailNormalizado = $this->validarYNormalizarEmails($request);
 
         // Garantizar que el maestro tenga un id_global unificado (> 0) antes de sincronizar
         if (empty($cliente->id_global) || (int) $cliente->id_global === 0) {
@@ -397,7 +396,7 @@ class ClientesController extends Controller
             $cliente->save();
         }
 
-        $dataMaestro = $this->prepareData($request, $cliente->id_global);
+        $dataMaestro = $this->prepareData($request, $cliente->id_global, $emailNormalizado);
         // Cliente existente: se respeta la fecha de alta más antigua (QA BUG-09)
         $dataMaestro['fecha_alta'] = $this->fechaMasAntigua([$cliente->fecha_alta, $request->input('fecha_alta')])
             ?? now()->toDateString();
@@ -501,8 +500,7 @@ class ClientesController extends Controller
                 } else {
                     // NO EXISTE EN ESTA SUCURSAL: ALTA AUTOMÁTICA (PROPAGAR A SUCURSAL FALTANTE)
                     if (in_array('Cliente', $columnasReales)) {
-                        $maxCliente = $conn->table('clientes')->max('Cliente') ?? 0;
-                        $dataFiltrada['Cliente'] = (int) $maxCliente + 1;
+                        $dataFiltrada['Cliente'] = $this->calcularSiguienteClienteSucursal($conn);
                     }
 
                     if (in_array('IdGlobal', $columnasReales)) {
@@ -1179,9 +1177,86 @@ class ClientesController extends Controller
     }
 
     /**
+     * Valida y normaliza la lista de correos electrónicos.
+     * Acepta array 'emails' o string 'email' (separado por comas o punto y coma).
+     * Cada correo se valida individualmente con FILTER_VALIDATE_EMAIL.
+     * Retorna los correos válidos unidos por ", ".
+     *
+     * @throws ValidationException
+     */
+    private function validarYNormalizarEmails(Request $request): string
+    {
+        $raw = $request->input('emails');
+        if ($raw === null) {
+            $raw = $request->input('email');
+        }
+
+        $lista = [];
+        if (is_array($raw)) {
+            foreach ($raw as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    foreach (preg_split('/[,;]+/', $item, -1, PREG_SPLIT_NO_EMPTY) as $sub) {
+                        $s = trim($sub);
+                        if ($s !== '') {
+                            $lista[] = $s;
+                        }
+                    }
+                }
+            }
+        } elseif (is_string($raw) && trim($raw) !== '') {
+            foreach (preg_split('/[,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) as $sub) {
+                $s = trim($sub);
+                if ($s !== '') {
+                    $lista[] = $s;
+                }
+            }
+        }
+
+        if (empty($lista)) {
+            return '';
+        }
+
+        $errores = [];
+        $validos = [];
+        foreach ($lista as $idx => $correo) {
+            if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+                $num = $idx + 1;
+                $errores[] = "El correo #{$num} ('{$correo}') no es válido (ejemplo: usuario@correo.com).";
+            } else {
+                $validos[] = $correo;
+            }
+        }
+
+        if (!empty($errores)) {
+            throw ValidationException::withMessages([
+                'email' => $errores,
+            ]);
+        }
+
+        $unidos = implode(', ', $validos);
+        if (strlen($unidos) > 255) {
+            throw ValidationException::withMessages([
+                'email' => ['La lista de correos supera el máximo permitido de 255 caracteres para la base de datos.'],
+            ]);
+        }
+
+        return $unidos;
+    }
+
+    private function extraerStringEmails(Request $request): string
+    {
+        $raw = $request->input('emails') ?? $request->input('email');
+        if (is_array($raw)) {
+            $items = array_filter(array_map('trim', $raw));
+            return implode(', ', $items);
+        }
+        return trim((string) $raw);
+    }
+
+    /**
      * Prepara el array de datos en snake_case a partir del request (para maestro).
      */
-    private function prepareData(Request $request, int $idGlobal): array
+    private function prepareData(Request $request, int $idGlobal, ?string $emailNormalizado = null): array
     {
         $input = $this->cleanUtf8($request->all());
 
@@ -1189,7 +1264,7 @@ class ClientesController extends Controller
             'id_global' => $idGlobal,
             'rfc' => strtoupper(trim((string) ($input['rfc'] ?? ''))),
             'razon_social' => (string) ($input['razon_social'] ?? ''),
-            'email' => trim((string) ($input['email'] ?? '')),
+            'email' => $emailNormalizado !== null ? $emailNormalizado : $this->extraerStringEmails($request),
             'calle' => (string) ($input['calle'] ?? ''),
             'exterior' => (string) ($input['exterior'] ?? ''),
             'interior' => (string) ($input['interior'] ?? ''),
@@ -1355,6 +1430,26 @@ class ClientesController extends Controller
         ];
 
         return $map[$name] ?? substr($name, 0, 6);
+    }
+
+    /**
+     * Calcula el siguiente número de cliente (Cliente) en una sucursal,
+     * respetando el consecutivo comercial real y evitando bloques
+     * reservados como Cotizaciones (888888), CEDIS (888889-888913)
+     * o números manuales históricos fuera de serie.
+     */
+    private function calcularSiguienteClienteSucursal($conn): int
+    {
+        $maxNormal = $conn->table('clientes')
+            ->where('Cliente', '<', 800000)
+            ->whereNotIn('Cliente', [555555, 601194, 333433, 333835, 333836, 228022, 225923, 225429])
+            ->max('Cliente') ?? 0;
+
+        if ($maxNormal === 0) {
+            $maxNormal = $conn->table('clientes')->max('Cliente') ?? 0;
+        }
+
+        return (int) $maxNormal + 1;
     }
 
     /**

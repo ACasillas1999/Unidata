@@ -724,36 +724,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         formData = diffData;
 
-        closeEditModal();
+        const enviar = () => {
+            closeEditModal();
 
-        Swal.fire({
-            title: 'Guardando cambios...',
-            text: 'Se actualizará el Maestro y se replicará a todas las sucursales.',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
+            Swal.fire({
+                title: 'Guardando cambios...',
+                text: 'Se actualizará el Maestro y se replicará a todas las sucursales.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
 
-        const articleId = document.getElementById('edit-article-id').value;
-        fetch('/db-master/item/' + articleId, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
-            } else {
-                Swal.fire('Error', data.message || 'Error desconocido', 'error');
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            Swal.fire('Error', 'Fallo en la comunicación con el servidor', 'error');
-        });
+            const articleId = document.getElementById('edit-article-id').value;
+            fetch('/db-master/item/' + articleId, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', data.message || 'Error desconocido', 'error');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Fallo en la comunicación con el servidor', 'error');
+            });
+        };
+
+        // ED-06: costo mayor que precio de venta = margen negativo. Solo se pregunta si el
+        // usuario cambió algo que mueve el margen, para no molestar al editar otros campos.
+        const costo = parseFloat(document.getElementById('edit-costo_venta').value) || 0;
+        const precioVenta = parseFloat(document.getElementById('edit-precio_venta').value) || 0;
+        const tocaMargen = ['costo_venta', 'precio_venta', 'precio_lista', 'desc_precio_espec'].some(k => formData.has(k));
+
+        if (tocaMargen && costo > 0 && costo > precioVenta) {
+            const fmt = n => n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            Swal.fire({
+                icon: 'warning',
+                title: 'Margen negativo',
+                html: `El costo (<b>$${fmt(costo)}</b>) es mayor que el precio de venta (<b>$${fmt(precioVenta)}</b>).<br>` +
+                      `Se perderían <b>$${fmt(costo - precioVenta)}</b> por pieza.<br><br>¿Guardar de todos modos?`,
+                showCancelButton: true,
+                confirmButtonText: 'Sí, guardar',
+                cancelButtonText: 'Revisar',
+                reverseButtons: true,
+                focusCancel: true,
+            }).then(result => {
+                if (result.isConfirmed) {
+                    enviar();
+                } else {
+                    document.getElementById('edit-costo_venta').focus();
+                }
+            });
+            return;
+        }
+
+        enviar();
     });
 });
 </script>
@@ -915,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Precio Lista <span style="color:var(--rose)">*</span></label>
-                            <input type="number" step="0.0001" id="edit-precio_lista" name="precio_lista" class="modal-input" required>
+                            <input type="number" step="0.0001" id="edit-precio_lista" name="precio_lista" min="0" class="modal-input" required>
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Costo Venta</label>
@@ -929,7 +961,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- FILA 2: PRECIO 4 -->
                         <div class="form-group">
                             <label class="modal-label">Desc. Precio 4 (%)</label>
-                            <input type="number" step="0.01" id="edit-desc_precio4" name="desc_precio4" class="modal-input">
+                            <input type="number" step="0.01" id="edit-desc_precio4" name="desc_precio4" min="0" max="100" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Precio 4 (Resultado)</label>
@@ -941,7 +973,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- FILA 3: PRECIO ESPECIAL -->
                         <div class="form-group">
                             <label class="modal-label">Desc. Especial (%)</label>
-                            <input type="number" step="0.01" id="edit-desc_precio_espec" name="desc_precio_espec" class="modal-input">
+                            <input type="number" step="0.01" id="edit-desc_precio_espec" name="desc_precio_espec" min="0" max="100" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Precio Especial</label>
@@ -967,7 +999,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- FILA 5: PRECIO TOPE Y DESCUENTOS (PROVEEDOR) -->
                         <div class="form-group">
                             <label class="modal-label">Desc. Proveedor (%)</label>
-                            <input type="number" step="0.01" id="edit-desc_proveedor" name="desc_proveedor" class="modal-input">
+                            <input type="number" step="0.01" id="edit-desc_proveedor" name="desc_proveedor" min="0" max="100" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Precio Proveedor (Gerente)</label>
@@ -975,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Porcentaje Descuento (Pricing)</label>
-                            <input type="number" step="0.01" id="edit-porcetaje_descuento" name="porcetaje_descuento" class="modal-input">
+                            <input type="number" step="0.01" id="edit-porcetaje_descuento" name="porcetaje_descuento" min="0" max="100" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Precio Tope</label>

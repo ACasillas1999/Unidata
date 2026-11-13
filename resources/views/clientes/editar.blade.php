@@ -193,7 +193,78 @@
                             Contacto
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
-                            @if($campos->where('campo','email')->first()!== null)<div><label class="modal-label">Correo Electrónico (Email)</label><input type="email" name="email" value="{{ old('email', $cliente->email) }}" {{ !($campos->where('campo','email')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="255" placeholder="ejemplo@correo.com" class="modal-input"></div>@endif
+                            @if($campos->where('campo','email')->first()!== null)
+                            @php
+                                $canEditEmail = $campos->where('campo','email')->first()?->show_in_edit ?? false;
+                                $savedEmails = old('emails');
+                                if (empty($savedEmails)) {
+                                    $singleVal = old('email', $cliente->email ?? '');
+                                    $savedEmails = $singleVal ? preg_split('/[,;]+/', $singleVal, -1, PREG_SPLIT_NO_EMPTY) : [''];
+                                }
+                                if (empty($savedEmails)) {
+                                    $savedEmails = [''];
+                                }
+                            @endphp
+                            <div style="grid-column: 1 / -1; background: rgba(255,255,255,0.015); border: 1px dashed rgba(255,255,255,0.1); border-radius: 10px; padding: 14px 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                    <div>
+                                        <label class="modal-label" style="margin-bottom: 2px;">Correos Electrónicos (Email)</label>
+                                        <span style="font-size: 11px; color: #94a3b8;">
+                                            El 1º se sincroniza a PowerSales; todos se guardan en las sucursales.
+                                        </span>
+                                    </div>
+                                    @if($canEditEmail)
+                                    <button type="button" id="btn-add-email-edit" onclick="agregarCorreoEdit()"
+                                            style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: #818cf8; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        <span>Agregar correo</span>
+                                    </button>
+                                    @endif
+                                </div>
+                                <div id="emails-container-edit" style="display: flex; flex-direction: column; gap: 8px;">
+                                    @foreach($savedEmails as $idx => $m)
+                                    <div class="email-row" style="display: flex; gap: 8px; align-items: center;">
+                                        <div style="flex: 1; position: relative;">
+                                            <input type="email" name="emails[]" value="{{ trim($m) }}" maxlength="255"
+                                                   {{ !$canEditEmail ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }}
+                                                   placeholder="{{ $idx === 0 ? 'ejemplo@correo.com (Correo principal / PowerSales)' : 'correo.adicional@empresa.com' }}"
+                                                   class="modal-input" style="width: 100%;">
+                                        </div>
+                                        @if($idx > 0 && $canEditEmail)
+                                        <button type="button" onclick="this.closest('.email-row').remove();" title="Eliminar correo"
+                                                style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                        @endif
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <script>
+                                function agregarCorreoEdit() {
+                                    const container = document.getElementById('emails-container-edit');
+                                    if (!container) return;
+                                    const count = container.querySelectorAll('.email-row').length + 1;
+                                    const row = document.createElement('div');
+                                    row.className = 'email-row';
+                                    row.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+                                    row.innerHTML = `
+                                        <div style="flex: 1; position: relative;">
+                                            <input type="email" name="emails[]" maxlength="255"
+                                                   placeholder="correo.${count}@empresa.com"
+                                                   class="modal-input" style="width: 100%;">
+                                        </div>
+                                        <button type="button" onclick="this.closest('.email-row').remove();" title="Eliminar correo"
+                                                style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    `;
+                                    container.appendChild(row);
+                                    const inp = row.querySelector('input');
+                                    if (inp) inp.focus();
+                                }
+                                </script>
+                            </div>
+                            @endif
                             @if($campos->where('campo','telefono1')->first()!== null)<div><label class="modal-label">Teléfono 1</label><input type="text" name="telefono1" value="{{ old('telefono1', $cliente->telefono1) }}" {{ !($campos->where('campo','telefono1')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
                             @if($campos->where('campo','telefono2')->first()!== null)<div><label class="modal-label">Teléfono 2</label><input type="text" name="telefono2" value="{{ old('telefono2', $cliente->telefono2) }}" {{ !($campos->where('campo','telefono2')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif
                             @if($campos->where('campo','fax')->first()!== null)<div><label class="modal-label">Fax</label><input type="text" name="fax" value="{{ old('fax', $cliente->fax) }}" {{ !($campos->where('campo','fax')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="15" class="modal-input"></div>@endif

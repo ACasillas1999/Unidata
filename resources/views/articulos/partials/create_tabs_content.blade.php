@@ -209,7 +209,7 @@
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
         <div class="form-group">
             <label class="modal-label">Ubicación (Almacén)</label>
-            <input type="text" name="ubicacion" value="{{ old('ubicacion') }}" class="modal-input" placeholder="Ej: A-12-B">
+            <input type="text" name="ubicacion" value="{{ old('ubicacion') }}" maxlength="10" class="modal-input" placeholder="Ej: A-12-B">
         </div>
         <div class="form-group">
             <label class="modal-label">Peso (kg)</label>

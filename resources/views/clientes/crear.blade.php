@@ -181,7 +181,69 @@
                 </h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                     @if($campos->where('campo','email')->first()!== null)
-                    <div><label class="modal-label">Correo Electrónico (Email)</label><input type="email" name="email" value="{{ old('email') }}" maxlength="255" placeholder="ejemplo@correo.com" class="modal-input"></div>
+                    <div style="grid-column: 1 / -1; background: rgba(255,255,255,0.015); border: 1px dashed rgba(255,255,255,0.1); border-radius: 10px; padding: 14px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <label class="modal-label" style="margin-bottom: 2px;">Correos Electrónicos (Email)</label>
+                                <span style="font-size: 11px; color: #94a3b8;">
+                                    El 1º se sincroniza a PowerSales; todos se guardan en las sucursales.
+                                </span>
+                            </div>
+                            <button type="button" id="btn-add-email" onclick="agregarCorreoCrear()"
+                                    style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: #818cf8; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <span>Agregar correo</span>
+                            </button>
+                        </div>
+                        <div id="emails-container" style="display: flex; flex-direction: column; gap: 8px;">
+                            @php
+                                $valEmails = old('emails');
+                                if (empty($valEmails)) {
+                                    $oldSingle = old('email');
+                                    $valEmails = $oldSingle ? preg_split('/[,;]+/', $oldSingle, -1, PREG_SPLIT_NO_EMPTY) : [''];
+                                }
+                            @endphp
+                            @foreach($valEmails as $idx => $m)
+                            <div class="email-row" style="display: flex; gap: 8px; align-items: center;">
+                                <div style="flex: 1; position: relative;">
+                                    <input type="email" name="emails[]" value="{{ trim($m) }}" maxlength="255"
+                                           placeholder="{{ $idx === 0 ? 'ejemplo@correo.com (Correo principal / PowerSales)' : 'correo.adicional@empresa.com' }}"
+                                           class="modal-input" style="width: 100%;">
+                                </div>
+                                @if($idx > 0)
+                                <button type="button" onclick="this.closest('.email-row').remove();" title="Eliminar correo"
+                                        style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                        <script>
+                        function agregarCorreoCrear() {
+                            const container = document.getElementById('emails-container');
+                            if (!container) return;
+                            const count = container.querySelectorAll('.email-row').length + 1;
+                            const row = document.createElement('div');
+                            row.className = 'email-row';
+                            row.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+                            row.innerHTML = `
+                                <div style="flex: 1; position: relative;">
+                                    <input type="email" name="emails[]" maxlength="255"
+                                           placeholder="correo.${count}@empresa.com"
+                                           class="modal-input" style="width: 100%;">
+                                </div>
+                                <button type="button" onclick="this.closest('.email-row').remove();" title="Eliminar correo"
+                                        style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            `;
+                            container.appendChild(row);
+                            const inp = row.querySelector('input');
+                            if (inp) inp.focus();
+                        }
+                        </script>
+                    </div>
                     @endif
                     @if($campos->where('campo','telefono1')->first()!== null)
                     <div><label class="modal-label">Teléfono 1</label><input type="text" name="telefono1" value="{{ old('telefono1') }}" maxlength="15" class="modal-input"></div>
@@ -566,6 +628,28 @@ if (paisSelect && paisSelect.value) {
     paisSelect.addEventListener('change', updateStates);
     estadoSelect.addEventListener('change', updateCities);
 }
+
+// Botón dinámico para agregar múltiples correos
+document.getElementById('btn-add-email')?.addEventListener('click', function() {
+    const container = document.getElementById('emails-container');
+    const count = container.querySelectorAll('.email-row').length + 1;
+    const row = document.createElement('div');
+    row.className = 'email-row';
+    row.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+    row.innerHTML = `
+        <div style="flex: 1; position: relative;">
+            <input type="email" name="emails[]" maxlength="255"
+                   placeholder="correo.${count}@empresa.com"
+                   class="modal-input" style="width: 100%;">
+        </div>
+        <button type="button" onclick="this.closest('.email-row').remove();" title="Eliminar correo"
+                style="display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; cursor: pointer; flex-shrink: 0; transition: all 0.2s;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    `;
+    container.appendChild(row);
+    row.querySelector('input').focus();
+});
 </script>
 @endpush
 

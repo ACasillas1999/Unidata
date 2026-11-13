@@ -647,6 +647,16 @@ class PowerSalesService
         try {
             $payload = $this->buildPayload('cliente', $branchData);
 
+            // PowerSales solo acepta un único correo principal en su campo Email.
+            // Si en Unidata vienen múltiples correos separados por coma, tomar únicamente el primero.
+            $rawEmail = $payload['Email'] ?? $branchData['email'] ?? $branchData['e_mail'] ?? '';
+            if (!empty($rawEmail)) {
+                $emailList = preg_split('/[,;]+/', (string) $rawEmail, -1, PREG_SPLIT_NO_EMPTY);
+                $payload['Email'] = trim($emailList[0] ?? '');
+            } else {
+                $payload['Email'] = '';
+            }
+
             // Sanear / Determinar IsCredit: si condicion_pago es CRE -> 1, CONT -> 0
             $condicion = strtoupper(trim((string)($branchData['Condicion_Pago'] ?? $branchData['condicion_pago'] ?? '')));
             if ($condicion === 'CRE' || str_starts_with($condicion, 'CRE')) {
