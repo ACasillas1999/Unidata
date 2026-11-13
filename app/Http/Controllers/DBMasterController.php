@@ -206,12 +206,12 @@ class DBMasterController extends Controller
             'costo_venta'         => 'nullable|numeric',
             'costo_promedio'      => 'nullable|numeric',
             'costo_promedio_ant'  => 'nullable|numeric',
-            'inventario_maximo'   => 'nullable|numeric',
-            'inventario_minimo'   => 'nullable|numeric',
+            'inventario_maximo'   => 'nullable|numeric|min:0',
+            'inventario_minimo'   => 'nullable|numeric|min:0',
             'punto_reorden'       => 'nullable|numeric',
             'ubicacion'           => ['nullable', 'string', 'max:10', $latin1],
-            'peso'                => 'nullable|numeric',
-            'std_pack'            => 'nullable|numeric',
+            'peso'                => 'nullable|numeric|min:0',
+            'std_pack'            => 'nullable|numeric|gt:0',
             'costo_ult_compra'    => 'nullable|numeric',
             'fecha_ult_compra'    => 'nullable|date',
             'costo_compra_ant'    => 'nullable|numeric',
@@ -226,6 +226,16 @@ class DBMasterController extends Controller
             'critico'             => 'nullable|boolean',
             'control_pedimentos'  => 'nullable|boolean',
         ]);
+
+        // ED-09: el modal solo manda lo que cambió; si falta uno de los dos se compara con lo guardado.
+        // Máximo en 0 se toma como "sin máximo definido".
+        $invMin = array_key_exists('inventario_minimo', $data) ? $data['inventario_minimo'] : $article->inventario_minimo;
+        $invMax = array_key_exists('inventario_maximo', $data) ? $data['inventario_maximo'] : $article->inventario_maximo;
+        if ($invMin !== null && $invMax !== null && (float) $invMax > 0 && (float) $invMin > (float) $invMax) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'inventario_minimo' => 'El inventario mínimo (' . (float) $invMin . ') no puede ser mayor que el máximo (' . (float) $invMax . ').',
+            ]);
+        }
 
         try {
             $colorBranchMap = $request->input('color_branch', []);

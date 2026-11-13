@@ -1027,20 +1027,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Peso (kg)</label>
-                            <input type="number" step="0.001" name="peso" id="edit-peso" class="modal-input">
+                            <input type="number" step="0.001" name="peso" id="edit-peso" min="0" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Std Pack</label>
-                            <input type="number" step="0.01" name="std_pack" id="edit-std_pack" class="modal-input">
+                            <input type="number" step="0.01" name="std_pack" id="edit-std_pack" min="0.01" class="modal-input">
                         </div>
 
                         <div class="form-group">
                             <label class="modal-label">Inventario Máximo</label>
-                            <input type="number" step="0.01" name="inventario_maximo" id="edit-inventario_maximo" class="modal-input">
+                            <input type="number" step="0.01" name="inventario_maximo" id="edit-inventario_maximo" min="0" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Inventario Mínimo</label>
-                            <input type="number" step="0.01" name="inventario_minimo" id="edit-inventario_minimo" class="modal-input">
+                            <input type="number" step="0.01" name="inventario_minimo" id="edit-inventario_minimo" min="0" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Punto de Reorden</label>
