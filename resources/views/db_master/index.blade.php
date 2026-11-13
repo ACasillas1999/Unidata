@@ -775,6 +775,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 cancelButtonText: 'Revisar',
                 reverseButtons: true,
                 focusCancel: true,
+                // el modal de edición usa z-index 9999; sin esto el aviso queda detrás
+                didOpen: () => { Swal.getContainer().style.zIndex = 10050; },
             }).then(result => {
                 if (result.isConfirmed) {
                     enviar();
