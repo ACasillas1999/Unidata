@@ -1469,6 +1469,12 @@ class ArticulosController extends Controller
      */
     public function storeManual(\Illuminate\Http\Request $request)
     {
+        // K04: espacios en medio son formato real de clave; solo se unen los dobles/múltiples
+        // antes de validar, para que 'unique' compare la clave ya normalizada.
+        if (is_string($request->input('clave'))) {
+            $request->merge(['clave' => preg_replace('/ {2,}/', ' ', $request->input('clave'))]);
+        }
+
         // ART-03: las tablas de las sucursales son latin1; un emoji u otro símbolo fuera de ese
         // juego se guarda en el maestro pero las sucursales lo rechazan (error 3988).
         $latin1 = function ($attribute, $value, $fail) {
