@@ -211,7 +211,7 @@ class DBMasterController extends Controller
             'punto_reorden'       => 'nullable|numeric',
             'ubicacion'           => ['nullable', 'string', 'max:10', $latin1],
             'peso'                => 'nullable|numeric|min:0',
-            'std_pack'            => 'nullable|numeric|gt:0',
+            'std_pack'            => 'nullable|numeric',
             'costo_ult_compra'    => 'nullable|numeric',
             'fecha_ult_compra'    => 'nullable|date',
             'costo_compra_ant'    => 'nullable|numeric',

@@ -1031,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Std Pack</label>
-                            <input type="number" step="0.01" name="std_pack" id="edit-std_pack" min="0.01" class="modal-input">
+                            <input type="number" step="0.01" name="std_pack" id="edit-std_pack" class="modal-input">
                         </div>
 
                         <div class="form-group">
