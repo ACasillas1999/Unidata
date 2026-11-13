@@ -1486,7 +1486,7 @@ class ArticulosController extends Controller
             'linea'               => ['required', 'string', 'max:4', $latin1],
             'clasificacion'       => ['required', 'string', 'max:6', $latin1],
             'area'                => 'required|integer',
-            'mn_usd'              => 'required|boolean',
+            'mn_usd'              => ['required', 'string', 'in:M,U,m,u,0,1'],
             'precio_lista'        => 'nullable|numeric|min:0',
             'precio_venta'        => 'nullable|numeric|min:0',
             'des_precio_venta'    => 'nullable|numeric',
@@ -1530,82 +1530,7 @@ class ArticulosController extends Controller
             'inventario_minimo'   => 'nullable|numeric',
             'punto_reorden'       => 'nullable|numeric',
             'habilitado'          => 'required|boolean',
-        ], [
-            'required' => 'El campo :attribute es obligatorio.',
-            'string'   => 'El campo :attribute debe ser texto.',
-            'integer'  => 'El campo :attribute debe ser un número entero.',
-            'numeric'  => 'El campo :attribute debe ser un número.',
-            'boolean'  => 'El campo :attribute tiene un valor no válido.',
-            'array'    => 'El campo :attribute tiene un formato no válido.',
-            'date'     => 'El campo :attribute no es una fecha válida.',
-            'unique'   => 'Ya existe un artículo con esa :attribute.',
-            'clave.regex' => 'La clave solo puede llevar letras, números, Ñ, espacios y los símbolos / . - + * " _ ( )',
-            'max'      => [
-                'string'  => 'El campo :attribute no puede tener más de :max caracteres.',
-                'numeric' => 'El campo :attribute no puede ser mayor que :max.',
-            ],
-            'min'      => [
-                'string'  => 'El campo :attribute debe tener al menos :min caracteres.',
-                'numeric' => 'El campo :attribute no puede ser menor que :min.',
-            ],
-            'gt'       => [
-                'numeric' => 'El campo :attribute debe ser mayor que :value.',
-            ],
-            'between'  => [
-                'numeric' => 'El campo :attribute debe estar entre :min y :max.',
-            ],
-        ], [
-            'clave'               => 'clave',
-            'descripcion'         => 'descripción',
-            'unidad_medida'       => 'unidad de medida',
-            'linea'               => 'línea',
-            'clasificacion'       => 'clasificación',
-            'area'                => 'área',
-            'mn_usd'              => 'moneda',
-            'precio_lista'        => 'precio de lista',
-            'precio_venta'        => 'precio de venta',
-            'des_precio_venta'    => 'descuento precio de venta',
-            'precio_especial'     => 'precio especial',
-            'desc_precio_espec'   => 'descuento precio especial',
-            'precio4'             => 'precio 4',
-            'desc_precio4'        => 'descuento precio 4',
-            'desc_proveedor'      => 'descuento proveedor',
-            'precio_gerente'      => 'precio gerente',
-            'precio_tope'         => 'precio tope',
-            'costo_venta'         => 'costo de venta',
-            'porcetaje_descuento' => 'porcentaje de descuento',
-            'articulo_kit'        => 'artículo kit',
-            'articulo_serie'      => 'artículo con serie',
-            'margen_minimo'       => 'margen mínimo',
-            'color'               => 'color',
-            'color_branch'        => 'color por sucursal',
-            'color_branch.*'      => 'color por sucursal',
-            'protocolo'           => 'protocolo',
-            'idsat'               => 'clave de producto SAT',
-            'id_impuesto_sat'     => 'impuesto SAT',
-            'iva'                 => 'IVA',
-            'precio_minimo'       => 'precio mínimo',
-            'desc_precio_minimo'  => 'descuento precio mínimo',
-            'sustituto'           => 'sustituto',
-            'sustituto1'          => 'sustituto 1',
-            'sustituto2'          => 'sustituto 2',
-            'costo_promedio'      => 'costo promedio',
-            'costo_promedio_ant'  => 'costo promedio anterior',
-            'costo_ult_compra'    => 'costo última compra',
-            'fecha_ult_compra'    => 'fecha última compra',
-            'costo_compra_ant'    => 'costo compra anterior',
-            'fecha_compra_ant'    => 'fecha compra anterior',
-            'en_promocion'        => 'en promoción',
-            'critico'             => 'crítico',
-            'control_pedimentos'  => 'control de pedimentos',
-            'ubicacion'           => 'ubicación',
-            'peso'                => 'peso',
-            'std_pack'            => 'Std Pack',
-            'inventario_maximo'   => 'inventario máximo',
-            'inventario_minimo'   => 'inventario mínimo',
-            'punto_reorden'       => 'punto de reorden',
-            'habilitado'          => 'habilitado',
-        ]);
+        ], \App\Support\ArticuloValidacion::mensajes(), \App\Support\ArticuloValidacion::atributos());
 
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
@@ -1616,7 +1541,8 @@ class ArticulosController extends Controller
             $data['iva']             = isset($data['iva']) && $data['iva'] !== '' && $data['iva'] !== null ? $data['iva'] : 16;
             $data['id_tipo_factor']  = 'Tasa';
             $data['area']            = isset($data['area']) && $data['area'] !== '' && $data['area'] !== null ? (int)$data['area'] : 1;
-            $data['mn_usd']          = !empty($data['mn_usd']) ? 1 : 0;
+            $isUsd                   = in_array(strtoupper(trim((string)($data['mn_usd'] ?? ''))), ['U', '1', 'USD'], true);
+            $data['mn_usd']          = $isUsd ? 'U' : 'M';
             $data['color']           = isset($data['color']) && $data['color'] !== '' && $data['color'] !== null ? (int)$data['color'] : 0;
             $data['protocolo']       = !empty($data['protocolo']) ? 1 : 0;
             $data['articulo_kit']    = !empty($data['articulo_kit']) ? 1 : 0;
@@ -1733,7 +1659,7 @@ class ArticulosController extends Controller
                     'linea'               => $data['linea'],
                     'clasificacion'       => $data['clasificacion'],
                     'area'                => $data['area'] ?? 1,
-                    'mn_usd'              => $data['mn_usd'] ?? 0,
+                    'mn_usd'              => $data['mn_usd'] ?? 'M',
                     'precio_lista'        => $data['precio_lista'] ?? 0,
                     'des_precio_venta'    => $data['des_precio_venta'] ?? 0,
                     'precio_venta'        => $data['precio_venta'] ?? 0,
