@@ -241,6 +241,11 @@ class DBMasterController extends Controller
             $colorBranchMap = $request->input('color_branch', []);
             unset($data['color_branch']);
 
+            if (array_key_exists('mn_usd', $data) && $data['mn_usd'] !== null && $data['mn_usd'] !== '') {
+                $isUsd = in_array(strtoupper(trim((string)$data['mn_usd'])), ['U', '1', 'USD'], true);
+                $data['mn_usd'] = $isUsd ? 'U' : 'M';
+            }
+
             // SIEMPRE se recalculan las fórmulas de precios a 2 decimales
             $pLista = (float)($data['precio_lista'] ?? $article->precio_lista ?? 0);
             $d4     = (float)($data['desc_precio4'] ?? $article->desc_precio4 ?? 0);
