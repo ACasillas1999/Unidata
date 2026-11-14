@@ -188,19 +188,19 @@ class DBMasterController extends Controller
             'articulo_serie'      => 'nullable|boolean',
             'habilitado'          => 'nullable|boolean',
             'mn_usd'              => 'nullable|string|max:10',
-            'precio_lista'        => 'nullable|numeric|min:0',
+            'precio_lista'        => 'nullable|numeric|min:0|max:99999999999',
             'porcentaje_pv'       => 'nullable|numeric',
-            'precio_venta'        => 'nullable|numeric|min:0',
+            'precio_venta'        => 'nullable|numeric|min:0|max:99999999999',
             'des_precio_venta'    => 'nullable|numeric',
-            'precio_especial'     => 'nullable|numeric|min:0',
+            'precio_especial'     => 'nullable|numeric|min:0|max:99999999999',
             'desc_precio_espec'   => 'nullable|numeric|between:0,100',
-            'precio4'             => 'nullable|numeric|min:0',
+            'precio4'             => 'nullable|numeric|min:0|max:99999999999',
             'desc_precio4'        => 'nullable|numeric|between:0,100',
-            'precio_minimo'       => 'nullable|numeric|min:0',
+            'precio_minimo'       => 'nullable|numeric|min:0|max:99999999999',
             'desc_precio_minimo'  => 'nullable|numeric|between:0,100',
-            'precio_tope'         => 'nullable|numeric|min:0',
+            'precio_tope'         => 'nullable|numeric|min:0|max:99999999999',
             'desc_proveedor'      => 'nullable|numeric|between:0,100',
-            'precio_gerente'      => 'nullable|numeric|min:0',
+            'precio_gerente'      => 'nullable|numeric|min:0|max:99999999999',
             'porcetaje_descuento' => 'nullable|numeric|between:0,100',
             'margen_minimo'       => 'nullable|numeric',
             'costo_venta'         => 'nullable|numeric',
@@ -281,6 +281,11 @@ class DBMasterController extends Controller
                 }
             }
 
+            // ED-08: el precio de venta calculado debe caber en la columna decimal(15,4) de master
+            if ($calcPrecioVenta > 99999999999) {
+                $erroresCalculados['precio_lista'] = 'El precio de venta calculado (' . number_format($calcPrecioVenta, 2) . ') supera el máximo permitido (99,999,999,999). Revisa el precio de lista y el porcentaje de venta.';
+            }
+
             if (!empty($erroresCalculados)) {
                 throw \Illuminate\Validation\ValidationException::withMessages($erroresCalculados);
             }
@@ -329,8 +334,12 @@ class DBMasterController extends Controller
             $message = 'Artículo actualizado en Maestro. Detalle de sucursales: ' . implode(' | ', $branchResults);
 
             return response()->json(['success' => true, 'message' => $message, 'branch_results' => $branchResults]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
+            // ED-08: no mostrar el SQL al usuario; el detalle queda en el log
+            Log::error('Error al actualizar artículo ' . $id, ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'No se pudo actualizar el artículo. Intenta de nuevo o contacta a sistemas.'], 500);
         }
     }
 
