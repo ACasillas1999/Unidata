@@ -286,11 +286,19 @@ class InventarioController extends Controller
         $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
 
         // Parsear encabezados
-        $headers = str_getcsv($firstLine, $delimiter);
+        $headers = str_getcsv(rtrim($firstLine, "\r\n"), $delimiter);
         $colMap  = $this->parseCsvHeaders($headers);
 
+        // IN-07: misma regla que la vista previa del navegador. Si la primera columna no es
+        // un nombre de encabezado conocido y la 2ª y 3ª son números, la primera línea es un dato.
+        $primeraCol   = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)($headers[0] ?? '')));
+        $esEncabezado = in_array($primeraCol, ['clavearticulo', 'clave', 'sku', 'codigo', 'productid'], true)
+            || !is_numeric(trim((string)($headers[1] ?? '')))
+            || !is_numeric(trim((string)($headers[2] ?? '')));
+        $pendientes = $esEncabezado ? [] : [$headers];
+
         $rows = [];
-        while (($data = fgetcsv($handle, 4096, $delimiter)) !== false) {
+        while (($data = array_shift($pendientes) ?? fgetcsv($handle, 4096, $delimiter)) !== false) {
             if (empty($data) || (count($data) == 1 && trim($data[0]) === '')) {
                 continue;
             }
