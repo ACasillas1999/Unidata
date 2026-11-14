@@ -75,9 +75,11 @@ class InventarioController extends Controller
                 ]));
 
             if ($search !== '') {
+                // IN-01: las columnas de la sucursal son latin1 y la conexión es utf8mb4;
+                // se convierte el texto buscado a latin1 para evitar "Illegal mix of collations"
                 $query->where(function ($q) use ($search) {
-                    $q->where('a.Clave_Articulo', 'LIKE', "%{$search}%")
-                      ->orWhere('art.Descripcion', 'LIKE', "%{$search}%");
+                    $q->whereRaw('a.Clave_Articulo LIKE CONVERT(? USING latin1)', ["%{$search}%"])
+                      ->orWhereRaw('art.Descripcion LIKE CONVERT(? USING latin1)', ["%{$search}%"]);
                 });
             }
 
