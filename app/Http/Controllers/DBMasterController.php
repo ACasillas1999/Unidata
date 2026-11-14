@@ -217,7 +217,7 @@ class DBMasterController extends Controller
             'costo_compra_ant'    => 'nullable|numeric',
             'idsat'               => ['nullable', 'string', 'max:25', $latin1],
             'id_impuesto_sat'     => 'nullable|string|max:3',
-            'iva'                 => 'nullable|numeric',
+            'iva'                 => ['nullable', 'numeric', 'in:0,8,16'],
             'id_tipo_factor'      => 'nullable|string|max:10',
             'sustituto'           => ['nullable', 'string', $latin1],
             'sustituto1'          => ['nullable', 'string', $latin1],
@@ -225,7 +225,7 @@ class DBMasterController extends Controller
             'en_promocion'        => 'nullable|boolean',
             'critico'             => 'nullable|boolean',
             'control_pedimentos'  => 'nullable|boolean',
-        ]);
+        ], \App\Support\ArticuloValidacion::mensajes(), \App\Support\ArticuloValidacion::atributos());
 
         // ED-09: el modal solo manda lo que cambió; si falta uno de los dos se compara con lo guardado.
         // Máximo en 0 se toma como "sin máximo definido".
@@ -254,18 +254,44 @@ class DBMasterController extends Controller
             $dProv  = (float)($data['desc_proveedor'] ?? $article->desc_proveedor ?? 0);
             $pDesc  = (float)($data['porcetaje_descuento'] ?? $article->porcetaje_descuento ?? 0);
 
-            $data['precio4']         = round($pLista * (100 - $d4) / 100, 2);
-            $data['precio_especial'] = round($pLista * (100 - $dEsp) / 100, 2);
-            $data['precio_gerente']  = round($pLista * (100 - $dProv) / 100, 2);
-            $data['precio_tope']     = round($pLista * (100 - $pDesc) / 100, 2);
+            $calcPrecio4         = round($pLista * (100 - $d4) / 100, 2);
+            $calcPrecioEsp       = round($pLista * (100 - $dEsp) / 100, 2);
+            $calcPrecioGerente   = round($pLista * (100 - $dProv) / 100, 2);
+            $calcPrecioTope      = round($pLista * (100 - $pDesc) / 100, 2);
 
-            $pEspCalc                = $pLista * (100 - $dEsp) / 100;
-            $data['precio_venta']    = round($pEspCalc * (1 + $pPV / 100), 2);
-            if ($pLista > 0 && ($data['precio_venta'] ?? 0) > 0) {
-                $data['des_precio_venta'] = round((1 - ($data['precio_venta'] / $pLista)) * 100, 2);
-            } else {
-                $data['des_precio_venta'] = 0;
+            $pEspCalc            = $pLista * (100 - $dEsp) / 100;
+            $calcPrecioVenta     = round($pEspCalc * (1 + $pPV / 100), 2);
+            $calcDescVenta       = ($pLista > 0 && $calcPrecioVenta > 0)
+                ? round(100 - (($calcPrecioVenta / $pLista) * 100), 2)
+                : 0.0;
+
+            // Validación de campos calculados enviados fuera de pantalla (SRV)
+            $erroresCalculados = [];
+            if ($request->has('precio_venta') && $request->input('precio_venta') !== null && $request->input('precio_venta') !== '') {
+                $reqPrecioVenta = (float)$request->input('precio_venta');
+                if (abs($reqPrecioVenta - $calcPrecioVenta) > 0.05) {
+                    $erroresCalculados['precio_venta'] = 'El precio de venta (' . $reqPrecioVenta . ') no coincide con el cálculo matemático (' . $calcPrecioVenta . ').';
+                }
             }
+
+            if ($request->has('des_precio_venta') && $request->input('des_precio_venta') !== null && $request->input('des_precio_venta') !== '') {
+                $reqDescVenta = (float)$request->input('des_precio_venta');
+                if (abs($reqDescVenta - $calcDescVenta) > 0.05) {
+                    $erroresCalculados['des_precio_venta'] = 'El descuento de precio de venta (' . $reqDescVenta . '%) no coincide con el cálculo matemático (' . $calcDescVenta . '%).';
+                }
+            }
+
+            if (!empty($erroresCalculados)) {
+                throw \Illuminate\Validation\ValidationException::withMessages($erroresCalculados);
+            }
+
+            $data['precio4']          = $calcPrecio4;
+            $data['precio_especial']  = $calcPrecioEsp;
+            $data['precio_gerente']   = $calcPrecioGerente;
+            $data['precio_tope']      = $calcPrecioTope;
+            $data['precio_venta']     = $calcPrecioVenta;
+            $data['des_precio_venta'] = $calcDescVenta;
+            unset($data['porcentaje_pv']);
 
             $article->update($data);
 

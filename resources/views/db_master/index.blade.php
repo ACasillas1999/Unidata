@@ -743,10 +743,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: formData
             })
-            .then(res => res.json())
+            .then(res => {
+                // ED-10: sesión/CSRF vencido (419) responde "CSRF token mismatch." en inglés
+                if (res.status === 419) {
+                    return { success: false, message: 'Tu sesión expiró. Recarga la página e intenta de nuevo.' };
+                }
+                return res.json();
+            })
             .then(data => {
                 if (data.success) {
                     Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
+                } else if (data.errors) {
+                    // ED-10: mostrar todos los errores de validación (Laravel solo pone el primero en message)
+                    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                    const lista = Object.values(data.errors).flat().map(m => '<li>' + esc(m) + '</li>').join('');
+                    Swal.fire({ icon: 'error', title: 'Revisa los datos', html: '<ul style="text-align:left; margin:0; padding-left:20px;">' + lista + '</ul>' });
                 } else {
                     Swal.fire('Error', data.message || 'Error desconocido', 'error');
                 }
@@ -1023,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                         <div class="form-group">
                             <label class="modal-label">Ubicación (Almacén)</label>
-                            <input type="text" name="ubicacion" id="edit-ubicacion" class="modal-input" placeholder="Ej: A-12-B">
+                            <input type="text" name="ubicacion" id="edit-ubicacion" maxlength="10" class="modal-input" placeholder="Ej: A-12-B">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Peso (kg)</label>

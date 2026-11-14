@@ -1488,6 +1488,7 @@ class ArticulosController extends Controller
             'area'                => 'required|integer',
             'mn_usd'              => ['required', 'string', 'in:M,U,m,u,0,1'],
             'precio_lista'        => 'nullable|numeric|min:0',
+            'porcentaje_pv'       => 'nullable|numeric|between:0,100',
             'precio_venta'        => 'nullable|numeric|min:0',
             'des_precio_venta'    => 'nullable|numeric',
             'precio_especial'     => 'nullable|numeric|min:0',
@@ -1508,7 +1509,7 @@ class ArticulosController extends Controller
             'protocolo'           => 'nullable|boolean',
             'idsat'               => ['nullable', 'string', 'max:25', $latin1],
             'id_impuesto_sat'     => 'nullable|string|max:3',
-            'iva'                 => 'nullable|numeric',
+            'iva'                 => ['nullable', 'numeric', 'in:0,8,16'],
             'precio_minimo'       => 'nullable|numeric|min:0',
             'desc_precio_minimo'  => 'nullable|numeric|between:0,100',
             'sustituto'           => ['nullable', 'string', $latin1],
@@ -1531,6 +1532,43 @@ class ArticulosController extends Controller
             'punto_reorden'       => 'nullable|numeric',
             'habilitado'          => 'required|boolean',
         ], \App\Support\ArticuloValidacion::mensajes(), \App\Support\ArticuloValidacion::atributos());
+
+        // SIEMPRE se recalculan las fórmulas de precios a 2 decimales a partir de las bases
+        $pLista = (float)($data['precio_lista'] ?? 0);
+        $d4     = (float)($data['desc_precio4'] ?? 0);
+        $dEsp   = (float)($data['desc_precio_espec'] ?? 0);
+        $pPV    = isset($data['porcentaje_pv']) && is_numeric($data['porcentaje_pv']) ? (float)$data['porcentaje_pv'] : 5.27;
+        $dProv  = (float)($data['desc_proveedor'] ?? 0);
+        $pDesc  = (float)($data['porcetaje_descuento'] ?? 0);
+
+        $calcPrecio4         = round($pLista * (100 - $d4) / 100, 2);
+        $calcPrecioEsp       = round($pLista * (100 - $dEsp) / 100, 2);
+        $calcPrecioGerente   = round($pLista * (100 - $dProv) / 100, 2);
+        $calcPrecioTope      = round($pLista * (100 - $pDesc) / 100, 2);
+        $calcPrecioVenta     = round($calcPrecioEsp * (1 + $pPV / 100), 2);
+        $calcDescVenta       = ($pLista > 0 && $calcPrecioVenta > 0)
+            ? round(100 - (($calcPrecioVenta / $pLista) * 100), 2)
+            : 0.0;
+
+        // Validación de campos calculados que se envíen fuera de pantalla (SRV)
+        $erroresCalculados = [];
+        if ($request->has('precio_venta') && $request->input('precio_venta') !== null && $request->input('precio_venta') !== '') {
+            $reqPrecioVenta = (float)$request->input('precio_venta');
+            if (abs($reqPrecioVenta - $calcPrecioVenta) > 0.05) {
+                $erroresCalculados['precio_venta'] = 'El precio de venta (' . $reqPrecioVenta . ') no coincide con el cálculo matemático (' . $calcPrecioVenta . ').';
+            }
+        }
+
+        if ($request->has('des_precio_venta') && $request->input('des_precio_venta') !== null && $request->input('des_precio_venta') !== '') {
+            $reqDescVenta = (float)$request->input('des_precio_venta');
+            if (abs($reqDescVenta - $calcDescVenta) > 0.05) {
+                $erroresCalculados['des_precio_venta'] = 'El descuento de precio de venta (' . $reqDescVenta . '%) no coincide con el cálculo matemático (' . $calcDescVenta . '%).';
+            }
+        }
+
+        if (!empty($erroresCalculados)) {
+            throw \Illuminate\Validation\ValidationException::withMessages($erroresCalculados);
+        }
 
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
@@ -1569,14 +1607,14 @@ class ArticulosController extends Controller
                 }
             }
 
-            // SIEMPRE calcular precio_gerente y des_precio_venta con fórmula a 2 decimales
-            $pLista = (float)($data['precio_lista'] ?? 0);
-            $pVenta = (float)($data['precio_venta'] ?? 0);
-            $dProv  = (float)($data['desc_proveedor'] ?? 0);
-            $data['precio_gerente'] = round($pLista * (100 - $dProv) / 100, 2);
-            if ($pLista > 0 && $pVenta > 0 && (!isset($data['des_precio_venta']) || (float)$data['des_precio_venta'] === 0.0)) {
-                $data['des_precio_venta'] = round(100 - ($pVenta / $pLista * 100), 2);
-            }
+            // Asignar valores calculados con fórmulas oficiales
+            $data['precio4']          = $calcPrecio4;
+            $data['precio_especial']  = $calcPrecioEsp;
+            $data['precio_gerente']   = $calcPrecioGerente;
+            $data['precio_tope']      = $calcPrecioTope;
+            $data['precio_venta']     = $calcPrecioVenta;
+            $data['des_precio_venta'] = $calcDescVenta;
+            unset($data['porcentaje_pv']);
 
             // Extraer color_branch del array $data antes de crear en db_master
             $colorBranchMap = $data['color_branch'] ?? [];
