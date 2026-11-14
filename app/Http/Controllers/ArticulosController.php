@@ -702,7 +702,16 @@ class ArticulosController extends Controller
                 'fecha'               => now()
             ]);
 
+            // AU-01: nombre de columna tal como viene en el CSV, para los avisos
+            $headerLabel = [];
+            foreach ($headerMap as $idx => $mappedField) {
+                $headerLabel[$mappedField] = $headerOriginal[$idx];
+            }
+            $filasInvalidas = [];
+            $fila = 1; // la fila 1 es el encabezado
+
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
+                $fila++;
                 $row = array_map([$this, 'cleanUtf8'], $row);
                 $item = [];
                 foreach ($row as $index => $value) {
@@ -720,6 +729,7 @@ class ArticulosController extends Controller
 
                 $updateDataMaster = [];
                 $updateDataBranch = [];
+                $filaConError = false;
 
                 // Normalizamos las columnas seleccionadas en la UI
                 $colsUiNorm = array_map($normalize, $columnsSelected);
@@ -766,8 +776,15 @@ class ArticulosController extends Controller
                             'porcetaje_descuento', 'margen_minimo', 'area', 'iva', 'peso',
                             'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'std_pack'
                         ];
-                        if (in_array($field, $numericCols) && (!is_numeric($val) || $val === '')) {
-                            $val = 0;
+                        if (in_array($field, $numericCols)) {
+                            // AU-01: "1,234.50" se acepta como 1234.50; texto como "abc" ya no se guarda como 0
+                            [$esNumero, $numero] = $this->parseNumeroCsv($val);
+                            if (!$esNumero) {
+                                $filaConError = true;
+                                $filasInvalidas[] = "Fila {$fila} ({$clave}): " . ($headerLabel[$field] ?? $field) . " = '{$val}' no es un número";
+                                continue;
+                            }
+                            $val = $numero;
                         }
                         
                         // Para el Maestro (snake_case estándar)
@@ -779,6 +796,9 @@ class ArticulosController extends Controller
                         }
                     }
                 }
+
+                // AU-01: si la fila trae algún número inválido, no se guarda nada de esa fila
+                if ($filaConError) continue;
 
                 if (empty($updateDataMaster)) continue;
 
@@ -923,11 +943,20 @@ class ArticulosController extends Controller
             }
             fclose($handle);
 
+            // AU-01: resumen de filas omitidas por números inválidos (máximo 10 en el mensaje)
+            $avisoInvalidas = '';
+            if (!empty($filasInvalidas)) {
+                $avisoInvalidas = ' Filas omitidas por valores no numéricos (' . count($filasInvalidas) . '): '
+                    . implode(' | ', array_slice($filasInvalidas, 0, 10))
+                    . (count($filasInvalidas) > 10 ? ' | ...' : '');
+            }
+
             if ($updatedCount === 0) {
-                return response()->json([
+                return response()->json($this->cleanUtf8([
                     'success' => false,
-                    'message' => 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.'
-                ], 422);
+                    'message' => 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.' . $avisoInvalidas,
+                    'filas_invalidas' => $filasInvalidas,
+                ]), 422);
             }
 
             // Actualizar el conteo final en el historial
@@ -949,8 +978,9 @@ class ArticulosController extends Controller
 
             $responsePayload = [
                 'success' => true,
-                'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail),
-                'branch_stats' => $branchStats
+                'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail) . $avisoInvalidas,
+                'branch_stats' => $branchStats,
+                'filas_invalidas' => $filasInvalidas,
             ];
 
             return response()->json($this->cleanUtf8($responsePayload));
@@ -961,6 +991,22 @@ class ArticulosController extends Controller
                 'message' => 'Error al procesar el archivo: ' . $this->cleanUtf8($e->getMessage())
             ], 500);
         }
+    }
+
+    /**
+     * AU-01: interpreta un valor numérico del CSV.
+     * Vacío → 0 (igual que antes). Acepta coma de miles solo con formato exacto
+     * (1,234 / 1,234.50); "1,5" o "abc" se rechazan.
+     *
+     * @return array{0: bool, 1: mixed} [esNumero, valor]
+     */
+    private function parseNumeroCsv($val): array
+    {
+        $v = trim((string)$val);
+        if ($v === '') return [true, 0];
+        if (is_numeric($v)) return [true, $v];
+        if (preg_match('/^-?\d{1,3}(,\d{3})+(\.\d+)?$/', $v)) return [true, str_replace(',', '', $v)];
+        return [false, $v];
     }
 
     /**
