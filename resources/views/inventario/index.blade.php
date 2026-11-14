@@ -471,14 +471,35 @@ document.addEventListener('DOMContentLoaded', () => {
 @endif
 
 @if(session('minmax_modal'))
-@php $resSingle = session('minmax_modal'); @endphp
+@php
+    $resSingle = session('minmax_modal');
+    // IN-05: título, ícono y texto según cuántas sucursales se actualizaron
+    $exSingle  = (int)($resSingle['exitosos'] ?? 0);
+    $totSingle = (int)($resSingle['total'] ?? 0);
+    if ($totSingle > 0 && $exSingle === $totSingle) {
+        $estadoSingle = ['icon' => 'success', 'title' => '¡Mínimo / Máximo Actualizado!', 'color' => '#10b981'];
+    } elseif ($exSingle > 0) {
+        $estadoSingle = ['icon' => 'warning', 'title' => 'Actualizado con advertencias', 'color' => '#f59e0b'];
+    } else {
+        $estadoSingle = ['icon' => 'error', 'title' => 'No se actualizó el inventario', 'color' => '#ef4444'];
+    }
+@endphp
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let htmlContent = `
         <div style="text-align: left; font-size: 13px;">
             <p style="margin: 0 0 14px; color: #94a3b8;">
-                Se ha actualizado el inventario para el artículo <strong style="color: #60a5fa;">[{{ $resSingle['clave'] }}]</strong><br>
-                (Mínimo: <strong style="color:#86efac;">{{ $resSingle['min'] }}</strong> | Máximo: <strong style="color:#86efac;">{{ $resSingle['max'] }}</strong>).
+                @if($exSingle === 0)
+                    No se pudo actualizar el artículo <strong style="color: #60a5fa;">[{{ $resSingle['clave'] }}]</strong> en ninguna sucursal.
+                @else
+                    @if($exSingle === $totSingle)
+                        Se ha actualizado el inventario para el artículo
+                    @else
+                        Se actualizó en {{ $exSingle }} de {{ $totSingle }} sucursales el artículo
+                    @endif
+                    <strong style="color: #60a5fa;">[{{ $resSingle['clave'] }}]</strong><br>
+                    (Mínimo: <strong style="color:#86efac;">{{ $resSingle['min'] }}</strong> | Máximo: <strong style="color:#86efac;">{{ $resSingle['max'] }}</strong>).
+                @endif
             </p>
             <div style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">Detalle por Sucursal:</div>
             <div style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
@@ -497,13 +518,13 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     Swal.fire({
-        title: '¡Mínimo / Máximo Actualizado!',
+        title: @json($estadoSingle['title']),
         html: htmlContent,
-        icon: 'success',
+        icon: @json($estadoSingle['icon']),
         background: '#0f172a',
         color: '#ffffff',
         confirmButtonText: 'Aceptar',
-        confirmButtonColor: '#10b981',
+        confirmButtonColor: @json($estadoSingle['color']),
         width: '540px'
     });
 });
