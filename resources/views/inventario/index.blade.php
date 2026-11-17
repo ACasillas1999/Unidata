@@ -85,6 +85,35 @@
 </div>
 @endif
 
+{{-- IN-02: mensajes del controlador (with('error')) y errores de validación --}}
+@if(session('error'))
+<div class="alert alert--error" style="margin-top: 12px;">
+    <span class="alert-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </span>
+    <div>
+        <p class="alert-title">No se pudo completar la operación</p>
+        <p class="alert-body">{{ session('error') }}</p>
+    </div>
+</div>
+@endif
+
+@if($errors->any())
+<div class="alert alert--error" style="margin-top: 12px;">
+    <span class="alert-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </span>
+    <div>
+        <p class="alert-title">Revisa los datos</p>
+        <ul class="alert-body" style="margin: 0; padding-left: 18px;">
+            @foreach($errors->all() as $msg)
+                <li>{{ $msg }}</li>
+            @endforeach
+        </ul>
+    </div>
+</div>
+@endif
+
 <div class="card" id="inv-table-card" style="margin-top:20px; overflow:visible;">
     <div class="card-header card-header--row">
         <div>
