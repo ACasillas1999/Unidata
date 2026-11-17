@@ -247,7 +247,7 @@
                 <td style="padding: 10px 16px; text-align:right; color:var(--text-muted); white-space:nowrap;">{{ number_format((float) $row->Punto_Reorden, 2) }}</td>
                 <td style="padding: 10px 16px; text-align:center; white-space:nowrap;">
                     <button type="button" class="btn btn--sm shadow-premium" style="background: rgba(139,92,246,0.1); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); padding: 4px 10px; font-size: 11px;"
-                            onclick="abrirModalSingle('{{ $row->Clave_Articulo }}', '{{ addslashes($row->descripcion) }}', {{ (float)$row->Inventario_Minimo }}, {{ (float)$row->Inventario_Maximo }})"
+                            onclick="abrirModalSingle({{ Js::from((string) $row->Clave_Articulo) }}, {{ Js::from((string) $row->descripcion) }}, {{ (float)$row->Inventario_Minimo }}, {{ (float)$row->Inventario_Maximo }})"
                             title="Editar Mínimo y Máximo de este artículo">
                         <svg style="margin-right:3px;" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         Editar Mín/Máx
@@ -449,23 +449,18 @@
 {{-- SWEETALERT RESULTADOS DE CARGA MASIVA O EDICIÓN INDIVIDUAL --}}
 @if(session('csv_modal'))
 @php $resCsv = session('csv_modal'); @endphp
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const totalFilas  = {{ $resCsv['totalFilas'] ?? 0 }};
-    const exitosos    = {{ $resCsv['exitosos'] ?? 0 }};
-    const totalSuc    = {{ $resCsv['totalSuc'] ?? 0 }};
-    const isFullOk    = (exitosos === totalSuc);
-
-    let htmlContent = `
+{{-- IN-06: el detalle se arma fuera del <script> para que Blade lo escape como HTML
+     (antes iba dentro de un template string y un ` o ${...} en los mensajes lo rompía) --}}
+<template id="csv-modal-html">
         <div style="text-align: left; font-size: 13px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                 <div style="background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); padding: 12px; border-radius: 10px; text-align: center;">
                     <span style="font-size: 11px; color: #93c5fd; font-weight: 800; display: block; text-transform: uppercase; margin-bottom: 2px;">Filas CSV Procesadas</span>
-                    <span style="font-size: 20px; font-weight: 900; color: white;">${totalFilas}</span>
+                    <span style="font-size: 20px; font-weight: 900; color: white;">{{ (int)($resCsv['totalFilas'] ?? 0) }}</span>
                 </div>
                 <div style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); padding: 12px; border-radius: 10px; text-align: center;">
                     <span style="font-size: 11px; color: #86efac; font-weight: 800; display: block; text-transform: uppercase; margin-bottom: 2px;">Sucursales Exitosas</span>
-                    <span style="font-size: 20px; font-weight: 900; color: white;">${exitosos}/${totalSuc}</span>
+                    <span style="font-size: 20px; font-weight: 900; color: white;">{{ (int)($resCsv['exitosos'] ?? 0) }}/{{ (int)($resCsv['totalSuc'] ?? 0) }}</span>
                 </div>
             </div>
 
@@ -483,11 +478,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 @endforeach
             </div>
         </div>
-    `;
+</template>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const exitosos    = {{ (int)($resCsv['exitosos'] ?? 0) }};
+    const totalSuc    = {{ (int)($resCsv['totalSuc'] ?? 0) }};
+    const isFullOk    = (exitosos === totalSuc);
 
     Swal.fire({
         title: isFullOk ? '¡Carga Masiva Completada!' : 'Carga Masiva Finalizada con Advertencias',
-        html: htmlContent,
+        html: document.getElementById('csv-modal-html').innerHTML,
         icon: isFullOk ? 'success' : 'warning',
         background: '#0f172a',
         color: '#ffffff',
@@ -513,9 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
         $estadoSingle = ['icon' => 'error', 'title' => 'No se actualizó el inventario', 'color' => '#ef4444'];
     }
 @endphp
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    let htmlContent = `
+{{-- IN-06: el detalle se arma fuera del <script> para que Blade lo escape como HTML --}}
+<template id="minmax-modal-html">
         <div style="text-align: left; font-size: 13px;">
             <p style="margin: 0 0 14px; color: #94a3b8;">
                 @if($exSingle === 0)
@@ -544,11 +543,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 @endforeach
             </div>
         </div>
-    `;
-
+</template>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
     Swal.fire({
         title: @json($estadoSingle['title']),
-        html: htmlContent,
+        html: document.getElementById('minmax-modal-html').innerHTML,
         icon: @json($estadoSingle['icon']),
         background: '#0f172a',
         color: '#ffffff',
