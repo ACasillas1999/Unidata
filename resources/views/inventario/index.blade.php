@@ -477,13 +477,24 @@
                     </div>
                 @endforeach
             </div>
+
+            {{-- IN-03: filas del CSV que no se guardaron por valores inválidos --}}
+            @if(!empty($resCsv['invalidas']))
+                <div style="font-size: 11px; font-weight: 800; color: #fbbf24; text-transform: uppercase; margin: 14px 0 8px;">Filas omitidas por valores inválidos ({{ count($resCsv['invalidas']) }}):</div>
+                <ul style="max-height: 140px; overflow-y: auto; margin: 0; padding-left: 18px; color: #fcd34d; font-size: 12px;">
+                    @foreach($resCsv['invalidas'] as $inv)
+                        <li>{{ $inv }}</li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
 </template>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const exitosos    = {{ (int)($resCsv['exitosos'] ?? 0) }};
     const totalSuc    = {{ (int)($resCsv['totalSuc'] ?? 0) }};
-    const isFullOk    = (exitosos === totalSuc);
+    const hayInvalidas = {{ empty($resCsv['invalidas']) ? 'false' : 'true' }};
+    const isFullOk    = (exitosos === totalSuc) && !hayInvalidas;
 
     Swal.fire({
         title: isFullOk ? '¡Carga Masiva Completada!' : 'Carga Masiva Finalizada con Advertencias',

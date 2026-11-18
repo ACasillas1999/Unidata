@@ -257,6 +257,25 @@ class InventarioController extends Controller
     }
 
     /**
+     * IN-03: interpreta una cantidad de inventario del CSV.
+     * Vacío → 0 (igual que antes). Acepta coma de miles solo con formato exacto
+     * (1,500 / 1,234.50), igual que AU-01. Texto o negativos son inválidos.
+     *
+     * @return array{0: ?string, 1: float} [error o null, valor]
+     */
+    private function parseCantidadCsv(string $v): array
+    {
+        $v = trim($v);
+        if ($v === '') return [null, 0.0];
+        if (!is_numeric($v) && preg_match('/^-?\d{1,3}(,\d{3})+(\.\d+)?$/', $v)) {
+            $v = str_replace(',', '', $v);
+        }
+        if (!is_numeric($v)) return ['no es un número', 0.0];
+        if ((float)$v < 0)   return ['no puede ser negativo', 0.0];
+        return [null, (float)$v];
+    }
+
+    /**
      * Actualiza masivamente Inventario_Minimo y Inventario_Maximo desde un archivo CSV.
      */
     public function updateMasivo(Request $request)
@@ -300,7 +319,10 @@ class InventarioController extends Controller
         $pendientes = $esEncabezado ? [] : [$headers];
 
         $rows = [];
+        $filasInvalidas = [];
+        $fila = $esEncabezado ? 1 : 0; // número de línea del CSV, para los avisos
         while (($data = array_shift($pendientes) ?? fgetcsv($handle, 4096, $delimiter)) !== false) {
+            $fila++;
             if (empty($data) || (count($data) == 1 && trim($data[0]) === '')) {
                 continue;
             }
@@ -311,16 +333,34 @@ class InventarioController extends Controller
 
             if ($clave === '' || strtolower($clave) === 'clave_articulo') continue;
 
+            // IN-03: mismas reglas que la edición individual (número y no negativo).
+            // Antes "abc" y "1,500" se guardaban como 0 y -5 se guardaba tal cual.
+            [$errMax, $valMax] = $this->parseCantidadCsv($max);
+            [$errMin, $valMin] = $this->parseCantidadCsv($min);
+            if ($errMax !== null || $errMin !== null) {
+                $detalle = [];
+                if ($errMax !== null) $detalle[] = "máximo '{$max}' {$errMax}";
+                if ($errMin !== null) $detalle[] = "mínimo '{$min}' {$errMin}";
+                $filasInvalidas[] = "Fila {$fila} ({$clave}): " . implode(', ', $detalle);
+                continue;
+            }
+
             $rows[] = [
                 'clave' => $clave,
-                'max'   => is_numeric($max) ? (float)$max : 0,
-                'min'   => is_numeric($min) ? (float)$min : 0,
+                'max'   => $valMax,
+                'min'   => $valMin,
             ];
         }
         fclose($handle);
 
         if (empty($rows)) {
-            return redirect()->back()->with('error', 'No se encontraron filas válidas en el archivo CSV.');
+            $msg = 'No se encontraron filas válidas en el archivo CSV.';
+            if (!empty($filasInvalidas)) {
+                $msg .= ' Filas inválidas (' . count($filasInvalidas) . '): '
+                    . implode(' | ', array_slice($filasInvalidas, 0, 10))
+                    . (count($filasInvalidas) > 10 ? ' | ...' : '');
+            }
+            return redirect()->back()->with('error', $msg);
         }
 
         // Agrupar filas por clave única para procesar la última ocurrencia si hay repetidos
@@ -398,12 +438,14 @@ class InventarioController extends Controller
         $totalSuc  = count($resultados);
 
         return redirect()->back()
-            ->with('success', "Procesadas {$totalFilas} filas CSV en {$exitosos}/{$totalSuc} sucursales.")
+            ->with('success', "Procesadas {$totalFilas} filas CSV en {$exitosos}/{$totalSuc} sucursales."
+                . (!empty($filasInvalidas) ? ' Filas inválidas omitidas: ' . count($filasInvalidas) . '.' : ''))
             ->with('csv_modal', [
                 'totalFilas' => $totalFilas,
                 'exitosos'   => $exitosos,
                 'totalSuc'   => $totalSuc,
                 'resultados' => $resultados,
+                'invalidas'  => $filasInvalidas,
             ]);
     }
 
