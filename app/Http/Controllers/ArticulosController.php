@@ -857,7 +857,7 @@ class ArticulosController extends Controller
                         if (in_array($field, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'], true)) {
                             $isDiff = $this->parseBooleanValue($oldVal) !== $this->parseBooleanValue($newVal);
                         } else {
-                            $isDiff = (string)$oldVal !== (string)$newVal;
+                            $isDiff = $this->valorCambio($oldVal, $newVal);
                         }
 
                         if ($isDiff) {
@@ -896,7 +896,7 @@ class ArticulosController extends Controller
                                         if (in_array($fieldSnake, ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'], true)) {
                                             $isDiff = $this->parseBooleanValue($oldVal) !== $this->parseBooleanValue($newVal);
                                         } else {
-                                            $isDiff = (string)$oldVal !== (string)$newVal;
+                                            $isDiff = $this->valorCambio($oldVal, $newVal);
                                         }
 
                                         if ($isDiff) {
@@ -991,6 +991,18 @@ class ArticulosController extends Controller
                 'message' => 'Error al procesar el archivo: ' . $this->cleanUtf8($e->getMessage())
             ], 500);
         }
+    }
+
+    /**
+     * AU-05: ¿cambió el valor? Si ambos son números se comparan como número
+     * (35.7800 = 35.78); si no, como texto, igual que antes.
+     */
+    private function valorCambio($old, $new): bool
+    {
+        if (is_numeric($old) && is_numeric($new)) {
+            return abs((float)$old - (float)$new) > 0.00001;
+        }
+        return (string)$old !== (string)$new;
     }
 
     /**
