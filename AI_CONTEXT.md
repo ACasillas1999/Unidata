@@ -2,6 +2,29 @@
 
 Shared handoff notes for any AI tool editing this project. Capped at 10 entries, most recent first.
 
+## 2026-11-18 — Claude Code (Opus 5.5)
+QA Artículos e Inventario (`DBMasterController`, `ArticulosController`, `InventarioController`, `inventario/index.blade.php`):
+- **ED-08:** precios `max:99999999999` (cabe en decimal(15,4) del maestro) + revisión del precio de venta calculado; `ValidationException` se relanza (antes daba 500), otros errores → mensaje genérico + log.
+- **AU-01 (servidor):** carga masiva rechaza celdas numéricas inválidas (`parseNumeroCsv`, acepta `1,234.5`), omite la fila y responde `filas_invalidas`.
+- **IN-01:** buscador de inventario con `LIKE CONVERT(? USING latin1)` (mezcla de collations). **IN-02:** la vista muestra `session('error')` y `$errors`. **IN-05:** modal Min/Max distingue éxito / advertencia / error. **IN-06:** datos escapados con `Js::from()` y HTML de modales en `<template>`. **IN-07:** CSV sin encabezado ya no pierde la primera fila. **IN-03:** CSV rechaza máximo/mínimo no numérico o negativo y lista las filas omitidas. **IN-04:** al insertar en `articuloalm` se usa la clave del catálogo (`value('Clave_Articulo')`), no la escrita (aplicado, pendiente de commit).
+Gotcha: columnas de sucursales son latin1_swedish_ci (no distingue mayúsculas ni acentos): `where(...)->exists()` encuentra `qatest-a03` = `QATEST-A03`; usar el valor real de la BD.
+Decisiones del usuario: se permite mínimo > máximo y sin tope en inventario (~160 filas reales así, tubos almacén 1); E03, E10, C05 se aceptan. No mover datos de BD en pruebas (usar claves inexistentes `QATEST-NOEXISTE*`).
+Pendiente: ED-05 (descripción vacía + `array_filter` de nulls en sync), vista previa de AU-01, mensajes en español en `updateItem` de inventario, C07 con archivo binario, ED-07/ED-12/ED-13.
+
+## 2026-11-13 — Antigravity
+Corrección de Moneda (mn_usd) en Alta de Artículos:
+- **Validación Flexible (`ArticulosController.php`):** Se reemplazó la regla `required|boolean` por `['required', 'string', 'in:M,U,m,u,0,1']` en `storeManual()`. La pantalla envía `M` (MXN) y `U` (USD), eliminando el fallo de validación 422 ("The mn usd field must be true or false.").
+- **Normalización Estricta para Sucursales y DB Master:** En lugar de forzar a `1:0` (`!empty`), se normalizan las variantes `['U', '1', 'USD']` hacia `'U'` y el resto hacia `'M'`.
+- **Integridad en ERP y PowerSales:** La columna `articulo.MN_USD` en las sucursales es `char(1)` y ahora siempre recibe `'M'` o `'U'`. Hacia PowerSales, `PowerSalesService` mapea `'U'` a `'USD'` y `'M'` a `'MXN'` en el campo `Currency` de `/pricelistsdetails`.
+
+## 2026-11-12 — Antigravity
+Soporte de Múltiples Correos en Formularios y Sincronización PowerSales:
+- **UI Dinámica (`crear.blade.php` y `editar.blade.php`):** Se agregó botón `+` ("Agregar correo") para añadir múltiples campos de correo (`emails[]`) con botón de eliminar individual. En edición, los correos existentes separados por comas/punto y coma se separan y precargan en renglones independientes.
+- **Validación y Normalización (`ClientesController.php`):** Método `validarYNormalizarEmails()` valida individualmente cada correo usando `FILTER_VALIDATE_EMAIL` (rechazando formatos inválidos como `a@b`). Los correos válidos se concatenan separados por coma y espacio (`, `) y se verifica longitud máxima de 255 caracteres para la base de datos.
+- **Persistencia en Maestro y Sucursales:** El string completo con todos los correos se guarda en `clientes_maestro.email` y se replica en la tabla `clientes_email.e_mail` de las sucursales del ERP.
+- **PowerSales (Regla del Primer Correo):** En `PowerSalesService::syncCliente()`, el payload de cliente solo toma y envía el primer correo (`$emailList[0]`) hacia `customers.Email`, manteniendo la integridad de la API de PowerSales sin romper los múltiples correos en ERP y base de datos maestra.
+- **Consecutivo Real de Sucursales (`calcularSiguienteClienteSucursal`):** Al asignar el ID local `Cliente` en sucursales para nuevos registros, el sistema ignoraba el salto artificial provocado por las cuentas de CEDIS/Cotizaciones (`888888`-`888913`) y cuentas históricas. Se implementó filtro `< 800000` con exclusión de manuales, restableciendo el consecutivo continuo en cada ERP (AIESA: 120k+, DEASA: 147k+, DIMEGSA: 126k+, TAPATIA: 162k+). Probado y verificado con 5 altas continuas.
+
 ## 2026-11-10 — Claude Code (Opus 5.5)
 Integrada rama `bug-07` en main: BUG-07 (rangos numéricos), BUG-12 (Sync/FPMPFac desplegable 0/1, ya no forzado a 0), BUG-09 (fecha alta = hoy en alta; en edición no posterior a la registrada; importar toma la más antigua de las sucursales), régimen fiscal + CP obligatorios por CFDI 4.0.
 Decisiones del usuario: CFDI solo se exige en ALTA (clientes viejos sin régimen/CP deben poder editarse). Fecha mínima 1970 (`FECHA_ALTA_MINIMA`), elegida por Claude, confirmar.
