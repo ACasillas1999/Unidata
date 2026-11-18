@@ -181,10 +181,11 @@ class InventarioController extends Controller
 
                 // Si no existía en articuloalm pero sí en la tabla articulo, insertar en Almacen 1
                 if ($affected === 0) {
-                    $articuloExiste = $conn->table('articulo')->where('Clave_Articulo', $clave)->exists();
-                    if ($articuloExiste) {
+                    // Usar la clave tal como está en el catálogo (la búsqueda ignora mayúsculas en latin1)
+                    $claveReal = $conn->table('articulo')->where('Clave_Articulo', $clave)->value('Clave_Articulo');
+                    if ($claveReal !== null) {
                         $conn->table('articuloalm')->insert([
-                            'Clave_Articulo'     => $clave,
+                            'Clave_Articulo'     => $claveReal,
                             'Almacen'            => 1,
                             'Inventario_Minimo'  => $min,
                             'Inventario_Maximo'  => $max,
@@ -392,10 +393,11 @@ class InventarioController extends Controller
                         if ($affected > 0) {
                             $actualizados++;
                         } else {
-                            $articuloExiste = $conn->table('articulo')->where('Clave_Articulo', $r['clave'])->exists();
-                            if ($articuloExiste) {
+                            // Usar la clave tal como está en el catálogo (la búsqueda ignora mayúsculas en latin1)
+                            $claveReal = $conn->table('articulo')->where('Clave_Articulo', $r['clave'])->value('Clave_Articulo');
+                            if ($claveReal !== null) {
                                 $conn->table('articuloalm')->insert([
-                                    'Clave_Articulo'     => $r['clave'],
+                                    'Clave_Articulo'     => $claveReal,
                                     'Almacen'            => 1,
                                     'Inventario_Minimo'  => $r['min'],
                                     'Inventario_Maximo'  => $r['max'],
