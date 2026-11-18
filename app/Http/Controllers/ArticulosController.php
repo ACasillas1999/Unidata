@@ -708,6 +708,7 @@ class ArticulosController extends Controller
                 $headerLabel[$mappedField] = $headerOriginal[$idx];
             }
             $filasInvalidas = [];
+            $clavesNoEncontradas = []; // AU-02
             $fila = 1; // la fila 1 es el encabezado
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
@@ -813,7 +814,11 @@ class ArticulosController extends Controller
                             ->first();
                     }
                 }
-                if (!$masterCurrent) continue; // Si no existe en el maestro, no se puede crear vía CSV
+                if (!$masterCurrent) {
+                    // AU-02: la carga masiva no crea artículos; reportar la clave en lugar de omitirla en silencio
+                    $clavesNoEncontradas[] = "Fila {$fila} ({$clave})";
+                    continue;
+                }
 
                 $canonicalClave = $masterCurrent->clave;
 
@@ -951,11 +956,19 @@ class ArticulosController extends Controller
                     . (count($filasInvalidas) > 10 ? ' | ...' : '');
             }
 
+            // AU-02: resumen de claves que no existen en el maestro (máximo 10 en el mensaje)
+            if (!empty($clavesNoEncontradas)) {
+                $avisoInvalidas .= ' Claves no encontradas en el Catálogo Maestro, omitidas (' . count($clavesNoEncontradas) . '): '
+                    . implode(' | ', array_slice($clavesNoEncontradas, 0, 10))
+                    . (count($clavesNoEncontradas) > 10 ? ' | ...' : '');
+            }
+
             if ($updatedCount === 0) {
                 return response()->json($this->cleanUtf8([
                     'success' => false,
                     'message' => 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.' . $avisoInvalidas,
                     'filas_invalidas' => $filasInvalidas,
+                    'claves_no_encontradas' => $clavesNoEncontradas,
                 ]), 422);
             }
 
@@ -981,6 +994,7 @@ class ArticulosController extends Controller
                 'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail) . $avisoInvalidas,
                 'branch_stats' => $branchStats,
                 'filas_invalidas' => $filasInvalidas,
+                'claves_no_encontradas' => $clavesNoEncontradas,
             ];
 
             return response()->json($this->cleanUtf8($responsePayload));

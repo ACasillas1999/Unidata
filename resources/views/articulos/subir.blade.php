@@ -1242,8 +1242,9 @@
                             if (item.status === 'new') {
                                 activeCols.forEach(col => {
                                     const val = item.data ? (item.data[col.field] ?? item.data[col.csv] ?? '') : '';
-                                    rowHtml += `<td style="padding:8px 12px; vertical-align:middle; background:rgba(56, 189, 248, 0.05); color:var(--sky); font-size:11px; white-space:nowrap;">
-                                    <span style="font-size:9px; font-weight:bold; background:rgba(56,189,248,0.2); padding:1px 4px; border-radius:3px; margin-right:4px;">NUEVO</span> ${val}
+                                    // AU-02: la carga masiva no crea artículos; esta fila se omitirá al procesar
+                                    rowHtml += `<td style="padding:8px 12px; vertical-align:middle; background:rgba(239, 68, 68, 0.06); color:#f87171; font-size:11px; white-space:nowrap;" title="La clave no existe en el Catálogo Maestro. La carga masiva no crea artículos; esta fila se omitirá.">
+                                    <span style="font-size:9px; font-weight:bold; background:rgba(239,68,68,0.2); padding:1px 4px; border-radius:3px; margin-right:4px;">NO EXISTE · se omitirá</span> ${val}
                                 </td>`;
                                 });
                             } else {
