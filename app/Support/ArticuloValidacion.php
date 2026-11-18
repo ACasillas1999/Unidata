@@ -96,4 +96,16 @@ class ArticuloValidacion
             'habilitado'          => 'habilitado',
         ];
     }
+
+    /**
+     * AU-04: Desc. P. Venta = 100 - (P. Venta / P. Lista * 100), con la misma regla del ERP:
+     * si P. Venta es 0 el descuento es 100 (así están todos los artículos sin precio en las sucursales).
+     * P. Lista 0 con P. Venta > 0 no existe en los datos; se deja en 0.
+     */
+    public static function descPrecioVenta(float $pLista, float $pVenta): float
+    {
+        if ($pVenta <= 0) return 100.0;
+        if ($pLista <= 0) return 0.0;
+        return round(100 - ($pVenta / $pLista * 100), 2);
+    }
 }

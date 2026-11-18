@@ -847,9 +847,7 @@ class ArticulosController extends Controller
                 $updateDataBranch['PrecioTope']   = $calcPrecioTope;
 
                 // Auto-cálculo de Desc. P. Venta a partir de P.Lista y P.Venta
-                $calcDescVenta = ($pLista > 0 && $pVenta > 0)
-                    ? round(100 - ($pVenta / $pLista * 100), 2)
-                    : 0.00;
+                $calcDescVenta = \App\Support\ArticuloValidacion::descPrecioVenta($pLista, $pVenta); // AU-04
                 $updateDataMaster['des_precio_venta'] = $calcDescVenta;
                 $updateDataBranch['Desc_Precio_Venta'] = $calcDescVenta;
 
@@ -1319,10 +1317,8 @@ class ArticulosController extends Controller
                 $dProv  = isset($csvItem['desc_proveedor']) ? (float)$csvItem['desc_proveedor'] : (float)($masterItem->desc_proveedor ?? 0);
                 $pDesc  = isset($csvItem['porcetaje_descuento']) ? (float)$csvItem['porcetaje_descuento'] : (float)($masterItem->porcetaje_descuento ?? 0);
 
-                // Calcular Desc. P. Venta vía fórmula si P.Lista > 0 y P.Venta > 0
-                $calcDescVenta = ($pLista > 0 && $pVenta > 0)
-                    ? round(100 - ($pVenta / $pLista * 100), 2)
-                    : 0.00;
+                // Calcular Desc. P. Venta con la regla del ERP (AU-04)
+                $calcDescVenta = \App\Support\ArticuloValidacion::descPrecioVenta($pLista, $pVenta);
 
                 $formulaFields = [
                     'precio4'          => ['label' => 'Precio 4',       'triggers' => ['P. Lista', 'Desc. Precio 4'], 'new' => round($pLista * (100 - $d4) / 100, 2),    'old' => round((float)($masterItem->precio4 ?? 0), 2)],
@@ -1618,9 +1614,7 @@ class ArticulosController extends Controller
         $calcPrecioGerente   = round($pLista * (100 - $dProv) / 100, 2);
         $calcPrecioTope      = round($pLista * (100 - $pDesc) / 100, 2);
         $calcPrecioVenta     = round($calcPrecioEsp * (1 + $pPV / 100), 2);
-        $calcDescVenta       = ($pLista > 0 && $calcPrecioVenta > 0)
-            ? round(100 - (($calcPrecioVenta / $pLista) * 100), 2)
-            : 0.0;
+        $calcDescVenta       = \App\Support\ArticuloValidacion::descPrecioVenta($pLista, $calcPrecioVenta); // AU-04
 
         // Validación de campos calculados que se envíen fuera de pantalla (SRV)
         $erroresCalculados = [];

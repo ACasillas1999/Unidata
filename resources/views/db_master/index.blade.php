@@ -539,7 +539,8 @@ function calculateEditPrices() {
             const dVentaFinal = 100 - (pVenta / lista * 100);
             editDesVentaFinal.value = dVentaFinal.toFixed(2);
         } else {
-            editDesVentaFinal.value = "0.00";
+            // AU-04: misma regla del ERP, sin precio de venta el descuento es 100
+            editDesVentaFinal.value = pVenta <= 0 ? "100.00" : "0.00";
         }
     }
 

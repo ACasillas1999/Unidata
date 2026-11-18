@@ -261,9 +261,7 @@ class DBMasterController extends Controller
 
             $pEspCalc            = $pLista * (100 - $dEsp) / 100;
             $calcPrecioVenta     = round($pEspCalc * (1 + $pPV / 100), 2);
-            $calcDescVenta       = ($pLista > 0 && $calcPrecioVenta > 0)
-                ? round(100 - (($calcPrecioVenta / $pLista) * 100), 2)
-                : 0.0;
+            $calcDescVenta       = \App\Support\ArticuloValidacion::descPrecioVenta($pLista, $calcPrecioVenta); // AU-04
 
             // Validación de campos calculados enviados fuera de pantalla (SRV)
             $erroresCalculados = [];

@@ -109,7 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const dVentaFinal = 100 - (pVenta / lista * 100);
             if (desVentaFinalInput) desVentaFinalInput.value = dVentaFinal.toFixed(2);
         } else {
-            if (desVentaFinalInput) desVentaFinalInput.value = "0.00";
+            // AU-04: misma regla del ERP, sin precio de venta el descuento es 100
+            if (desVentaFinalInput) desVentaFinalInput.value = pVenta <= 0 ? "100.00" : "0.00";
         }
 
         // 5. Precio Proveedor (Resultado) = Precio_Lista * (100 - Desc_Proveedor) / 100
