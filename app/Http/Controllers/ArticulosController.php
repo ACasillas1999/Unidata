@@ -929,7 +929,13 @@ class ArticulosController extends Controller
                     }
 
                     // Sync a PowerSales (con la clave canónica del maestro)
-                    $branchDataPs = array_merge(['Clave_Articulo' => $canonicalClave], $updateDataBranch);
+                    // AU-03: mandar el artículo completo ya actualizado (como en Editar), no solo
+                    // las columnas del CSV; si no, Descripción/Habilitado viajan vacíos.
+                    $branchDataPs = array_merge(
+                        \App\Support\ArticuloFieldMap::toBranchFormat($masterCurrent->fresh()->toArray()),
+                        ['Clave_Articulo' => $canonicalClave],
+                        $updateDataBranch
+                    );
                     $this->powerSales->syncArticulo($branchDataPs);
                     $this->powerSales->syncPriceListHeaders();
                     $this->powerSales->syncArticuloPriceListDetails($branchDataPs);

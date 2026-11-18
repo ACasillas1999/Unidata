@@ -292,6 +292,11 @@ class PowerSalesService
             $payload['BrandId'] = mb_substr((string) $sku, 0, 5);
         }
 
+        // AU-03 / ED-13: no enviar campos sin dato. PowerSales convierte "" en NULL y la
+        // tabla `products` rechaza NULL (IsDecimal, IsPMRequired...). Omitidos, PowerSales
+        // usa su valor por defecto, como funcionaba antes del commit 3a060e4 (oct-2026).
+        $payload = array_filter($payload, fn ($v) => $v !== '' && $v !== null);
+
         return $payload;
     }
 
@@ -340,7 +345,12 @@ class PowerSalesService
 
             $isSuccess = $response->successful();
             $message = 'Sincronizado correctamente a PowerSales';
-            if ($isSuccess && is_array($json)) {
+            if ($isSuccess && !is_array($json) && trim($body) !== '') {
+                // AU-03: PowerSales responde HTTP 200 con el error SQL como texto
+                // ("SQLSTATE[23000]: ..."); eso no es un éxito.
+                $isSuccess = false;
+                $message = 'Respuesta inesperada de PowerSales: ' . mb_substr(is_string($json) ? $json : $body, 0, 200);
+            } elseif ($isSuccess && is_array($json)) {
                 if (!empty($json['error']) && $json['error'] != 0) {
                     $isSuccess = false;
                     $message = $json['message'] ?? 'Error reportado por API de PowerSales';
