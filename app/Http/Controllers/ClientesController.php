@@ -80,12 +80,16 @@ class ClientesController extends Controller
 
     public function store(Request $request)
     {
-        $rfc = strtoupper(trim($request->input('rfc', '')));
+        // BUG-03: el RFC nuevo se guarda en formato oficial (mayúsculas, sin espacios ni guiones).
+        // Solo aplica al alta; en Editar el RFC está bloqueado y los clientes existentes no cambian.
+        $rfc = preg_replace('/[\s\-]+/u', '', mb_strtoupper(trim((string) $request->input('rfc', ''))));
+        $request->merge(['rfc' => $rfc]);
 
         // 1. Validación básica
         $regexTelefono = 'regex:/^[+]?[0-9\s\-().]{7,15}$/';
         $request->validate(array_merge($this->reglasLongitud(), [
-            'rfc' => 'required|string|max:14',
+            // BUG-03: formato SAT. Moral: 3 letras + AAMMDD + 3 (12). Física: 4 letras + AAMMDD + 3 (13).
+            'rfc' => ['required', 'string', 'max:14', 'regex:/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/u'],
             'razon_social' => 'required|string|max:255',
             'status' => 'required|string|max:1',
             'fecha_alta' => 'nullable|date',
@@ -93,7 +97,9 @@ class ClientesController extends Controller
             'telefono2' => ['nullable', 'string', 'max:15', $regexTelefono],
             'telefono3' => ['nullable', 'string', 'max:15', $regexTelefono],
             'fax' => ['nullable', 'string', 'max:15', $regexTelefono],
-        ]), $this->mensajesLongitud(), self::ETIQUETAS_CAMPOS);
+        ]), $this->mensajesLongitud() + [
+            'rfc.regex' => 'El RFC no tiene un formato válido. Debe tener 12 caracteres (persona moral, ej. ABC010101XY1) o 13 (persona física, ej. GUFC430315TH8).',
+        ], self::ETIQUETAS_CAMPOS);
         $this->validarCaracteresSucursal($request);
         $this->validarNumeros($request);
         $this->validarDatosCfdi($request);
@@ -1107,11 +1113,17 @@ class ClientesController extends Controller
      *
      * @return array{rfc: string, razon_social: string, coincide: string[], origen: string}|null
      */
+    /** BUG-03: RFC en mayúsculas y sin espacios ni guiones, para comparar. */
+    private function rfcSinSeparadores(string $rfc): string
+    {
+        return preg_replace('/[\s\-]+/u', '', mb_strtoupper(trim($rfc)));
+    }
+
     private function buscarClienteExistente(string $rfc, string $razonSocial, $branches): ?array
     {
         $armar = function (string $rfcEncontrado, string $razonEncontrada, string $origen) use ($rfc, $razonSocial): array {
             $coincide = [];
-            if ($rfcEncontrado !== '' && strtoupper(trim($rfcEncontrado)) === $rfc) {
+            if ($rfcEncontrado !== '' && $this->rfcSinSeparadores($rfcEncontrado) === $this->rfcSinSeparadores($rfc)) {
                 $coincide[] = 'rfc';
             }
             // Mismo criterio que MySQL (collation *_ci): sin distinguir mayúsculas/minúsculas
@@ -1128,7 +1140,10 @@ class ClientesController extends Controller
         };
 
         // Maestro: se prefiere la coincidencia por RFC (es seguro que es el mismo contribuyente)
+        // BUG-03: también sin espacios ni guiones (en el ERP muchos RFC se guardaron como "AOC 1212063B5")
+        $sqlRfcLimpio = "REPLACE(REPLACE(%s, ' ', ''), '-', '') = ?";
         $enMaestro = ClienteMaestro::where('rfc', $rfc)->first(['rfc', 'razon_social'])
+            ?? ClienteMaestro::whereRaw(sprintf($sqlRfcLimpio, 'rfc'), [$rfc])->first(['rfc', 'razon_social'])
             ?? ClienteMaestro::where('razon_social', $razonSocial)->first(['rfc', 'razon_social']);
         if ($enMaestro) {
             return $armar((string) $enMaestro->rfc, (string) $enMaestro->razon_social, 'maestro');
@@ -1138,6 +1153,7 @@ class ClientesController extends Controller
             try {
                 $tabla = fn() => $this->connectionManager->connect($branch->code)->table('clientes');
                 $fila = $tabla()->where('RFC', $rfc)->first(['RFC', 'Razon_Social'])
+                    ?? $tabla()->whereRaw(sprintf($sqlRfcLimpio, 'RFC'), [$rfc])->first(['RFC', 'Razon_Social'])
                     ?? $tabla()->where('Razon_Social', $razonSocial)->first(['RFC', 'Razon_Social']);
             } catch (Throwable) {
                 continue; // sucursal inaccesible: no bloquea la revisión de las demás
