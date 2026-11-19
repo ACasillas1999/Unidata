@@ -359,7 +359,12 @@
                     </div>
                     @endif
                     @if($campos->where('campo','prefijo_descripcion')->first() !== null)
-                    <div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', 0) }}" class="modal-input"></div>
+                    <div><label class="modal-label">Prefijo Descripción</label>
+                        <select name="prefijo_descripcion" class="modal-input">
+                            <option value="0" {{ (string) old('prefijo_descripcion', '0') === '0' ? 'selected' : '' }}>0 - No</option>
+                            <option value="1" {{ (string) old('prefijo_descripcion') === '1' ? 'selected' : '' }}>1 - Sí</option>
+                        </select>
+                    </div>
                     @endif
                     @if($campos->where('campo','id_sugar')->first() !== null)
                     <div><label class="modal-label">ID Sugar</label><input type="text" name="id_sugar" value="{{ old('id_sugar') }}" maxlength="36" class="modal-input"></div>

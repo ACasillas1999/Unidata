@@ -351,7 +351,13 @@
                                     <option value="1" {{ $selSync === '1' ? 'selected' : '' }}>1 - Sí</option>
                                 </select>
                             </div>@endif
-                            @if($campos->where('campo','prefijo_descripcion')->first() !== null)<div><label class="modal-label">Prefijo Descripción</label><input type="number" name="prefijo_descripcion" value="{{ old('prefijo_descripcion', $cliente->prefijo_descripcion) }}" {{ !($campos->where('campo','prefijo_descripcion')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} class="modal-input"></div>@endif
+                            @if($campos->where('campo','prefijo_descripcion')->first() !== null)<div><label class="modal-label">Prefijo Descripción</label>
+                                @php($selPrefijo = (string) (int) old('prefijo_descripcion', $cliente->prefijo_descripcion))
+                                <select name="prefijo_descripcion" class="modal-input" {{ !($campos->where('campo','prefijo_descripcion')->first()?->show_in_edit ?? false) ? 'style="pointer-events:none; opacity:0.6;" tabindex="-1"' : '' }}>
+                                    <option value="0" {{ $selPrefijo !== '1' ? 'selected' : '' }}>0 - No</option>
+                                    <option value="1" {{ $selPrefijo === '1' ? 'selected' : '' }}>1 - Sí</option>
+                                </select>
+                            </div>@endif
                             @if($campos->where('campo','id_sugar')->first() !== null)<div><label class="modal-label">ID Sugar</label><input type="text" name="id_sugar" value="{{ old('id_sugar', $cliente->id_sugar) }}" {{ !($campos->where('campo','id_sugar')->first()?->show_in_edit ?? false) ? 'readonly style="opacity:0.6; cursor:not-allowed;" tabindex="-1"' : '' }} maxlength="36" class="modal-input"></div>@endif
                         </div>
                     </div>

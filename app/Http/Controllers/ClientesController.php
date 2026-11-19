@@ -414,6 +414,10 @@ class ClientesController extends Controller
         // (KRazon_Social). Se fuerza aquí aunque el formulario la mande o la oculte.
         $dataMaestro['razon_social'] = $cliente->razon_social;
 
+        // Prefijo Descripción: si el usuario no lo cambió, no se manda a las sucursales, para no
+        // pisar el 1 que tienen algunos clientes en el ERP (en el maestro pudieron quedar en 0 al importarse).
+        $prefijoCambio = (int) $dataMaestro['prefijo_descripcion'] !== (int) ($cliente->prefijo_descripcion ?? 0);
+
         // 1. Actualizar maestro
         $cliente->update($dataMaestro);
 
@@ -474,6 +478,9 @@ class ClientesController extends Controller
                     // NUNCA sobreescribir Saldo_Actual ni Cliente en las sucursales
                     unset($dataFiltrada['Saldo_Actual']);
                     unset($dataFiltrada['Cliente']);
+                    if (!$prefijoCambio) {
+                        unset($dataFiltrada['PrefijoDescripcion']);
+                    }
 
                     // Homologar IdGlobal si no lo tenía asignado
                     if (in_array('IdGlobal', $columnasReales) && ($found->IdGlobal ?? 0) != $cliente->id_global) {
@@ -1050,6 +1057,7 @@ class ClientesController extends Controller
             // Banderas sí/no (QA BUG-12): solo 0 o 1, se capturan con desplegable
             'sync' => 'nullable|in:0,1',
             'modificar_fpmpfac' => 'nullable|in:0,1',
+            'prefijo_descripcion' => 'nullable|in:0,1',
         ], [
             'cod_postal.digits_between' => 'El código postal debe tener solo dígitos (máximo 5), sin signos ni puntos.',
             'in' => 'El campo :attribute solo puede ser 0 o 1.',
@@ -1065,6 +1073,7 @@ class ClientesController extends Controller
             'codigo_contpaq' => 'código Contpaq',
             'sync' => 'Sync',
             'modificar_fpmpfac' => 'Modificar FPMPFac',
+            'prefijo_descripcion' => 'Prefijo Descripción',
         ]);
     }
 
@@ -1316,7 +1325,8 @@ class ClientesController extends Controller
             'id_opcion_bloqueo' => (int) ($input['id_opcion_bloqueo'] ?? 0),
             'observaciones_caja' => (string) ($input['observaciones_caja'] ?? ''),
             'sync' => (int) ($input['sync'] ?? 0) === 1 ? 1 : 0,
-            'prefijo_descripcion' => 0,
+            // Bandera sí/no como Sync (en el ERP solo hay 0 y 1); antes se forzaba a 0
+            'prefijo_descripcion' => (int) ($input['prefijo_descripcion'] ?? 0) === 1 ? 1 : 0,
             'id_sugar' => (string) ($input['id_sugar'] ?? ''),
             'giro_principal' => (int) ($input['giro_principal'] ?? 0),
             'asesor' => (string) ($input['asesor'] ?? ''),
@@ -1401,7 +1411,7 @@ class ClientesController extends Controller
                     'id_opcion_bloqueo' => (int) ($row->IdOpcionBloqueo ?? 0),
                     'observaciones_caja' => $row->ObservacionesCaja ?? '',
                     'sync' => 0,
-                    'prefijo_descripcion' => 0,
+                    'prefijo_descripcion' => (int) ($row->PrefijoDescripcion ?? 0) === 1 ? 1 : 0,
                     'id_sugar' => $row->IdSugar ?? '',
                     'giro_principal' => (int) ($row->GiroPrincipal ?? 0),
                     'asesor' => $row->Asesor ?? '',

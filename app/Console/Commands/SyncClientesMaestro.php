@@ -122,7 +122,7 @@ class SyncClientesMaestro extends Command
                                 'id_opcion_bloqueo'  => (int)($row->IdOpcionBloqueo ?? 0),
                                 'observaciones_caja' => $row->ObservacionesCaja ?? '',
                                 'sync'               => 0,
-                                'prefijo_descripcion'=> 0,
+                                'prefijo_descripcion'=> (int)($row->PrefijoDescripcion ?? 0) === 1 ? 1 : 0,
                                 'id_sugar'           => $row->IdSugar ?? '',
                                 'giro_principal'     => (int)($row->GiroPrincipal ?? 0),
                                 'asesor'             => $row->Asesor ?? '',
