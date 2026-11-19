@@ -771,13 +771,7 @@ class ArticulosController extends Controller
                         if (in_array($field, ['sustituto', 'sustituto1', 'sustituto2'])) $val = mb_substr((string)$val, 0, 40);
 
                         // 3. Gestión de numéricos (evitar Not Null errors)
-                        $numericCols = [
-                            'precio_lista', 'precio_venta', 'des_precio_venta', 'precio_especial', 
-                            'desc_precio_espec', 'precio4', 'desc_precio4', 'desc_proveedor', 'precio_gerente', 'precio_tope', 'costo_venta', 
-                            'porcetaje_descuento', 'margen_minimo', 'area', 'iva', 'peso',
-                            'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'std_pack'
-                        ];
-                        if (in_array($field, $numericCols)) {
+                        if (in_array($field, $this->columnasNumericasCsv(), true)) {
                             // AU-01: "1,234.50" se acepta como 1234.50; texto como "abc" ya no se guarda como 0
                             [$esNumero, $numero] = $this->parseNumeroCsv($val);
                             if (!$esNumero) {
@@ -1012,6 +1006,19 @@ class ArticulosController extends Controller
     }
 
     /**
+     * Columnas numéricas de la carga masiva (procesar y vista previa usan la misma lista).
+     */
+    private function columnasNumericasCsv(): array
+    {
+        return [
+            'precio_lista', 'precio_venta', 'des_precio_venta', 'precio_especial',
+            'desc_precio_espec', 'precio4', 'desc_precio4', 'desc_proveedor', 'precio_gerente', 'precio_tope', 'costo_venta',
+            'porcetaje_descuento', 'margen_minimo', 'area', 'iva', 'peso',
+            'inventario_maximo', 'inventario_minimo', 'punto_reorden', 'std_pack',
+        ];
+    }
+
+    /**
      * AU-05: ¿cambió el valor? Si ambos son números se comparan como número
      * (35.7800 = 35.78); si no, como texto, igual que antes.
      */
@@ -1159,7 +1166,25 @@ class ArticulosController extends Controller
             $previewClaves = [];
             $totalCsvRows = 0;
 
+            // AU-01: columnas numéricas seleccionadas (mismas reglas que al procesar)
+            $numericasSeleccionadas = [];
+            foreach ($this->columnasNumericasCsv() as $numField) {
+                foreach ($standardMapping as $uiNameNorm => $mappedField) {
+                    if ($mappedField === $numField && in_array($uiNameNorm, $colsUiNorm, true)) {
+                        $numericasSeleccionadas[] = $numField;
+                        break;
+                    }
+                }
+            }
+            $headerLabel = [];
+            foreach ($headerMap as $idx => $mappedField) {
+                $headerLabel[$mappedField] = $headerOriginal[$idx];
+            }
+            $filasInvalidas = [];
+            $fila = 1; // la fila 1 es el encabezado
+
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
+                $fila++;
                 // Sanitizar celdas a UTF-8 limpio
                 $row = array_map([$this, 'cleanUtf8'], $row);
 
@@ -1175,15 +1200,31 @@ class ArticulosController extends Controller
 
                 $totalCsvRows++;
 
+                $csvItem = [];
+                foreach ($row as $index => $value) {
+                    if (isset($headerMap[$index])) {
+                        $csvItem[$headerMap[$index]] = trim((string)$value);
+                    }
+                }
+
+                // AU-01: validar números en TODO el archivo (no solo las 500 filas visibles).
+                // "1,234.50" se toma como 1234.50; "abc" se marca y esa fila se omitirá al procesar.
+                $invalidos = [];
+                foreach ($numericasSeleccionadas as $numField) {
+                    if (!array_key_exists($numField, $csvItem)) continue;
+                    [$esNumero, $numero] = $this->parseNumeroCsv($csvItem[$numField]);
+                    if ($esNumero) {
+                        if ($csvItem[$numField] !== '') $csvItem[$numField] = (string)$numero;
+                    } else {
+                        $invalidos[$numField] = true;
+                        $filasInvalidas[] = "Fila {$fila} (" . ($csvItem['clave'] ?? '') . "): "
+                            . ($headerLabel[$numField] ?? $numField) . " = '{$csvItem[$numField]}' no es un número";
+                    }
+                }
+                if (!empty($invalidos)) $csvItem['__invalidos'] = $invalidos;
+
                 // Solo recopilamos los primeros 500 artículos para la previsualización
                 if (count($previewRows) < $maxPreviewRows) {
-                    $csvItem = [];
-                    foreach ($row as $index => $value) {
-                        if (isset($headerMap[$index])) {
-                            $csvItem[$headerMap[$index]] = trim((string)$value);
-                        }
-                    }
-
                     $rawClave = $csvItem['clave'] ?? null;
                     if ($rawClave) {
                         // Normalizar clave eliminando guiones y espacios para que no se inserten guiones y cuadre con la BD
@@ -1270,8 +1311,31 @@ class ArticulosController extends Controller
                 $rowDiff = [];
                 $hasDifference = false;
 
+                // AU-01: fila con números inválidos → se muestra marcada y se omitirá al procesar
+                $invalidosFila = $csvItem['__invalidos'] ?? [];
+                if (!empty($invalidosFila)) {
+                    foreach ($invalidosFila as $field => $_) {
+                        $rowDiff[$field] = [
+                            'old'     => $masterItem->{$field},
+                            'new'     => $csvItem[$field],
+                            'invalid' => true,
+                        ];
+                    }
+                    $diffs[] = [
+                        'clave'           => $canonicalClave,
+                        'canonical_clave' => $canonicalClave,
+                        'description'     => $masterItem->descripcion,
+                        'status'          => 'update',
+                        'invalid'         => true,
+                        'diff'            => $rowDiff,
+                        'full_new'        => $csvItem,
+                        'master_data'     => $masterItem->toArray()
+                    ];
+                    continue;
+                }
+
                 foreach ($csvItem as $field => $csvVal) {
-                    if ($field === 'clave') continue;
+                    if ($field === 'clave' || $field === '__invalidos') continue;
 
                     // Verificar si el campo fue seleccionado en la UI
                     $foundInUi = false;
@@ -1388,6 +1452,7 @@ class ArticulosController extends Controller
             $responsePayload = [
                 'success'      => true,
                 'diffs'        => $diffs,
+                'filas_invalidas' => $filasInvalidas, // AU-01: aviso; esas filas se omitirán al procesar
                 'count'        => count($diffs),
                 'preview_rows' => count($previewRows),
                 'total_rows'   => $totalCsvRows,

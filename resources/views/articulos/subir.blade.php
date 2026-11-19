@@ -642,6 +642,12 @@
             let lastChangedCols = [];
             let isPreviewValid = false;
             let totalRowsInCsv = 0;
+            let filasInvalidasPreview = []; // AU-01
+
+            // AU-01: escapar texto del CSV antes de pintarlo
+            function escHtmlAu01(v) {
+                return String(v ?? '').replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+            }
 
             function setPreviewValid(valid, message = null) {
                 isPreviewValid = valid;
@@ -1253,7 +1259,15 @@
                                     const field = col.field;
                                     const diff = item.diff ? item.diff[field] : null;
 
-                                    if (diff) {
+                                    if (diff && diff.invalid) {
+                                        // AU-01: valor no numérico → la fila se omitirá al procesar
+                                        rowHtml += `<td style="padding:6px 10px; vertical-align:middle; background:rgba(239, 68, 68, 0.12); border:1px solid rgba(239, 68, 68, 0.45); white-space:nowrap;" title="Este valor no es un número. La fila completa se omitirá al procesar.">
+                                        <div style="display:flex; flex-direction:column; gap:2px;">
+                                            <span style="color:#f87171; font-weight:800; font-size:11.5px;">${escHtmlAu01(diff.new)}</span>
+                                            <span style="font-size:9px; font-weight:bold; color:#f87171;">NO ES NÚMERO · se omitirá la fila</span>
+                                        </div>
+                                    </td>`;
+                                    } else if (diff) {
                                         // ¡CAMBIO DETECTADO EN ESTA COLUMNA! Destacar celda
                                         const isFormulaTag = (diff.is_formula || field === 'precio_gerente');
                                         rowHtml += `<td style="padding:6px 10px; vertical-align:middle; background:rgba(245, 158, 11, 0.14); border:1px solid rgba(245, 158, 11, 0.35); white-space:nowrap;">
@@ -1320,8 +1334,24 @@
                         }
                     }
 
-                    // Habilitar botón de actualización con estado verificado
-                    setPreviewValid(true, 'Vista Previa verificada');
+                    // AU-01: avisar de filas con valores no numéricos (se permite procesar; esas filas se omiten)
+                    filasInvalidasPreview = Array.isArray(data.filas_invalidas) ? data.filas_invalidas : [];
+                    if (filasInvalidasPreview.length > 0) {
+                        setPreviewValid(true, `Vista Previa verificada · ${filasInvalidasPreview.length} fila(s) con valores no numéricos se omitirán`);
+                        const lista = filasInvalidasPreview.slice(0, 10).map(f => `<li>${escHtmlAu01(f)}</li>`).join('')
+                            + (filasInvalidasPreview.length > 10 ? `<li>… y ${filasInvalidasPreview.length - 10} más</li>` : '');
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Valores no numéricos',
+                            html: `<p style="margin-bottom:8px;">${filasInvalidasPreview.length} fila(s) tienen valores que no son números. Puedes procesar, pero <b>esas filas se omitirán</b>. Si quieres incluirlas, corrige el archivo y vuelve a generar la vista previa.</p><ul style="text-align:left; font-size:12px; max-height:220px; overflow:auto;">${lista}</ul>`,
+                            background: '#1a1d27',
+                            color: '#fff',
+                            confirmButtonColor: 'var(--amber, #f59e0b)'
+                        });
+                    } else {
+                        // Habilitar botón de actualización con estado verificado
+                        setPreviewValid(true, 'Vista Previa verificada');
+                    }
 
                 } catch (error) {
                     invalidatePreview('Error de conexión con el servidor.');
@@ -1420,7 +1450,9 @@
 
                 const result = await Swal.fire({
                     title: '¿Confirmar actualización masiva?',
-                    text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV${totalRowsText}. Esta acción no se puede deshacer.`,
+                    text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV${totalRowsText}.`
+                        + (filasInvalidasPreview.length > 0 ? ` ${filasInvalidasPreview.length} fila(s) con valores no numéricos se omitirán.` : '')
+                        + ` Esta acción no se puede deshacer.`,
                     icon: 'warning',
                     showCancelButton: true,
                     background: '#1a1d27',

@@ -5,7 +5,7 @@ Shared handoff notes for any AI tool editing this project. Capped at 10 entries,
 ## 2026-11-18 — Claude Code (Opus 5.5)
 QA Artículos e Inventario (`DBMasterController`, `ArticulosController`, `InventarioController`, `inventario/index.blade.php`):
 - **ED-08:** precios `max:99999999999` (cabe en decimal(15,4) del maestro) + revisión del precio de venta calculado; `ValidationException` se relanza (antes daba 500), otros errores → mensaje genérico + log.
-- **AU-01 (servidor):** carga masiva rechaza celdas numéricas inválidas (`parseNumeroCsv`, acepta `1,234.5`), omite la fila y responde `filas_invalidas`.
+- **AU-01:** carga masiva rechaza celdas numéricas inválidas (`parseNumeroCsv`, acepta `1,234.5`), omite la fila y responde `filas_invalidas`. Vista previa valida TODO el archivo con la misma lista (`columnasNumericasCsv()`), calcula con "1,234.50" = 1234.50, pinta la celda en rojo "NO ES NÚMERO · se omitirá la fila" y avisa. Decisión del usuario: **no bloquear** (opción 2): se puede procesar y esas filas se omiten; la confirmación lo dice.
 - **AU-05:** historial de carga masiva (`csv_historial_detalles`) compara números como número (`valorCambio()`): `35.7800` = `35.78` ya no se anota como cambio.
 - **AU-02:** claves que no existen en el maestro ya no se omiten en silencio: el mensaje lista "Claves no encontradas… (N)" y el JSON trae `claves_no_encontradas`. Vista previa (`subir.blade.php`) muestra "NO EXISTE · se omitirá" en rojo en lugar de "NUEVO" (la carga masiva no crea artículos).
 - **AU-04:** Desc. P. Venta usa la regla del ERP: si P. Venta = 0 → 100 (antes la app ponía 0). Función común `ArticuloValidacion::descPrecioVenta()` en carga masiva (procesar y vista previa), alta manual y Editar individual; JS de `crear.blade.php` y `db_master/index.blade.php` igual. Por qué: en las 4 sucursales ~580 mil artículos (≈45%) tienen P. Lista y P. Venta en 0 con descuento 100; con la regla vieja, editarlos desde la app los cambiaba a 0. No hubo que corregir datos.
@@ -14,7 +14,7 @@ QA Artículos e Inventario (`DBMasterController`, `ArticulosController`, `Invent
 Gotcha: columnas de sucursales son latin1_swedish_ci (no distingue mayúsculas ni acentos): `where(...)->exists()` encuentra `qatest-a03` = `QATEST-A03`; usar el valor real de la BD.
 Decisiones del usuario: se permite mínimo > máximo y sin tope en inventario (~160 filas reales así, tubos almacén 1); E03, E10, C05 se aceptan. No mover datos de BD en pruebas (usar claves inexistentes `QATEST-NOEXISTE*`).
 Gotcha: procesar la carga masiva crea un renglón en `csv_historial` aunque no actualice nada; para probar sin tocar BD usar solo la vista previa.
-Pendiente: ED-05 (descripción vacía + `array_filter` de nulls en sync), vista previa de AU-01, mensajes en español en `updateItem` de inventario, C07 con archivo binario, ED-07/ED-12, prueba real de AU-03/ED-13 en PowerSales.
+Pendiente: ED-05 (descripción vacía + `array_filter` de nulls en sync), mensajes en español en `updateItem` de inventario, C07 con archivo binario, ED-07/ED-12, prueba real de AU-03/ED-13 en PowerSales.
 
 ## 2026-11-13 — Antigravity
 Corrección de Moneda (mn_usd) en Alta de Artículos:
