@@ -91,8 +91,8 @@
         </tbody>
     </table>
     
-    <div style="padding: 20px;">
-        {{ $historial->links() }}
+    <div style="padding: 20px; display: flex; justify-content: flex-end;">
+        {{ $historial->links('pagination::bootstrap-4') }}
     </div>
 </div>
 

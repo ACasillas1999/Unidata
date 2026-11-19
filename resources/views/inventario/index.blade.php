@@ -260,8 +260,8 @@
         </tbody>
     </table>
     </div>
-    <div id="inv-pagination" style="padding: 12px 20px;">
-        {{ $items->links() }}
+    <div id="inv-pagination" style="padding: 12px 20px; display: flex; justify-content: flex-end;">
+        {{ $items->links('pagination::bootstrap-4') }}
     </div>
 </div>
 

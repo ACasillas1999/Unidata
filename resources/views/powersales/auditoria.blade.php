@@ -100,8 +100,8 @@
         </tbody>
     </table>
 
-    <div style="padding: 20px;">
-        {{ $logs->links() }}
+    <div style="padding: 20px; display: flex; justify-content: flex-end;">
+        {{ $logs->links('pagination::bootstrap-4') }}
     </div>
 </div>
 

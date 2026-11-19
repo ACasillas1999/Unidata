@@ -231,8 +231,8 @@
             </table>
         </div>
         @if($estados->hasPages())
-        <div style="padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: center;">
-            {{ $estados->links() }}
+        <div style="padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+            {{ $estados->links('pagination::bootstrap-4') }}
         </div>
         @endif
     </div>
@@ -329,8 +329,8 @@
             </table>
         </div>
         @if($ciudades->hasPages())
-        <div style="padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: center;">
-            {{ $ciudades->links() }}
+        <div style="padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+            {{ $ciudades->links('pagination::bootstrap-4') }}
         </div>
         @endif
     </div>
