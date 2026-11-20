@@ -361,7 +361,7 @@
         </div>
 
         @if($articles->hasPages())
-            <div class="card-footer" style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);">
+            <div id="inv-pagination" style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);">
                 <p style="font-size: 13px; color: var(--text-muted);">Página {{ $articles->currentPage() }} de {{ $articles->lastPage() }}</p>
                 <div>{{ $articles->links('pagination::bootstrap-4') }}</div>
             </div>
