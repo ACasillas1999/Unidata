@@ -22,6 +22,11 @@ class ArticuloValidacion
             'date'     => 'El campo :attribute no es una fecha válida.',
             'unique'   => 'Ya existe un artículo con esa :attribute.',
             'clave.regex' => 'La clave solo puede llevar letras, números, Ñ, espacios y los símbolos / . - + * " _ ( )',
+            // ART-07
+            'idsat.regex'         => 'La clave de producto SAT debe tener exactamente 8 dígitos (ej. 39121400).',
+            'linea.regex'         => 'La línea solo puede llevar letras y números, sin espacios ni símbolos.',
+            'unidad_medida.regex' => 'La unidad de medida solo puede llevar letras y números, sin espacios ni símbolos (ej. PZA).',
+            'area.in'             => 'El área no existe en el catálogo de áreas de las sucursales.',
             'max'      => [
                 'string'  => 'El campo :attribute no puede tener más de :max caracteres.',
                 'numeric' => 'El campo :attribute no puede ser mayor que :max.',

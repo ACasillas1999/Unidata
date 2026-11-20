@@ -44,6 +44,8 @@
 
     <form action="{{ route('articulos.storeManual') }}" method="POST" id="create-article-form">
         @csrf
+        {{-- ART-07: se pone en 1 solo cuando el usuario confirma una línea/unidad nueva --}}
+        <input type="hidden" name="confirmar_catalogo" id="confirmar_catalogo" value="0">
 
         <div class="glass-card shadow-premium" style="padding: 50px; border-radius: 20px;">
             @include('articulos.partials.create_tabs_content')
@@ -185,6 +187,29 @@ document.getElementById('create-article-form').addEventListener('submit', functi
 
     mostrarCreando();
 });
+
+@if(session('confirmar_catalogo'))
+// ART-07: línea o unidad que no usa ningún artículo del maestro; confirmar que es nueva
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('create-article-form');
+    Swal.fire({
+        icon: 'question',
+        title: '¿Línea o unidad nueva?',
+        html: @json(implode('<br>', session('confirmar_catalogo'))) + '<br><br>Si es correcta y es nueva, confirma para crear el artículo. Si fue un error de captura, revísala.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, es nueva',
+        cancelButtonText: 'Revisar',
+        reverseButtons: true,
+        focusCancel: true,
+    }).then(result => {
+        if (result.isConfirmed) {
+            document.getElementById('confirmar_catalogo').value = '1';
+            mostrarCreando();
+            form.submit();
+        }
+    });
+});
+@endif
 </script>
 @endpush
 @endsection

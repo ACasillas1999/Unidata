@@ -1606,6 +1606,26 @@ class ArticulosController extends Controller
     /**
      * Guarda un artículo manualmente en el Maestro y lo replica en todas las sucursales
      */
+    /**
+     * ART-07: áreas permitidas según la tabla `areas` de las sucursales (hoy 0 a 5 en las 4).
+     * Si no se puede leer ninguna sucursal se usa ese mismo rango.
+     */
+    private function areasValidas(): array
+    {
+        foreach ($this->connectionManager->getActiveBranches() as $branch) {
+            try {
+                $ids = $this->connectionManager->connect($branch->code)
+                    ->table('areas')->pluck('IDArea')->map(fn ($id) => (int)$id)->all();
+                if (!empty($ids)) {
+                    return $ids;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+        return [0, 1, 2, 3, 4, 5];
+    }
+
     public function storeManual(\Illuminate\Http\Request $request)
     {
         // K04: espacios en medio son formato real de clave; solo se unen los dobles/múltiples
@@ -1614,17 +1634,47 @@ class ArticulosController extends Controller
             $request->merge(['clave' => preg_replace('/ {2,}/', ' ', $request->input('clave'))]);
         }
 
+        // ART-07: en los artículos reales línea y unidad siempre van en mayúsculas sin espacios,
+        // y el IDSAT llega con espacios invisibles (U+00A0) al pegar desde Excel.
+        foreach (['linea', 'unidad_medida'] as $campo) {
+            if (is_string($request->input($campo))) {
+                $request->merge([$campo => mb_strtoupper(trim($request->input($campo)))]);
+            }
+        }
+        if (is_string($request->input('idsat'))) {
+            $request->merge(['idsat' => preg_replace('/[\s\x{00A0}]+/u', '', $request->input('idsat'))]);
+        }
+        foreach (['sustituto', 'sustituto1', 'sustituto2'] as $campo) {
+            if (is_string($request->input($campo))) {
+                $request->merge([$campo => trim($request->input($campo))]);
+            }
+        }
+
         // ART-03: las sucursales son latin1; ver App\Rules\Latin1
         $latin1 = new \App\Rules\Latin1();
+
+        // ART-07: el sustituto debe ser una clave que exista en el maestro y no la misma del artículo
+        $sustitutoExiste = function (string $attribute, $value, \Closure $fail) use ($request) {
+            if ($value === null || $value === '' || $value === '0') {
+                return;
+            }
+            if (mb_strtoupper($value) === mb_strtoupper(trim((string)$request->input('clave')))) {
+                $fail('El :attribute no puede ser la misma clave del artículo.');
+                return;
+            }
+            if (!\App\Models\DbMasterArticle::where('clave', $value)->exists()) {
+                $fail('El :attribute "' . $value . '" no existe en el Catálogo Maestro.');
+            }
+        };
 
         $data = $request->validate([
             // ART-09: caracteres que usan las claves reales de las sucursales; bloquea < > | ? # & , ; \ ' ` e invisibles
             'clave'               => ['required', 'string', 'max:40', 'regex:/^[A-Za-z0-9Ññ\/.\-+*"_() ]+$/u', 'unique:db_master.Articulos,clave'],
             'descripcion'         => ['required', 'string', 'max:200', $latin1],
-            'unidad_medida'       => ['required', 'string', 'max:4', $latin1],
-            'linea'               => ['required', 'string', 'max:4', $latin1],
+            'unidad_medida'       => ['required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
+            'linea'               => ['required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
             'clasificacion'       => ['required', 'string', 'max:6', $latin1],
-            'area'                => 'required|integer',
+            'area'                => ['required', 'integer', \Illuminate\Validation\Rule::in($this->areasValidas())],
             'mn_usd'              => ['required', 'string', 'in:M,U,m,u,0,1'],
             'precio_lista'        => 'nullable|numeric|min:0',
             'porcentaje_pv'       => 'nullable|numeric|between:0,100',
@@ -1646,14 +1696,14 @@ class ArticulosController extends Controller
             'color_branch'        => 'nullable|array',
             'color_branch.*'      => 'nullable|integer|between:0,9',
             'protocolo'           => 'nullable|boolean',
-            'idsat'               => ['nullable', 'string', 'max:25', $latin1],
+            'idsat'               => ['nullable', 'string', 'regex:/^[0-9]{8}$/'],
             'id_impuesto_sat'     => 'nullable|string|max:3',
             'iva'                 => ['nullable', 'numeric', 'in:0,8,16'],
             'precio_minimo'       => 'nullable|numeric|min:0',
             'desc_precio_minimo'  => 'nullable|numeric|between:0,100',
-            'sustituto'           => ['nullable', 'string', $latin1],
-            'sustituto1'          => ['nullable', 'string', $latin1],
-            'sustituto2'          => ['nullable', 'string', $latin1],
+            'sustituto'           => ['nullable', 'string', 'max:40', $latin1, $sustitutoExiste],
+            'sustituto1'          => ['nullable', 'string', 'max:40', $latin1, $sustitutoExiste],
+            'sustituto2'          => ['nullable', 'string', 'max:40', $latin1, $sustitutoExiste],
             'costo_promedio'      => 'nullable|numeric',
             'costo_promedio_ant'  => 'nullable|numeric',
             'costo_ult_compra'    => 'nullable|numeric',
@@ -1705,6 +1755,21 @@ class ArticulosController extends Controller
 
         if (!empty($erroresCalculados)) {
             throw \Illuminate\Validation\ValidationException::withMessages($erroresCalculados);
+        }
+
+        // ART-07: no hay catálogo de líneas ni unidades; se comparan contra las que ya usan
+        // los artículos del maestro. Si es nueva se pide confirmar (se crean líneas reales nuevas).
+        if (!$request->boolean('confirmar_catalogo')) {
+            $nuevos = [];
+            if (!\App\Models\DbMasterArticle::where('linea', $data['linea'])->exists()) {
+                $nuevos[] = 'La línea <b>' . e($data['linea']) . '</b> no la usa ningún artículo del Catálogo Maestro.';
+            }
+            if (!\App\Models\DbMasterArticle::where('unidad_medida', $data['unidad_medida'])->exists()) {
+                $nuevos[] = 'La unidad de medida <b>' . e($data['unidad_medida']) . '</b> no la usa ningún artículo del Catálogo Maestro.';
+            }
+            if (!empty($nuevos)) {
+                return back()->withInput()->with('confirmar_catalogo', $nuevos);
+            }
         }
 
         try {

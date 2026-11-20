@@ -21,7 +21,7 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Línea</label>
-            <input type="text" name="linea" value="{{ old('linea') }}" required maxlength="4" class="modal-input">
+            <input type="text" name="linea" value="{{ old('linea') }}" required maxlength="4" class="modal-input" style="text-transform: uppercase;">
         </div>
         <div class="form-group">
             <label class="modal-label">Clasificación</label>
@@ -29,11 +29,11 @@
         </div>
         <div class="form-group">
             <label class="modal-label">Área</label>
-            <input type="number" name="area" value="{{ old('area') }}" required class="modal-input">
+            <input type="number" name="area" value="{{ old('area') }}" required min="0" max="5" step="1" class="modal-input">
         </div>
         <div class="form-group">
             <label class="modal-label">Unidad de Medida</label>
-            <input type="text" name="unidad_medida" value="{{ old('unidad_medida', 'PZ') }}" required maxlength="4" class="modal-input">
+            <input type="text" name="unidad_medida" value="{{ old('unidad_medida', 'PZA') }}" required maxlength="4" class="modal-input" style="text-transform: uppercase;">
         </div>
         <div class="form-group">
             <label class="modal-label">ID Color (Base)</label>
@@ -236,7 +236,7 @@
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
         <div class="form-group">
             <label class="modal-label">Clave IDSAT</label>
-            <input type="text" name="idsat" value="{{ old('idsat') }}" maxlength="25" class="modal-input" placeholder="Clave de producto SAT">
+            <input type="text" name="idsat" value="{{ old('idsat') }}" maxlength="10" inputmode="numeric" class="modal-input" placeholder="8 dígitos, ej. 39121400">
         </div>
         <div class="form-group">
             <label class="modal-label">ID Impuesto SAT</label>
