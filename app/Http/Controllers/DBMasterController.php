@@ -97,7 +97,7 @@ class DBMasterController extends Controller
             // ED-02: las sucursales son latin1; una clave con caracteres fuera de latin1 (emoji)
             // hace fallar todo el whereIn (error 3988). Esas claves no existen en sucursal: se omiten.
             $claves = $paginator->getCollection()->pluck('clave')->filter()
-                ->filter(fn ($c) => mb_convert_encoding(mb_convert_encoding((string) $c, 'ISO-8859-1', 'UTF-8'), 'UTF-8', 'ISO-8859-1') === (string) $c)
+                ->filter(fn ($c) => \App\Rules\Latin1::cabe((string) $c))
                 ->values()->toArray();
 
             if (!empty($claves)) {
@@ -178,12 +178,20 @@ class DBMasterController extends Controller
 
         $latin1 = new \App\Rules\Latin1();
 
+        // ED-07: mismas reglas de catálogo que el alta (ART-07). Solo aplican a lo que el modal manda (lo que cambió).
+        \App\Support\ArticuloValidacion::normalizarCatalogo($request);
+        $sustitutoExiste = \App\Support\ArticuloValidacion::sustitutoExiste((string) $article->clave);
+        $areaRules = ['sometimes', 'required', 'integer'];
+        if ($request->has('area')) {
+            $areaRules[] = \Illuminate\Validation\Rule::in(\App\Support\ArticuloValidacion::areasValidas($this->connectionManager));
+        }
+
         $data = $request->validate([
             'descripcion'         => ['sometimes', 'required', 'string', 'max:200', $latin1], // ED-05
-            'linea'               => ['sometimes', 'required', 'string', 'max:4', $latin1],
+            'linea'               => ['sometimes', 'required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
             'clasificacion'       => ['sometimes', 'required', 'string', 'max:6', $latin1],
-            'area'                => 'sometimes|required|integer',
-            'unidad_medida'       => ['sometimes', 'required', 'string', 'max:4', $latin1],
+            'area'                => $areaRules,
+            'unidad_medida'       => ['sometimes', 'required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
             'color'               => 'nullable|integer|between:0,9',
             'color_branch'        => 'nullable|array',
             'color_branch.*'      => 'nullable|integer|between:0,9',
@@ -219,13 +227,13 @@ class DBMasterController extends Controller
             'costo_ult_compra'    => 'nullable|numeric',
             'fecha_ult_compra'    => 'nullable|date',
             'costo_compra_ant'    => 'nullable|numeric',
-            'idsat'               => ['nullable', 'string', 'max:25', $latin1],
+            'idsat'               => ['nullable', 'string', 'regex:/^[0-9]{8}$/'],
             'id_impuesto_sat'     => 'nullable|string|max:3',
             'iva'                 => ['nullable', 'numeric', 'in:0,8,16'],
             'id_tipo_factor'      => 'nullable|string|max:10',
-            'sustituto'           => ['nullable', 'string', $latin1],
-            'sustituto1'          => ['nullable', 'string', $latin1],
-            'sustituto2'          => ['nullable', 'string', $latin1],
+            'sustituto'           => ['nullable', 'string', 'max:40', $latin1, $sustitutoExiste],
+            'sustituto1'          => ['nullable', 'string', 'max:40', $latin1, $sustitutoExiste],
+            'sustituto2'          => ['nullable', 'string', 'max:40', $latin1, $sustitutoExiste],
             'en_promocion'        => 'nullable|boolean',
             'critico'             => 'nullable|boolean',
             'control_pedimentos'  => 'nullable|boolean',
@@ -239,6 +247,15 @@ class DBMasterController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'inventario_minimo' => 'El inventario mínimo (' . (float) $invMin . ') no puede ser mayor que el máximo (' . (float) $invMax . ').',
             ]);
+        }
+
+        // ED-07: línea o unidad que ningún artículo del maestro usa → pedir confirmación (no bloquea:
+        // se crean líneas reales nuevas). El modal reenvía con confirmar_catalogo=1.
+        if (!$request->boolean('confirmar_catalogo')) {
+            $nuevos = \App\Support\ArticuloValidacion::catalogoNuevo($data['linea'] ?? null, $data['unidad_medida'] ?? null);
+            if (!empty($nuevos)) {
+                return response()->json(['success' => false, 'confirmar_catalogo' => $nuevos]);
+            }
         }
 
         try {

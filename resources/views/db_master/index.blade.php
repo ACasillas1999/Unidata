@@ -758,6 +758,27 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
+                } else if (data.confirmar_catalogo) {
+                    // ED-07: línea o unidad que ningún artículo usa; el servidor no guardó nada
+                    Swal.fire({
+                        icon: 'question',
+                        title: '¿Línea o unidad nueva?',
+                        html: data.confirmar_catalogo.join('<br>') + '<br><br>Si es un error de dedo elige "Revisar".',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, es nueva',
+                        cancelButtonText: 'Revisar',
+                        reverseButtons: true,
+                        focusCancel: true,
+                        didOpen: () => { Swal.getContainer().style.zIndex = 10050; },
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            formData.set('confirmar_catalogo', '1');
+                            enviar();
+                        } else {
+                            document.getElementById('edit-modal').style.display = 'flex';
+                            document.getElementById('edit-linea').focus();
+                        }
+                    });
                 } else if (data.errors) {
                     // ED-10: mostrar todos los errores de validación (Laravel solo pone el primero en message)
                     const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -864,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Línea</label>
-                            <input type="text" name="linea" id="edit-linea" required maxlength="4" class="modal-input">
+                            <input type="text" name="linea" id="edit-linea" required maxlength="4" class="modal-input" style="text-transform: uppercase;">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Clasificación</label>
@@ -872,11 +893,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Área</label>
-                            <input type="number" name="area" id="edit-area" required class="modal-input">
+                            <input type="number" name="area" id="edit-area" required min="0" max="5" step="1" class="modal-input">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Unidad de Medida</label>
-                            <input type="text" name="unidad_medida" id="edit-unidad_medida" required maxlength="4" class="modal-input">
+                            <input type="text" name="unidad_medida" id="edit-unidad_medida" required maxlength="4" class="modal-input" style="text-transform: uppercase;">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">ID Color (Base)</label>
@@ -1096,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                         <div class="form-group">
                             <label class="modal-label">Clave IDSAT</label>
-                            <input type="text" name="idsat" id="edit-idsat" maxlength="25" class="modal-input" placeholder="Clave de producto SAT">
+                            <input type="text" name="idsat" id="edit-idsat" maxlength="10" inputmode="numeric" class="modal-input" placeholder="8 dígitos, ej. 39121400">
                         </div>
                         <div class="form-group">
                             <label class="modal-label">ID Impuesto SAT</label>

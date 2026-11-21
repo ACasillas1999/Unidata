@@ -113,4 +113,82 @@ class ArticuloValidacion
         if ($pLista <= 0) return 0.0;
         return round(100 - ($pVenta / $pLista * 100), 2);
     }
+
+    /**
+     * ART-07 / ED-07: en los artículos reales línea y unidad van en mayúsculas sin espacios,
+     * y el IDSAT llega con espacios invisibles (U+00A0) al pegar desde Excel.
+     * Solo normaliza los campos que vienen en la petición.
+     */
+    public static function normalizarCatalogo(\Illuminate\Http\Request $request): void
+    {
+        foreach (['linea', 'unidad_medida'] as $campo) {
+            if (is_string($request->input($campo))) {
+                $request->merge([$campo => mb_strtoupper(trim($request->input($campo)))]);
+            }
+        }
+        if (is_string($request->input('idsat'))) {
+            $request->merge(['idsat' => preg_replace('/[\s\x{00A0}]+/u', '', $request->input('idsat'))]);
+        }
+        foreach (['sustituto', 'sustituto1', 'sustituto2'] as $campo) {
+            if (is_string($request->input($campo))) {
+                $request->merge([$campo => trim($request->input($campo))]);
+            }
+        }
+    }
+
+    /**
+     * ART-07 / ED-07: el sustituto debe ser una clave que exista en el maestro y no la del mismo artículo.
+     * Vacío o '0' se permite (así están la mayoría de los reales).
+     */
+    public static function sustitutoExiste(string $claveArticulo): \Closure
+    {
+        return function (string $attribute, $value, \Closure $fail) use ($claveArticulo) {
+            if ($value === null || $value === '' || $value === '0') {
+                return;
+            }
+            if (mb_strtoupper($value) === mb_strtoupper(trim($claveArticulo))) {
+                $fail('El :attribute no puede ser la misma clave del artículo.');
+                return;
+            }
+            if (!\App\Models\DbMasterArticle::where('clave', $value)->exists()) {
+                $fail('El :attribute "' . $value . '" no existe en el Catálogo Maestro.');
+            }
+        };
+    }
+
+    /**
+     * ART-07 / ED-07: áreas permitidas según la tabla `areas` de las sucursales (hoy 0 a 5 en las 4).
+     * Si no se puede leer ninguna sucursal se usa ese mismo rango.
+     */
+    public static function areasValidas(\App\Services\BranchConnectionManager $connectionManager): array
+    {
+        foreach ($connectionManager->getActiveBranches() as $branch) {
+            try {
+                $ids = $connectionManager->connect($branch->code)
+                    ->table('areas')->pluck('IDArea')->map(fn ($id) => (int) $id)->all();
+                if (!empty($ids)) {
+                    return $ids;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+        return [0, 1, 2, 3, 4, 5];
+    }
+
+    /**
+     * ART-07 / ED-07: no hay catálogo de líneas ni unidades; se comparan contra las que ya usan
+     * los artículos del maestro. Devuelve los avisos (HTML) de las que nadie usa; null = no se revisa.
+     */
+    public static function catalogoNuevo(?string $linea, ?string $unidad): array
+    {
+        $nuevos = [];
+        if ($linea !== null && $linea !== '' && !\App\Models\DbMasterArticle::where('linea', $linea)->exists()) {
+            $nuevos[] = 'La línea <b>' . e($linea) . '</b> no la usa ningún artículo del Catálogo Maestro.';
+        }
+        if ($unidad !== null && $unidad !== '' && !\App\Models\DbMasterArticle::where('unidad_medida', $unidad)->exists()) {
+            $nuevos[] = 'La unidad de medida <b>' . e($unidad) . '</b> no la usa ningún artículo del Catálogo Maestro.';
+        }
+        return $nuevos;
+    }
 }

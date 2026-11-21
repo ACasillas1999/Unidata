@@ -1612,18 +1612,7 @@ class ArticulosController extends Controller
      */
     private function areasValidas(): array
     {
-        foreach ($this->connectionManager->getActiveBranches() as $branch) {
-            try {
-                $ids = $this->connectionManager->connect($branch->code)
-                    ->table('areas')->pluck('IDArea')->map(fn ($id) => (int)$id)->all();
-                if (!empty($ids)) {
-                    return $ids;
-                }
-            } catch (\Throwable $e) {
-                continue;
-            }
-        }
-        return [0, 1, 2, 3, 4, 5];
+        return \App\Support\ArticuloValidacion::areasValidas($this->connectionManager);
     }
 
     public function storeManual(\Illuminate\Http\Request $request)
@@ -1634,38 +1623,14 @@ class ArticulosController extends Controller
             $request->merge(['clave' => preg_replace('/ {2,}/', ' ', $request->input('clave'))]);
         }
 
-        // ART-07: en los artículos reales línea y unidad siempre van en mayúsculas sin espacios,
-        // y el IDSAT llega con espacios invisibles (U+00A0) al pegar desde Excel.
-        foreach (['linea', 'unidad_medida'] as $campo) {
-            if (is_string($request->input($campo))) {
-                $request->merge([$campo => mb_strtoupper(trim($request->input($campo)))]);
-            }
-        }
-        if (is_string($request->input('idsat'))) {
-            $request->merge(['idsat' => preg_replace('/[\s\x{00A0}]+/u', '', $request->input('idsat'))]);
-        }
-        foreach (['sustituto', 'sustituto1', 'sustituto2'] as $campo) {
-            if (is_string($request->input($campo))) {
-                $request->merge([$campo => trim($request->input($campo))]);
-            }
-        }
+        // ART-07: mayúsculas en línea/unidad, IDSAT sin espacios (incl. U+00A0), sustitutos sin espacios
+        \App\Support\ArticuloValidacion::normalizarCatalogo($request);
 
         // ART-03: las sucursales son latin1; ver App\Rules\Latin1
         $latin1 = new \App\Rules\Latin1();
 
         // ART-07: el sustituto debe ser una clave que exista en el maestro y no la misma del artículo
-        $sustitutoExiste = function (string $attribute, $value, \Closure $fail) use ($request) {
-            if ($value === null || $value === '' || $value === '0') {
-                return;
-            }
-            if (mb_strtoupper($value) === mb_strtoupper(trim((string)$request->input('clave')))) {
-                $fail('El :attribute no puede ser la misma clave del artículo.');
-                return;
-            }
-            if (!\App\Models\DbMasterArticle::where('clave', $value)->exists()) {
-                $fail('El :attribute "' . $value . '" no existe en el Catálogo Maestro.');
-            }
-        };
+        $sustitutoExiste = \App\Support\ArticuloValidacion::sustitutoExiste((string) $request->input('clave'));
 
         $data = $request->validate([
             // ART-09: caracteres que usan las claves reales de las sucursales; bloquea < > | ? # & , ; \ ' ` e invisibles
@@ -1760,13 +1725,7 @@ class ArticulosController extends Controller
         // ART-07: no hay catálogo de líneas ni unidades; se comparan contra las que ya usan
         // los artículos del maestro. Si es nueva se pide confirmar (se crean líneas reales nuevas).
         if (!$request->boolean('confirmar_catalogo')) {
-            $nuevos = [];
-            if (!\App\Models\DbMasterArticle::where('linea', $data['linea'])->exists()) {
-                $nuevos[] = 'La línea <b>' . e($data['linea']) . '</b> no la usa ningún artículo del Catálogo Maestro.';
-            }
-            if (!\App\Models\DbMasterArticle::where('unidad_medida', $data['unidad_medida'])->exists()) {
-                $nuevos[] = 'La unidad de medida <b>' . e($data['unidad_medida']) . '</b> no la usa ningún artículo del Catálogo Maestro.';
-            }
+            $nuevos = \App\Support\ArticuloValidacion::catalogoNuevo($data['linea'], $data['unidad_medida']);
             if (!empty($nuevos)) {
                 return back()->withInput()->with('confirmar_catalogo', $nuevos);
             }
