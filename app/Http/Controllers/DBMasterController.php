@@ -94,7 +94,11 @@ class DBMasterController extends Controller
 
             // Obtenemos los colores específicos de cada sucursal para la página actual
             $colorBranchMapByClave = [];
-            $claves = $paginator->getCollection()->pluck('clave')->filter()->toArray();
+            // ED-02: las sucursales son latin1; una clave con caracteres fuera de latin1 (emoji)
+            // hace fallar todo el whereIn (error 3988). Esas claves no existen en sucursal: se omiten.
+            $claves = $paginator->getCollection()->pluck('clave')->filter()
+                ->filter(fn ($c) => mb_convert_encoding(mb_convert_encoding((string) $c, 'ISO-8859-1', 'UTF-8'), 'UTF-8', 'ISO-8859-1') === (string) $c)
+                ->values()->toArray();
 
             if (!empty($claves)) {
                 $activeBranchModels = $this->connectionManager->getActiveBranches();
@@ -296,6 +300,10 @@ class DBMasterController extends Controller
             $data['des_precio_venta'] = $calcDescVenta;
             unset($data['porcentaje_pv']);
 
+            // ED-02: color base antes del cambio, para saber qué sucursales tienen color propio
+            $colorAnterior = $article->color;
+            $cambioColorBase = array_key_exists('color', $data);
+
             $article->update($data);
 
             // Replicar a sucursales activas (usando el articulo completo ya actualizado)
@@ -310,8 +318,24 @@ class DBMasterController extends Controller
                     $localBranchData = array_intersect_key($branchData, array_flip($existingCols));
                     $localBranchData = array_filter($localBranchData, fn($v) => $v !== null);
 
-                    if (isset($colorBranchMap[$branch->code]) && $colorBranchMap[$branch->code] !== '' && $colorBranchMap[$branch->code] !== null) {
-                        $localBranchData['Color'] = (int)$colorBranchMap[$branch->code];
+                    // ED-02: el Color de la sucursal solo se toca si el usuario cambió colores.
+                    // - Eligió color para esta sucursal → ese color ("Usar Color Base" → el base).
+                    // - Cambió el color base → solo si la sucursal usaba el base anterior (sin color propio).
+                    // - Si no, no se manda Color y la sucursal conserva el suyo.
+                    $colorBase = $localBranchData['Color'] ?? null;
+                    unset($localBranchData['Color']);
+                    if (is_array($colorBranchMap) && array_key_exists($branch->code, $colorBranchMap)) {
+                        $elegido = $colorBranchMap[$branch->code];
+                        if ($elegido !== '' && $elegido !== null) {
+                            $localBranchData['Color'] = (int) $elegido;
+                        } elseif ($colorBase !== null) {
+                            $localBranchData['Color'] = (int) $colorBase;
+                        }
+                    } elseif ($cambioColorBase && $colorBase !== null && in_array('Color', $existingCols, true)) {
+                        $colorSucursal = $conn->table('articulo')->where('Clave_Articulo', $article->clave)->value('Color');
+                        if ($colorSucursal === null || (int) $colorSucursal === (int) $colorAnterior) {
+                            $localBranchData['Color'] = (int) $colorBase;
+                        }
                     }
 
                     $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($localBranchData);

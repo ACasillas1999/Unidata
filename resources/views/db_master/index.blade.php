@@ -718,7 +718,11 @@ document.addEventListener('DOMContentLoaded', function() {
         diffData.append('id', formData.get('id'));
         for (const [key, value] of formData.entries()) {
             if (key === 'id') continue;
-            const originalValue = original[key] ?? '';
+            // ED-02: color por sucursal se compara con el color real que tenía esa sucursal
+            const mColor = key.match(/^color_branch\[(.+)\]$/);
+            const originalValue = mColor
+                ? ((original.color_branch && original.color_branch[mColor[1]] !== undefined) ? original.color_branch[mColor[1]] : '')
+                : (original[key] ?? '');
             if (String(value) !== String(originalValue)) {
                 diffData.append(key, value);
             }
