@@ -54,7 +54,7 @@
 
         <div class="glass-card shadow-premium" style="padding: 10px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="search-input-wrap" style="flex:1; min-width:250px; margin: 0; display:flex; align-items:center; background:var(--bg-root); border-radius:8px; border:1px solid var(--border); overflow:hidden;">
-                <span class="search-icon" style="padding: 0 12px; color:var(--text-muted); display:flex; align-items:center;">
+                <span class="search-icon" style="position:static; padding: 0 12px; color:var(--text-muted); display:flex; align-items:center;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 </span>
                 <input type="text" name="q" value="{{ $search }}" placeholder="Buscar por código maestro o descripción..." class="search-input" autocomplete="off" style="width: 100%; border:none; background:transparent; padding:9px 12px 9px 0; color:white; outline:none; font-size:12px; font-weight:600;">
