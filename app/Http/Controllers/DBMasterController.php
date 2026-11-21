@@ -258,6 +258,30 @@ class DBMasterController extends Controller
             }
         }
 
+        // ED-12: antes de guardar, avisar si el artículo no existe en alguna sucursal (ahí no se
+        // actualizaría nada). Sucursal que no responde no se pregunta: sale como ✗ en el resultado.
+        if (!$request->boolean('confirmar_sucursales')) {
+            $faltantes = [];
+            foreach ($this->connectionManager->getActiveBranches() as $branch) {
+                try {
+                    $existe = $this->connectionManager->connect($branch->code)
+                        ->table('articulo')->where('Clave_Articulo', $article->clave)->exists();
+                    if (!$existe) {
+                        $faltantes[] = $branch->name;
+                    }
+                } catch (\Throwable $e) {
+                    continue;
+                }
+            }
+            if (!empty($faltantes)) {
+                return response()->json([
+                    'success'              => false,
+                    'confirmar_sucursales' => $faltantes,
+                    'clave'                => $article->clave,
+                ]);
+            }
+        }
+
         try {
             $colorBranchMap = $request->input('color_branch', []);
             unset($data['color_branch']);

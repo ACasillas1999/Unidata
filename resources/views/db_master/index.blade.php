@@ -769,6 +769,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         title: conAvisos ? 'Guardado con avisos' : 'Éxito',
                         html: html,
                     }).then(() => location.reload());
+                } else if (data.confirmar_sucursales) {
+                    // ED-12: el artículo no existe en algunas sucursales; el servidor no guardó nada
+                    const escS = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'El artículo no existe en algunas sucursales',
+                        html: '<b>' + escS(data.clave) + '</b> no existe en: <b>' + data.confirmar_sucursales.map(escS).join(', ') + '</b>.<br><br>' +
+                              'Si guardas, solo se actualizará el Catálogo Maestro (y PowerSales); en esas sucursales no cambia nada.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, guardar',
+                        cancelButtonText: 'Revisar',
+                        reverseButtons: true,
+                        focusCancel: true,
+                        didOpen: () => { Swal.getContainer().style.zIndex = 10050; },
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            formData.set('confirmar_sucursales', '1');
+                            enviar();
+                        } else {
+                            document.getElementById('edit-modal').style.display = 'flex';
+                        }
+                    });
                 } else if (data.confirmar_catalogo) {
                     // ED-07: línea o unidad que ningún artículo usa; el servidor no guardó nada
                     Swal.fire({
