@@ -374,8 +374,14 @@ class DBMasterController extends Controller
                         }
                     }
 
-                    $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($localBranchData);
-                    $branchResults[] = "✓ {$branch->name}";
+                    $filas = $conn->table('articulo')->where('Clave_Articulo', $article->clave)->update($localBranchData);
+                    // ED-12: MySQL da 0 filas si la clave no existe, pero también si ya tenía esos mismos valores.
+                    // Solo en ese caso se pregunta si existe, para no marcar ✓ sin haber actualizado nada.
+                    if ($filas === 0 && !$conn->table('articulo')->where('Clave_Articulo', $article->clave)->exists()) {
+                        $branchResults[] = "⚠ {$branch->name}: el artículo no existe en esta sucursal (no se actualizó)";
+                    } else {
+                        $branchResults[] = "✓ {$branch->name}";
+                    }
                 } catch (\Throwable $e) {
                     $branchResults[] = "✗ {$branch->name}: " . $this->friendlyDbError($e);
                 }

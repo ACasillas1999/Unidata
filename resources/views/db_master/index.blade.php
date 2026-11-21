@@ -757,7 +757,18 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (data.success) {
-                    Swal.fire('Éxito', data.message, 'success').then(() => location.reload());
+                    // ED-12: si alguna sucursal no se actualizó (⚠ no existe / ✗ error) se avisa en amarillo
+                    const res = Array.isArray(data.branch_results) ? data.branch_results : [];
+                    const conAvisos = res.some(r => !String(r).startsWith('✓'));
+                    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                    const html = 'Artículo actualizado en Maestro.' + (res.length
+                        ? '<ul style="text-align:left; margin:10px 0 0; padding-left:20px;">' + res.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul>'
+                        : '');
+                    Swal.fire({
+                        icon: conAvisos ? 'warning' : 'success',
+                        title: conAvisos ? 'Guardado con avisos' : 'Éxito',
+                        html: html,
+                    }).then(() => location.reload());
                 } else if (data.confirmar_catalogo) {
                     // ED-07: línea o unidad que ningún artículo usa; el servidor no guardó nada
                     Swal.fire({
