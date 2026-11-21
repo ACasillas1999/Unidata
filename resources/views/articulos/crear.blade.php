@@ -210,6 +210,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 @endif
+
+// Al entrar a un campo numérico editable se selecciona su valor, para que lo que se escriba
+// reemplace el 0 por defecto (antes quedaba "01000"). Un segundo clic coloca el cursor normal.
+document.addEventListener('focusin', function (e) {
+    const el = e.target;
+    if (el.matches && el.matches('input[type="number"]:not([readonly]):not([disabled])')) {
+        setTimeout(() => { try { el.select(); } catch (_) {} }, 0);
+    }
+});
 </script>
 @endpush
 @endsection
