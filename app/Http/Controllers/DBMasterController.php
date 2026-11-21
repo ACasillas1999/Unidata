@@ -179,7 +179,7 @@ class DBMasterController extends Controller
         $latin1 = new \App\Rules\Latin1();
 
         $data = $request->validate([
-            'descripcion'         => ['nullable', 'string', 'max:200', $latin1],
+            'descripcion'         => ['sometimes', 'required', 'string', 'max:200', $latin1], // ED-05
             'linea'               => ['sometimes', 'required', 'string', 'max:4', $latin1],
             'clasificacion'       => ['sometimes', 'required', 'string', 'max:6', $latin1],
             'area'                => 'sometimes|required|integer',
@@ -244,6 +244,19 @@ class DBMasterController extends Controller
         try {
             $colorBranchMap = $request->input('color_branch', []);
             unset($data['color_branch']);
+
+            // ED-05: campos que el usuario vació en este guardado (llegan como null).
+            // Las sucursales no aceptan NULL (columnas NOT NULL): texto → '', número → 0, fechas no se mandan.
+            $branchMap = ArticuloFieldMap::map();
+            $camposTexto = ['descripcion', 'unidad_medida', 'linea', 'clasificacion', 'mn_usd', 'idsat', 'id_impuesto_sat',
+                'id_tipo_factor', 'sustituto', 'sustituto1', 'sustituto2', 'ubicacion', 'articulo_conversion',
+                'clave_proveedor_1', 'clave_prov_2', 'clave_prov_3'];
+            $vaciadosSucursal = [];
+            foreach ($data as $campo => $valor) {
+                if (($valor === null || $valor === '') && isset($branchMap[$campo]) && !str_starts_with($campo, 'fecha_') && $campo !== 'color') {
+                    $vaciadosSucursal[$branchMap[$campo]] = in_array($campo, $camposTexto, true) ? '' : 0;
+                }
+            }
 
             if (array_key_exists('mn_usd', $data) && $data['mn_usd'] !== null && $data['mn_usd'] !== '') {
                 $isUsd = in_array(strtoupper(trim((string)$data['mn_usd'])), ['U', '1', 'USD'], true);
@@ -317,6 +330,12 @@ class DBMasterController extends Controller
                     $existingCols = $conn->getSchemaBuilder()->getColumnListing('articulo');
                     $localBranchData = array_intersect_key($branchData, array_flip($existingCols));
                     $localBranchData = array_filter($localBranchData, fn($v) => $v !== null);
+                    // ED-05: lo que el usuario vació se manda vacío ('' o 0) en lugar de omitirse
+                    foreach ($vaciadosSucursal as $col => $vacio) {
+                        if (!array_key_exists($col, $localBranchData) && in_array($col, $existingCols, true)) {
+                            $localBranchData[$col] = $vacio;
+                        }
+                    }
 
                     // ED-02: el Color de la sucursal solo se toca si el usuario cambió colores.
                     // - Eligió color para esta sucursal → ese color ("Usar Color Base" → el base).
