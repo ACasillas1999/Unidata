@@ -772,11 +772,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (data.confirmar_sucursales) {
                     // ED-12: el artículo no existe en algunas sucursales; el servidor no guardó nada
                     const escS = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                    const sucursales = data.confirmar_sucursales.map(escS).join(', ');
                     Swal.fire({
                         icon: 'warning',
                         title: 'El artículo no existe en algunas sucursales',
-                        html: '<b>' + escS(data.clave) + '</b> no existe en: <b>' + data.confirmar_sucursales.map(escS).join(', ') + '</b>.<br><br>' +
-                              'Si guardas, solo se actualizará el Catálogo Maestro (y PowerSales); en esas sucursales no cambia nada.',
+                        html: '<div style="text-align:left; font-size:14px; line-height:1.5;">' +
+                              'Se buscó la clave <b>' + escS(data.clave) + '</b> en el catálogo de artículos de cada sucursal ' +
+                              'y <b>no se encontró en: ' + sucursales + '</b>.<br><br>' +
+                              '<ul style="margin:0; padding-left:20px;">' +
+                              '<li>Se actualiza el <b>Catálogo Maestro</b> y se envía a <b>PowerSales</b>.</li>' +
+                              '<li>En <b>' + sucursales + '</b> no cambia nada, porque ahí el artículo no existe.</li>' +
+                              '<li>Para que exista en esas sucursales hay que darlo de alta ahí; editar no lo crea.</li>' +
+                              '</ul><br>Elige <b>Revisar</b> para volver al formulario sin guardar.</div>',
                         showCancelButton: true,
                         confirmButtonText: 'Sí, guardar',
                         cancelButtonText: 'Revisar',
