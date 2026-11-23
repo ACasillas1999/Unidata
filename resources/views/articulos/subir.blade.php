@@ -631,6 +631,9 @@
     {{-- PapaParse para facilidad de parsing --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
+    {{-- Cambio 2: tabla de resultados por fila --}}
+    @include('articulos.partials.resultados_carga')
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const dropZone = document.getElementById('drop-zone');
@@ -1636,16 +1639,28 @@
 
                 marcarModalCarga(true);
                 const res = est.resultado || {};
+                // Terminó bien pero todas las filas se omitieron: no es un error del proceso
+                if (est.status === 'error' && res.resumen && !Number(res.procesados || 0)) {
+                    est = Object.assign({}, est, { status: 'sin_cambios' });
+                }
                 const cfg = {
                     done:      { icon: 'success', title: '¡Carga completada!', color: 'var(--emerald, #10b981)' },
                     cancelled: { icon: 'warning', title: 'Carga cancelada', color: 'var(--amber, #f59e0b)' },
                     error:     { icon: 'error',   title: 'Error en la carga', color: 'var(--rose, #f43f5e)' },
                     stalled:   { icon: 'error',   title: 'La carga dejó de responder', color: 'var(--rose, #f43f5e)' },
+                    sin_cambios: { icon: 'warning', title: 'Ningún artículo actualizado', color: 'var(--amber, #f59e0b)' },
                 }[est.status] || { icon: 'info', title: 'Carga masiva', color: 'var(--amber, #f59e0b)' };
+                // Cambio 2: el texto queda como resumen corto y abajo va la tabla de resultados por fila
+                // (las listas de filas omitidas ya salen completas en la tabla)
+                const mensajeCorto = String(res.message || est.message || '')
+                    .split(' Filas omitidas por valores no numéricos')[0]
+                    .split(' Claves no encontradas en el Catálogo Maestro')[0];
                 Swal.fire({
                     icon: cfg.icon,
                     title: cfg.title,
-                    html: `<div style="text-align:left; font-size:13px;">Subida <b>#${escHtmlAu01(est.historial_id ?? '')}</b><br><br>${escHtmlAu01(res.message || est.message || '')}</div>`,
+                    width: 980,
+                    html: `<div style="text-align:left; font-size:13px; margin-bottom:12px;">Subida <b>#${escHtmlAu01(est.historial_id ?? '')}</b> · ${escHtmlAu01(mensajeCorto)}</div><div class="rc-zona"></div>`,
+                    didOpen: (popup) => window.ResultadosCarga && window.ResultadosCarga.llenar(popup.querySelector('.rc-zona'), est.historial_id),
                     background: '#1a1d27',
                     color: '#fff',
                     confirmButtonColor: cfg.color,

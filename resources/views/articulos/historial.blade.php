@@ -73,6 +73,13 @@
                             <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
 
+                        {{-- Cambio 2: resultados por fila (solo subidas hechas con la carga en segundo plano) --}}
+                        @if(is_file(\App\Http\Controllers\ArticulosController::cargaResultadosFile((int) $item->id)))
+                        <button onclick="ResultadosCarga.abrir({{ $item->id }}, @js($item->archivo_nombre))" class="btn btn--sm shadow-premium" title="Resultados por fila" style="background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); padding: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        </button>
+                        @endif
+
                         {{-- Botón de Descargar --}}
                         <a href="{{ route('articulos.historial.descargar', $item->id) }}" class="btn btn--sm shadow-premium" title="Descargar CSV Original" style="background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                             <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -147,6 +154,8 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{{-- Cambio 2: tabla de resultados por fila de la carga masiva --}}
+@include('articulos.partials.resultados_carga')
 <script>
 async function revertirSubida(id, nombre) {
     const result = await Swal.fire({

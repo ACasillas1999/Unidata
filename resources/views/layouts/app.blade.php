@@ -973,6 +973,12 @@
                 error:     ['Error en la carga masiva', '#f43f5e', 'rgba(244,63,94,0.35)'],
                 stalled:   ['La carga masiva dejó de responder', '#f43f5e', 'rgba(244,63,94,0.35)'],
             }[s];
+            // Terminó sin errores pero todas las filas se omitieron (Cambio 2)
+            if (s === 'error' && est.resultado && est.resultado.resumen && !Number(est.procesados || 0)) {
+                cfg[0] = 'Carga masiva sin artículos actualizados';
+                cfg[1] = '#f59e0b';
+                cfg[2] = 'rgba(245,158,11,0.35)';
+            }
             title.textContent = cfg[0];
             msg.textContent = `#${id} · ${Number(est.procesados || 0).toLocaleString()} artículos actualizados · clic para ver el resultado`;
             inner.style.borderColor = cfg[2];

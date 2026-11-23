@@ -865,6 +865,16 @@ class ArticulosController extends Controller
             $clavesNoEncontradas = []; // AU-02
             $fila = 1; // la fila 1 es el encabezado
 
+            // Cambio 2: resultado por fila (se guarda en storage/app/cargas_masivas/{id}_resultados.csv)
+            $resultados = [];
+            $pendientesClasificar = []; // índices de $resultados que no están en el maestro
+            $registrar = function (int $f, string $claveCsv, string $desc, string $motivo, string $detalle = '') use (&$resultados, $historialId) {
+                $resultados[] = ['fila' => $f, 'clave' => $claveCsv, 'descripcion' => $desc, 'motivo' => $motivo, 'detalle' => $detalle];
+                if (count($resultados) % 500 === 0) {
+                    $this->guardarResultadosCarga($historialId, $resultados);
+                }
+            };
+
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
                 // Carga en segundo plano: avance y cancelación entre filas (nunca a la mitad de un artículo)
                 if ($cancelado()) {
@@ -883,11 +893,19 @@ class ArticulosController extends Controller
                 }
 
                 $rawClave = $item['clave'] ?? null;
-                if (!$rawClave) continue;
+                if (!$rawClave) {
+                    if (trim(implode('', $row)) !== '') {
+                        $registrar($fila, '', (string)($item['descripcion'] ?? ''), 'sin_clave');
+                    }
+                    continue;
+                }
 
                 // Normalizar clave eliminando guiones y espacios para que funcione acorde a la BD sin guiones
                 $clave = strtoupper(str_replace(['-', ' '], '', trim((string)$rawClave)));
                 $item['clave'] = $clave;
+                $claveCsv    = trim((string)$rawClave);
+                $descCsv     = (string)($item['descripcion'] ?? '');
+                $erroresFila = [];
 
                 $updateDataMaster = [];
                 $updateDataBranch = [];
@@ -938,6 +956,7 @@ class ArticulosController extends Controller
                             if (!$esNumero) {
                                 $filaConError = true;
                                 $filasInvalidas[] = "Fila {$fila} ({$clave}): " . ($headerLabel[$field] ?? $field) . " = '{$val}' no es un número";
+                                $erroresFila[] = ($headerLabel[$field] ?? $field) . " = '{$val}'";
                                 continue;
                             }
                             $val = $numero;
@@ -954,9 +973,20 @@ class ArticulosController extends Controller
                 }
 
                 // AU-01: si la fila trae algún número inválido, no se guarda nada de esa fila
-                if ($filaConError) continue;
+                if ($filaConError) {
+                    $registrar($fila, $claveCsv, $descCsv, 'no_numerico', implode('; ', $erroresFila));
+                    continue;
+                }
 
-                if (empty($updateDataMaster)) continue;
+                if (empty($updateDataMaster)) {
+                    $registrar($fila, $claveCsv, $descCsv, 'sin_datos');
+                    continue;
+                }
+
+                // Cambio 2: un error en una fila se anota y la carga sigue con la siguiente
+                $fallosFila = [];
+                $noExisteEn = [];
+                try {
 
                 // --- GOBERNANZA: SOLO ACTUALIZACIONES ---
                 // Buscar por clave exacta o con fallback normalizado (sin guiones, espacios ni caracteres especiales)
@@ -972,6 +1002,8 @@ class ArticulosController extends Controller
                 if (!$masterCurrent) {
                     // AU-02: la carga masiva no crea artículos; reportar la clave en lugar de omitirla en silencio
                     $clavesNoEncontradas[] = "Fila {$fila} ({$clave})";
+                    $pendientesClasificar[] = count($resultados);
+                    $registrar($fila, $claveCsv, $descCsv, 'no_existe'); // motivo final al terminar
                     continue;
                 }
 
@@ -1072,15 +1104,25 @@ class ArticulosController extends Controller
                                     $connection->table('articulo')
                                         ->where('Clave_Articulo', $sucClaveReal)
                                         ->update($updateDataBranch);
+                                } else {
+                                    $noExisteEn[] = $branchesMap[$suc] ?? $suc;
                                 }
                                 $branchStats[$suc]['ok']++;
                             } catch (Throwable $e) {
+                                $fallosFila[] = ($branchesMap[$suc] ?? $suc) . ': ' . $this->friendlyDbError($e);
                                 $branchStats[$suc]['fail']++;
                                 if (count($branchStats[$suc]['errors']) < 3) {
                                     $branchStats[$suc]['errors'][] = "{$canonicalClave}: " . $this->friendlyDbError($e);
                                 }
                             }
                         }
+                    }
+
+                    // Guardar la auditoría ANTES de PowerSales: si algo falla o se detiene ahí,
+                    // Revertir ya conoce el cambio (en la subida #76 un artículo quedó sin auditoría)
+                    if (!empty($auditEntries)) {
+                        DB::table('csv_historial_detalles')->insert($auditEntries);
+                        $auditEntries = [];
                     }
 
                     // Sync a PowerSales (con la clave canónica del maestro)
@@ -1104,8 +1146,45 @@ class ArticulosController extends Controller
                 }
 
                 $updatedCount++;
+
+                $detalleFila = [];
+                if ($noExisteEn) $detalleFila[] = 'No existe en: ' . implode(', ', $noExisteEn);
+                if ($fallosFila) $detalleFila[] = 'Falló en: ' . implode(' | ', $fallosFila);
+                $registrar(
+                    $fila,
+                    $claveCsv,
+                    $descCsv !== '' ? $descCsv : (string)($masterCurrent->descripcion ?? ''),
+                    $fallosFila ? 'error_sucursal' : 'actualizado',
+                    implode('. ', $detalleFila)
+                );
+                } catch (Throwable $e) {
+                    $registrar($fila, $claveCsv, $descCsv, 'error', $this->cleanUtf8($this->friendlyDbError($e)));
+                    continue;
+                }
+            }
+
+            // Cambio 2: al cancelar, las filas que faltaban quedan como "No procesado"
+            if ($canceladoEnFila !== null) {
+                $pendRow = $row;
+                while ($pendRow !== false) {
+                    $fila++;
+                    $it = [];
+                    foreach (array_map([$this, 'cleanUtf8'], $pendRow) as $i => $v) {
+                        if (isset($headerMap[$i])) $it[$headerMap[$i]] = trim((string)$v);
+                    }
+                    if (($it['clave'] ?? '') !== '') {
+                        $resultados[] = ['fila' => $fila, 'clave' => $it['clave'], 'descripcion' => (string)($it['descripcion'] ?? ''), 'motivo' => 'no_procesado', 'detalle' => 'La carga se canceló antes de llegar a esta fila'];
+                    }
+                    $pendRow = fgetcsv($handle, 0, $delimiter);
+                }
             }
             fclose($handle);
+
+            // Cambio 2: motivo de las claves que no están en el maestro, claves repetidas y resumen
+            $avance($fila - 1, $updatedCount);
+            $this->clasificarNoEncontradas($resultados, $pendientesClasificar, $branchesMap);
+            $resumenCarga = $this->completarResultadosCarga($resultados);
+            $this->guardarResultadosCarga($historialId, $resultados);
 
             // AU-01: resumen de filas omitidas por números inválidos (máximo 10 en el mensaje)
             $avisoInvalidas = '';
@@ -1136,6 +1215,7 @@ class ArticulosController extends Controller
                         : 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.') . $avisoInvalidas,
                     'filas_invalidas' => $filasInvalidas,
                     'claves_no_encontradas' => $clavesNoEncontradas,
+                    'resumen' => $resumenCarga,
                 ]);
             }
 
@@ -1162,6 +1242,7 @@ class ArticulosController extends Controller
                 'branch_stats' => $branchStats,
                 'filas_invalidas' => $filasInvalidas,
                 'claves_no_encontradas' => $clavesNoEncontradas,
+                'resumen' => $resumenCarga,
             ];
 
             return $this->cleanUtf8($responsePayload);
@@ -1172,6 +1253,9 @@ class ArticulosController extends Controller
             }
             // Dejar el conteo real en el historial aunque el proceso se haya detenido por error
             DB::table('csv_historial')->where('id', $historialId)->update(['articulos_afectados' => $updatedCount]);
+            if (!empty($resultados)) {
+                try { $this->guardarResultadosCarga($historialId, $resultados); } catch (Throwable $e2) { /* sin resultados */ }
+            }
             return [
                 'success' => false,
                 'procesados' => $updatedCount,
@@ -1179,6 +1263,214 @@ class ArticulosController extends Controller
                     . " Se alcanzaron a procesar {$updatedCount} artículos (ver auditoría en el historial).",
             ];
         }
+    }
+
+    /** Cambio 2: motivos del resultado por fila de la carga masiva (código => texto). */
+    public const MOTIVOS_CARGA = [
+        'actualizado'          => 'Actualizado',
+        'error_sucursal'       => 'Actualizado con error en sucursal',
+        'error'                => 'Error al procesar la fila',
+        'inactivo_todas'       => 'Inactivo en todas las sucursales donde existe',
+        'inactivo_algunas'     => 'Inactivo o sin alta en algunas sucursales',
+        'activo_falta_maestro' => 'Activo en todas las sucursales, pero falta en el Catálogo Maestro',
+        'no_existe'            => 'No existe en ninguna sucursal',
+        'clave_invalida'       => 'Clave con espacios o caracteres especiales',
+        'no_numerico'          => 'Valor no numérico',
+        'sin_clave'            => 'Fila sin clave',
+        'sin_datos'            => 'Sin columnas para actualizar',
+        'no_procesado'         => 'No procesado',
+    ];
+
+    public static function cargaResultadosFile(int $historialId): string
+    {
+        return storage_path('app/cargas_masivas/' . $historialId . '_resultados.csv');
+    }
+
+    /**
+     * Cambio 2: motivo de las claves que no están en el maestro, según si existen y si están
+     * activas (Habilitado) en cada sucursal activa. El maestro solo trae artículos activos en
+     * TODAS las sucursales (SyncDbMaster), por eso esa es la explicación habitual.
+     */
+    private function clasificarNoEncontradas(array &$resultados, array $indices, array $branchesMap): void
+    {
+        if (empty($indices)) return;
+
+        $limpia = fn (string $c) => strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $c));
+
+        $claves = [];
+        foreach ($indices as $i) {
+            $c = $limpia($resultados[$i]['clave']);
+            if ($c !== '') $claves[$c] = true;
+        }
+
+        $info = [];          // clave => [codigo_sucursal => Habilitado]
+        $sinRespuesta = [];
+        foreach ($branchesMap as $code => $name) {
+            try {
+                $cn = $this->connectionManager->connect($code);
+                foreach (array_chunk(array_keys($claves), 500) as $chunk) {
+                    foreach ($cn->table('articulo')->whereIn('Clave_Articulo', $chunk)->get(['Clave_Articulo', 'Habilitado']) as $r) {
+                        $info[strtoupper((string) $r->Clave_Articulo)][$code] = (int) $r->Habilitado;
+                    }
+                }
+            } catch (Throwable $e) {
+                $sinRespuesta[] = $name;
+            }
+        }
+
+        $totalSucursales = count($branchesMap);
+        foreach ($indices as $i) {
+            $raw = (string) $resultados[$i]['clave'];
+            $c = $limpia($raw);
+            $rawNorm = strtoupper(str_replace(['-', ' '], '', trim($raw)));
+            $en = $info[$c] ?? [];
+
+            $activas = $inactivas = $faltan = [];
+            foreach ($branchesMap as $code => $name) {
+                if (!array_key_exists($code, $en)) $faltan[] = $name;
+                elseif ($en[$code] === 1) $activas[] = $name;
+                else $inactivas[] = $name;
+            }
+
+            if (empty($en)) {
+                $motivo = 'no_existe';
+                $detalle = 'No está en el Catálogo Maestro ni en ninguna sucursal';
+            } elseif (count($activas) === $totalSucursales) {
+                $motivo = 'activo_falta_maestro';
+                $detalle = 'Sincronizar Homologación y luego Catálogo Maestro para que entre al maestro';
+            } elseif (empty($activas)) {
+                $motivo = 'inactivo_todas';
+                $detalle = 'Inactivo en: ' . implode(', ', $inactivas) . ($faltan ? ' · No existe en: ' . implode(', ', $faltan) : '');
+            } else {
+                $motivo = 'inactivo_algunas';
+                $detalle = ($inactivas ? 'Inactivo en: ' . implode(', ', $inactivas) : '')
+                    . ($faltan ? ($inactivas ? ' · ' : '') . 'No existe en: ' . implode(', ', $faltan) : '')
+                    . ' · Activo en: ' . implode(', ', $activas);
+            }
+
+            // Espacios invisibles (p.ej. el que deja Excel) u otros caracteres fuera de A-Z / 0-9
+            if ($c !== $rawNorm) {
+                $detalle = 'La clave trae espacios o caracteres especiales. ' . $detalle;
+                $motivo = 'clave_invalida';
+            }
+            if ($sinRespuesta) {
+                $detalle .= ' (sin respuesta de: ' . implode(', ', $sinRespuesta) . ')';
+            }
+
+            $resultados[$i]['motivo'] = $motivo;
+            $resultados[$i]['detalle'] = $detalle;
+        }
+    }
+
+    /** Cambio 2: marca claves repetidas en el archivo y cuenta filas por motivo. */
+    private function completarResultadosCarga(array &$resultados): array
+    {
+        $porClave = [];
+        foreach ($resultados as $i => $r) {
+            $c = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) $r['clave']));
+            if ($c !== '') $porClave[$c][] = $i;
+        }
+        $repetidas = 0;
+        foreach ($porClave as $idx) {
+            if (count($idx) < 2) continue;
+            $filas = implode(', ', array_map(fn ($i) => $resultados[$i]['fila'], $idx));
+            foreach ($idx as $i) {
+                $resultados[$i]['detalle'] = trim($resultados[$i]['detalle'] . ' · Clave repetida en el archivo (filas ' . $filas . ')', ' ·');
+                $repetidas++;
+            }
+        }
+
+        $motivos = [];
+        foreach ($resultados as $r) {
+            $motivos[$r['motivo']] = ($motivos[$r['motivo']] ?? 0) + 1;
+        }
+        return ['motivos' => $motivos, 'repetidas' => $repetidas, 'total' => count($resultados)];
+    }
+
+    private function guardarResultadosCarga(int $historialId, array $resultados): void
+    {
+        $file = self::cargaResultadosFile($historialId);
+        if (!is_dir(dirname($file))) {
+            mkdir(dirname($file), 0775, true);
+        }
+        $tmp = $file . '.tmp';
+        $h = fopen($tmp, 'w');
+        fwrite($h, "\xEF\xBB\xBF");
+        fputcsv($h, ['fila', 'clave', 'descripcion', 'motivo', 'detalle']);
+        foreach ($resultados as $r) {
+            fputcsv($h, $this->cleanUtf8([$r['fila'], $r['clave'], $r['descripcion'], $r['motivo'], $r['detalle']]));
+        }
+        fclose($h);
+        @unlink($file);
+        rename($tmp, $file);
+    }
+
+    private function leerResultadosCarga(int $historialId): ?array
+    {
+        $file = self::cargaResultadosFile($historialId);
+        if (!is_file($file)) return null;
+        $h = fopen($file, 'r');
+        $head = fgetcsv($h);
+        if ($head) $head[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $head[0]);
+        $filas = [];
+        while (($r = fgetcsv($h)) !== false) {
+            if (count($r) < 5) continue;
+            $filas[] = ['fila' => (int) $r[0], 'clave' => $r[1], 'descripcion' => $r[2], 'motivo' => $r[3], 'detalle' => $r[4]];
+        }
+        fclose($h);
+        return $filas;
+    }
+
+    /** Cambio 2: resultados por fila de una subida (resumen + detalle) para la tabla de la pantalla. */
+    public function historialResultados($id)
+    {
+        $filas = $this->leerResultadosCarga((int) $id);
+        if ($filas === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta subida no tiene tabla de resultados (se hizo antes de esta función o el archivo ya no está).',
+            ], 404);
+        }
+        $conteo = [];
+        $repetidas = 0;
+        foreach ($filas as $f) {
+            $conteo[$f['motivo']] = ($conteo[$f['motivo']] ?? 0) + 1;
+            if (str_contains($f['detalle'], 'Clave repetida en el archivo')) $repetidas++;
+        }
+        $resumen = [];
+        foreach (self::MOTIVOS_CARGA as $codigo => $texto) {
+            if (!empty($conteo[$codigo])) {
+                $resumen[] = ['codigo' => $codigo, 'texto' => $texto, 'filas' => $conteo[$codigo]];
+            }
+        }
+        return response()->json($this->cleanUtf8([
+            'success'   => true,
+            'historial_id' => (int) $id,
+            'total'     => count($filas),
+            'resumen'   => $resumen,
+            'repetidas' => $repetidas,
+            'motivos'   => self::MOTIVOS_CARGA,
+            'filas'     => $filas,
+        ]));
+    }
+
+    /** Cambio 2: descarga del resultado por fila (CSV para Excel). */
+    public function descargarResultados($id)
+    {
+        $filas = $this->leerResultadosCarga((int) $id);
+        if ($filas === null) {
+            return redirect()->back()->with('error', 'Esta subida no tiene tabla de resultados.');
+        }
+        $motivos = self::MOTIVOS_CARGA;
+        return response()->streamDownload(function () use ($filas, $motivos) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Fila', 'Clave', 'Descripción', 'Resultado', 'Detalle']);
+            foreach ($filas as $f) {
+                fputcsv($out, [$f['fila'], $f['clave'], $f['descripcion'], $motivos[$f['motivo']] ?? $f['motivo'], $f['detalle']]);
+            }
+            fclose($out);
+        }, 'resultados_subida_' . (int) $id . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**
