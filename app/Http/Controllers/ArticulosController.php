@@ -615,6 +615,11 @@ class ArticulosController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    /**
+     * Carga masiva: valida, guarda el archivo, crea la subida en el historial y lanza el
+     * proceso en segundo plano (`unidata:carga-masiva`). El proceso de fondo no tiene el
+     * límite de 120 s del servidor web; la pantalla consulta el avance con estadoSubida().
+     */
     public function procesarSubida(Request $request)
     {
         $request->validate([
@@ -636,12 +641,169 @@ class ArticulosController extends Controller
             ], 422);
         }
 
+        // Una sola carga masiva a la vez
+        $estado = $this->leerEstadoCarga();
+        if ($this->cargaEnCurso($estado)) {
+            return response()->json([
+                'success'  => false,
+                'en_curso' => true,
+                'message'  => 'Ya hay una carga masiva en proceso (subida #' . ($estado['historial_id'] ?? '?') . ', fila '
+                    . ($estado['step'] ?? 0) . ' de ' . ($estado['total'] ?? 0) . '). Espera a que termine o cancélala.',
+            ], 409);
+        }
+
+        try {
+            // Guardar el archivo físicamente para futuras descargas (y para que lo lea el proceso de fondo)
+            $storedFile = $file->store('uploads/csv_history');
+
+            $totalFilas = 0;
+            $h = fopen(Storage::disk('local')->path($storedFile), 'r');
+            if ($h) {
+                fgets($h); // encabezado
+                while (($linea = fgets($h)) !== false) {
+                    if (trim($linea) !== '') $totalFilas++;
+                }
+                fclose($h);
+            }
+
+            // ── INICIAR REGISTRO DE HISTORIAL ──
+            $historialId = DB::table('csv_historial')->insertGetId([
+                'archivo_nombre'      => $file->getClientOriginalName(),
+                'archivo_path'        => $storedFile, // Ruta relativa para descarga
+                'articulos_afectados' => 0,
+                'sucursales_json'     => json_encode($branchesSelected),
+                'fecha'               => now()
+            ]);
+
+            $paramsFile = self::cargaParamsFile($historialId);
+            if (!is_dir(dirname($paramsFile))) {
+                mkdir(dirname($paramsFile), 0775, true);
+            }
+            // cleanUtf8: nombres de columna con acento que lleguen en Windows-1252 harían fallar json_encode
+            file_put_contents($paramsFile, json_encode($this->cleanUtf8([
+                'archivo_path'   => $storedFile,
+                'archivo_nombre' => $file->getClientOriginalName(),
+                'branches'       => array_values($branchesSelected),
+                'columns'        => array_values($columnsSelected),
+                'total_filas'    => $totalFilas,
+                'usuario_id'     => auth()->id(),
+            ]), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+            $this->escribirEstadoCarga([
+                'status'       => 'running',
+                'historial_id' => $historialId,
+                'archivo'      => $this->cleanUtf8($file->getClientOriginalName()),
+                'message'      => 'Iniciando carga...',
+                'step'         => 0,
+                'total'        => $totalFilas,
+                'procesados'   => 0,
+                'started_at'   => time(),
+            ]);
+
+            // Lanzar proceso de fondo en Windows/XAMPP (mismo patrón que Homologación y Catálogo Maestro)
+            $php     = PHP_BINARY;
+            $artisan = base_path('artisan');
+            $log     = storage_path('logs') . DIRECTORY_SEPARATOR . 'carga_masiva_bg.log';
+            $cmd     = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:carga-masiva ' . (int) $historialId . ' >> "' . $log . '" 2>&1';
+            pclose(popen($cmd, 'r'));
+
+            $request->session()->forget('preview_completed_hash');
+
+            return response()->json([
+                'success'      => true,
+                'started'      => true,
+                'historial_id' => $historialId,
+                'total'        => $totalFilas,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo iniciar la carga: ' . $this->cleanUtf8($e->getMessage())
+            ], 500);
+        }
+    }
+
+    /** Avance de la carga masiva en segundo plano (la pantalla lo consulta cada pocos segundos). */
+    public function estadoSubida()
+    {
+        $estado = $this->leerEstadoCarga();
+        if (!$estado) {
+            return response()->json(['status' => 'idle']);
+        }
+        // Proceso que dejó de reportar avance (p.ej. se reinició el servidor)
+        if (($estado['status'] ?? '') === 'running' && !$this->cargaEnCurso($estado)) {
+            $estado['status']  = 'stalled';
+            $estado['message'] = 'El proceso dejó de responder. Revisa la subida #' . ($estado['historial_id'] ?? '?') . ' en el historial.';
+        }
+        return response()->json($estado);
+    }
+
+    /** Pide detener la carga; el proceso se detiene al terminar el artículo en curso. */
+    public function cancelarSubida()
+    {
+        $estado = $this->leerEstadoCarga();
+        if ($estado && ($estado['status'] ?? '') === 'running') {
+            $estado['cancel_requested'] = true;
+            $estado['message'] = 'Cancelando... se detendrá al terminar el artículo en curso.';
+            $this->escribirEstadoCarga($estado);
+        }
+        return response()->json(['success' => true]);
+    }
+
+    public static function cargaStatusFile(): string
+    {
+        return storage_path('app/carga_masiva_status.json');
+    }
+
+    public static function cargaParamsFile(int $historialId): string
+    {
+        return storage_path('app/cargas_masivas/' . $historialId . '_params.json');
+    }
+
+    public function leerEstadoCarga(): ?array
+    {
+        $f = self::cargaStatusFile();
+        if (!file_exists($f)) return null;
+        $data = json_decode((string) @file_get_contents($f), true);
+        return is_array($data) ? $data : null;
+    }
+
+    public function escribirEstadoCarga(array $estado): void
+    {
+        $estado['updated_at'] = time();
+        file_put_contents(self::cargaStatusFile(), json_encode($this->cleanUtf8($estado), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), LOCK_EX);
+    }
+
+    /** Corriendo = status running y reportó avance en los últimos 10 minutos. */
+    private function cargaEnCurso(?array $estado): bool
+    {
+        return $estado
+            && ($estado['status'] ?? '') === 'running'
+            && (time() - (int) ($estado['updated_at'] ?? 0)) < 600;
+    }
+
+    /**
+     * Ciclo de la carga masiva. Lo ejecuta el comando `unidata:carga-masiva` en segundo plano.
+     * Misma lógica por artículo que antes; solo se agregó avance y cancelación entre filas.
+     *
+     * @param callable $avance    fn(int $filasLeidas, int $procesados): void
+     * @param callable $cancelado fn(): bool
+     */
+    public function ejecutarCargaMasiva(int $historialId, callable $avance, callable $cancelado): array
+    {
+        $params = json_decode((string) @file_get_contents(self::cargaParamsFile($historialId)), true);
+        if (!is_array($params)) {
+            return ['success' => false, 'procesados' => 0, 'message' => "No se encontraron los datos de la subida #{$historialId}."];
+        }
+        $branchesSelected = $params['branches'];
+        $columnsSelected  = $params['columns'];
+        $updatedCount     = 0;
+        $canceladoEnFila  = null;
+
         [$normalize, $standardMapping, $branchFieldMap] = $this->getMappingResources();
 
         try {
-            // Guardar el archivo físicamente para futuras descargas
-            $storedFile = $file->store('uploads/csv_history');
-            $fullPath = Storage::disk('local')->path($storedFile);
+            $fullPath = Storage::disk('local')->path($params['archivo_path']);
 
             $handle = fopen($fullPath, "r");
             if (!$handle) throw new \Exception("No se pudo abrir el archivo guardado.");
@@ -678,13 +840,13 @@ class ArticulosController extends Controller
 
             if (!in_array('clave', $headerMap)) {
                 fclose($handle);
-                return response()->json([
+                return [
                     'success' => false,
-                    'message' => 'El archivo CSV debe incluir una columna válida para la clave del artículo (ej: "Clave" o "Código").'
-                ], 422);
+                    'procesados' => 0,
+                    'message' => 'El archivo CSV debe incluir una columna válida para la clave del artículo (ej: "Clave" o "Código").',
+                ];
             }
 
-            $updatedCount = 0;
             $branchesMap = $this->connectionManager->getActiveBranches()->pluck('name', 'code')->toArray();
             $branchStats = [];
             foreach ($branchesSelected as $suc) {
@@ -693,15 +855,7 @@ class ArticulosController extends Controller
                 }
             }
 
-            // ── INICIAR REGISTRO DE HISTORIAL ──
-            $historialId = DB::table('csv_historial')->insertGetId([
-                'archivo_nombre'      => $file->getClientOriginalName(),
-                'archivo_path'        => $storedFile, // Ruta relativa para descarga
-                'articulos_afectados' => 0,
-                'sucursales_json'     => json_encode($branchesSelected),
-                'fecha'               => now()
-            ]);
-
+            // El registro de historial ya lo creó procesarSubida() antes de lanzar el proceso de fondo
             // AU-01: nombre de columna tal como viene en el CSV, para los avisos
             $headerLabel = [];
             foreach ($headerMap as $idx => $mappedField) {
@@ -712,6 +866,13 @@ class ArticulosController extends Controller
             $fila = 1; // la fila 1 es el encabezado
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
+                // Carga en segundo plano: avance y cancelación entre filas (nunca a la mitad de un artículo)
+                if ($cancelado()) {
+                    $canceladoEnFila = $fila;
+                    break;
+                }
+                $avance($fila - 1, $updatedCount);
+
                 $fila++;
                 $row = array_map([$this, 'cleanUtf8'], $row);
                 $item = [];
@@ -961,13 +1122,21 @@ class ArticulosController extends Controller
                     . (count($clavesNoEncontradas) > 10 ? ' | ...' : '');
             }
 
+            $avisoCancelado = $canceladoEnFila !== null
+                ? ' Carga CANCELADA por el usuario después de la fila ' . $canceladoEnFila . '; las filas siguientes no se procesaron.'
+                : '';
+
             if ($updatedCount === 0) {
-                return response()->json($this->cleanUtf8([
+                return $this->cleanUtf8([
                     'success' => false,
-                    'message' => 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.' . $avisoInvalidas,
+                    'cancelado' => $canceladoEnFila !== null,
+                    'procesados' => 0,
+                    'message' => ($canceladoEnFila !== null
+                        ? 'Carga cancelada antes de actualizar algún artículo.'
+                        : 'No se actualizó ningún artículo. Verifique que el archivo contenga filas de datos y que las claves coincidan con el Catálogo Maestro.') . $avisoInvalidas,
                     'filas_invalidas' => $filasInvalidas,
                     'claves_no_encontradas' => $clavesNoEncontradas,
-                ]), 422);
+                ]);
             }
 
             // Actualizar el conteo final en el historial
@@ -985,23 +1154,30 @@ class ArticulosController extends Controller
                 $branchDetail[] = $line;
             }
 
-            $request->session()->forget('preview_completed_hash');
-
             $responsePayload = [
                 'success' => true,
-                'message' => "Proceso completado. Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail) . $avisoInvalidas,
+                'cancelado' => $canceladoEnFila !== null,
+                'procesados' => $updatedCount,
+                'message' => ($canceladoEnFila !== null ? 'Proceso detenido.' : 'Proceso completado.') . " Se procesaron {$updatedCount} artículos en el Maestro. Detalle por sucursal: " . implode(' | ', $branchDetail) . $avisoInvalidas . $avisoCancelado,
                 'branch_stats' => $branchStats,
                 'filas_invalidas' => $filasInvalidas,
                 'claves_no_encontradas' => $clavesNoEncontradas,
             ];
 
-            return response()->json($this->cleanUtf8($responsePayload));
+            return $this->cleanUtf8($responsePayload);
 
         } catch (Throwable $e) {
-            return response()->json([
+            if (isset($handle) && is_resource($handle)) {
+                fclose($handle);
+            }
+            // Dejar el conteo real en el historial aunque el proceso se haya detenido por error
+            DB::table('csv_historial')->where('id', $historialId)->update(['articulos_afectados' => $updatedCount]);
+            return [
                 'success' => false,
-                'message' => 'Error al procesar el archivo: ' . $this->cleanUtf8($e->getMessage())
-            ], 500);
+                'procesados' => $updatedCount,
+                'message' => 'Error al procesar el archivo' . (isset($fila) ? " en la fila {$fila}" : '') . ': ' . $this->cleanUtf8($e->getMessage())
+                    . " Se alcanzaron a procesar {$updatedCount} artículos (ver auditoría en el historial).",
+            ];
         }
     }
 

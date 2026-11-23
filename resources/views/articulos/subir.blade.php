@@ -1527,9 +1527,11 @@
                 columns.forEach(c => formData.append('columns[]', c));
 
                 Swal.fire({
-                    title: 'Procesando...',
-                    text: 'Por favor no cierres la ventana.',
+                    title: 'Iniciando carga...',
+                    text: 'Subiendo el archivo al servidor.',
                     allowOutsideClick: false,
+                    background: '#1a1d27',
+                    color: '#fff',
                     didOpen: () => Swal.showLoading()
                 });
 
@@ -1557,17 +1559,10 @@
                         return;
                     }
 
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: data.message,
-                            background: '#1a1d27',
-                            color: '#fff',
-                            confirmButtonColor: 'var(--emerald, #10b981)'
-                        }).then(() => {
-                            location.reload();
-                        });
+                    if (data.success && data.started) {
+                        // La carga corre en segundo plano: mostrar avance
+                        setPreviewValid(false, 'Carga en proceso');
+                        seguirCargaMasiva(data.historial_id);
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -1594,6 +1589,154 @@
                     });
                 }
             });
+
+            // ── Carga masiva en segundo plano: avance, cancelar y resultado ──
+            const CARGA_ESTADO_URL = '{{ route("articulos.subir.estado") }}';
+            const CARGA_CANCELAR_URL = '{{ route("articulos.subir.cancelar") }}';
+            let cargaPollTimer = null;
+
+            function htmlAvanceCarga(est) {
+                const total = Number(est.total || 0);
+                const step = Math.min(Number(est.step || 0), total || Number(est.step || 0));
+                const pct = total > 0 ? Math.floor(step * 100 / total) : 0;
+                const transcurrido = est.started_at ? Math.max(0, Math.floor(Date.now() / 1000) - Number(est.started_at)) : 0;
+                const min = Math.floor(transcurrido / 60), seg = transcurrido % 60;
+                return `
+                    <div style="text-align:left; font-size:13px;">
+                        <div style="margin-bottom:6px;">Subida <b>#${escHtmlAu01(est.historial_id ?? '')}</b> · ${escHtmlAu01(est.archivo ?? '')}</div>
+                        <div style="background:rgba(255,255,255,0.08); border-radius:6px; height:14px; overflow:hidden;">
+                            <div style="width:${pct}%; height:100%; background:var(--amber, #f59e0b); transition:width .4s;"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px; color:#cbd5e1;">
+                            <span>Fila ${step.toLocaleString()} de ${total.toLocaleString()} (${pct}%)</span>
+                            <span>${Number(est.procesados || 0).toLocaleString()} artículos actualizados</span>
+                        </div>
+                        <div style="margin-top:4px; font-size:11.5px; color:#94a3b8;">Tiempo transcurrido: ${min} min ${seg} s</div>
+                        <div style="margin-top:10px; font-size:12px; color:#94a3b8;">${escHtmlAu01(est.message ?? '')}</div>
+                        <div style="margin-top:10px; font-size:11.5px; color:#94a3b8;">La carga corre en segundo plano: puedes cerrar esta pantalla y volver después para ver el avance.</div>
+                    </div>`;
+            }
+
+            function mostrarResultadoCarga(est) {
+                const res = est.resultado || {};
+                try { localStorage.setItem('carga_masiva_vista', String(est.historial_id)); } catch (e) {}
+                const cfg = {
+                    done:      { icon: 'success', title: '¡Carga completada!', color: 'var(--emerald, #10b981)' },
+                    cancelled: { icon: 'warning', title: 'Carga cancelada', color: 'var(--amber, #f59e0b)' },
+                    error:     { icon: 'error',   title: 'Error en la carga', color: 'var(--rose, #f43f5e)' },
+                    stalled:   { icon: 'error',   title: 'La carga dejó de responder', color: 'var(--rose, #f43f5e)' },
+                }[est.status] || { icon: 'info', title: 'Carga masiva', color: 'var(--amber, #f59e0b)' };
+                Swal.fire({
+                    icon: cfg.icon,
+                    title: cfg.title,
+                    html: `<div style="text-align:left; font-size:13px;">Subida <b>#${escHtmlAu01(est.historial_id ?? '')}</b><br><br>${escHtmlAu01(res.message || est.message || '')}</div>`,
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: cfg.color,
+                    confirmButtonText: 'Aceptar',
+                    showDenyButton: true,
+                    denyButtonText: 'Ver Historial de Subidas',
+                    denyButtonColor: '#334155',
+                }).then(r => {
+                    if (r.isDenied) {
+                        window.location.href = '{{ route("articulos.historial") }}';
+                    } else {
+                        location.reload();
+                    }
+                });
+            }
+
+            async function leerEstadoCarga() {
+                const resp = await fetch(CARGA_ESTADO_URL, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+                return await resp.json();
+            }
+
+            function seguirCargaMasiva(historialId) {
+                if (cargaPollTimer) clearInterval(cargaPollTimer);
+                let fallos = 0;
+
+                Swal.fire({
+                    title: 'Carga masiva en proceso',
+                    html: htmlAvanceCarga({ historial_id: historialId, step: 0, total: 0, message: 'Iniciando...' }),
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancelar carga',
+                    cancelButtonColor: 'var(--rose, #f43f5e)',
+                    background: '#1a1d27',
+                    color: '#fff',
+                }).then(async r => {
+                    if (r.dismiss !== Swal.DismissReason.cancel) return;
+                    const conf = await Swal.fire({
+                        icon: 'warning',
+                        title: '¿Cancelar la carga?',
+                        text: 'Se detendrá al terminar el artículo en curso. Lo ya procesado queda guardado y se puede revertir desde el historial.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, cancelar',
+                        cancelButtonText: 'No, continuar',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--rose, #f43f5e)',
+                    });
+                    if (conf.isConfirmed) {
+                        try {
+                            await fetch(CARGA_CANCELAR_URL, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } });
+                        } catch (e) {}
+                    }
+                    seguirCargaMasiva(historialId);
+                });
+
+                const tick = async () => {
+                    let est;
+                    try {
+                        est = await leerEstadoCarga();
+                        fallos = 0;
+                    } catch (e) {
+                        if (++fallos >= 5) {
+                            clearInterval(cargaPollTimer);
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Sin conexión con el servidor',
+                                text: 'No se pudo consultar el avance. La carga sigue en segundo plano; recarga la página más tarde para ver cómo va.',
+                                background: '#1a1d27',
+                                color: '#fff',
+                                confirmButtonColor: 'var(--amber, #f59e0b)'
+                            });
+                        }
+                        return;
+                    }
+                    if (Number(est.historial_id) !== Number(historialId)) return;
+                    if (est.status === 'running') {
+                        const cont = Swal.getHtmlContainer();
+                        if (cont && Swal.getTitle() && Swal.getTitle().textContent === 'Carga masiva en proceso') {
+                            cont.innerHTML = htmlAvanceCarga(est);
+                        }
+                        return;
+                    }
+                    clearInterval(cargaPollTimer);
+                    mostrarResultadoCarga(est);
+                };
+                cargaPollTimer = setInterval(tick, 2000);
+                tick();
+            }
+
+            // Al abrir la pantalla: retomar una carga en curso o mostrar el resultado que no se ha visto
+            (async () => {
+                try {
+                    const est = await leerEstadoCarga();
+                    if (!est || !est.historial_id) return;
+                    if (est.status === 'running') {
+                        seguirCargaMasiva(est.historial_id);
+                        return;
+                    }
+                    let vista = null;
+                    try { vista = localStorage.getItem('carga_masiva_vista'); } catch (e) {}
+                    const reciente = est.finished_at && (Date.now() / 1000 - Number(est.finished_at)) < 86400;
+                    if (['done', 'cancelled', 'error', 'stalled'].includes(est.status) && reciente && vista !== String(est.historial_id)) {
+                        mostrarResultadoCarga(est);
+                    }
+                } catch (e) { /* sin estado: nada que mostrar */ }
+            })();
 
             // Menú desplegable Machotes
             const btnMachotes = document.getElementById('btn-machotes');

@@ -46,6 +46,8 @@ Route::post('/articulos/inventario/actualizar-masivo', [InventarioController::cl
 Route::get('/articulos/subir', [ArticulosController::class, 'subirForm'])->name('articulos.subir');
 Route::get('/articulos/subir/machote', [ArticulosController::class, 'descargarMachote'])->name('articulos.subir.machote');
 Route::post('/articulos/subir/proceso', [ArticulosController::class, 'procesarSubida'])->name('articulos.subir.proceso');
+Route::get('/articulos/subir/estado', [ArticulosController::class, 'estadoSubida'])->name('articulos.subir.estado');
+Route::post('/articulos/subir/cancelar', [ArticulosController::class, 'cancelarSubida'])->name('articulos.subir.cancelar');
 Route::get('/articulos/export', [ArticulosController::class, 'export'])->name('articulos.export');
 Route::post('/articulos/subir/preview', [ArticulosController::class, 'previewSubida'])->name('articulos.subir.preview');
 Route::get('/articulos/historial', [ArticulosController::class, 'historialSubidas'])->name('articulos.historial');
