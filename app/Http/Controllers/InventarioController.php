@@ -156,6 +156,16 @@ class InventarioController extends Controller
             'clave_articulo'    => 'required|string',
             'inventario_minimo' => 'required|numeric|min:0',
             'inventario_maximo' => 'required|numeric|min:0',
+        ], [
+            // La app corre con APP_LOCALE=en sin traducciones: mensajes en español aquí
+            'clave_articulo.required'    => 'La clave del artículo es obligatoria.',
+            'clave_articulo.string'      => 'La clave del artículo no es válida.',
+            'inventario_minimo.required' => 'El mínimo es obligatorio.',
+            'inventario_minimo.numeric'  => 'El mínimo debe ser un número.',
+            'inventario_minimo.min'      => 'El mínimo no puede ser negativo.',
+            'inventario_maximo.required' => 'El máximo es obligatorio.',
+            'inventario_maximo.numeric'  => 'El máximo debe ser un número.',
+            'inventario_maximo.min'      => 'El máximo no puede ser negativo.',
         ]);
 
         $clave = trim($request->input('clave_articulo'));
@@ -284,6 +294,11 @@ class InventarioController extends Controller
     {
         $request->validate([
             'file' => 'required|file|max:10240',
+        ], [
+            'file.required' => 'Selecciona un archivo CSV.',
+            'file.file'     => 'El archivo no se pudo subir. Vuelve a seleccionarlo.',
+            'file.uploaded' => 'El archivo no se pudo subir. Vuelve a seleccionarlo.',
+            'file.max'      => 'El archivo es demasiado grande (máximo 10 MB).',
         ]);
 
         $targets = $this->resolveTargetBranches($request);
