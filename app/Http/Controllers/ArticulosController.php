@@ -1265,6 +1265,32 @@ class ArticulosController extends Controller
         }
     }
 
+    /** Cambio 3: tiempo medido por artículo en la carga masiva (3 llamadas a PowerSales incluidas). */
+    public const SEGUNDOS_POR_ARTICULO = 2.3;
+
+    /**
+     * Cambio 3: cuántas filas del CSV tienen clave que existe en el Catálogo Maestro
+     * (las que realmente se procesan). Mismo criterio que la carga: exacta o sin guiones/espacios/_.
+     */
+    private function contarEnMaestro(array $claves): int
+    {
+        if (empty($claves)) return 0;
+        $enMaestro = [];
+        foreach (array_chunk(array_values(array_unique($claves)), 1000) as $chunk) {
+            $encontradas = DbMasterArticle::whereIn('clave', $chunk)
+                ->orWhereIn(DB::raw("REPLACE(REPLACE(REPLACE(clave, '-', ''), ' ', ''), '_', '')"), $chunk)
+                ->pluck('clave');
+            foreach ($encontradas as $c) {
+                $enMaestro[strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$c))] = true;
+            }
+        }
+        $total = 0;
+        foreach ($claves as $c) {
+            if (isset($enMaestro[$c])) $total++;
+        }
+        return $total;
+    }
+
     /** Cambio 2: motivos del resultado por fila de la carga masiva (código => texto). */
     public const MOTIVOS_CARGA = [
         'actualizado'          => 'Actualizado',
@@ -1649,6 +1675,7 @@ class ArticulosController extends Controller
                 $headerLabel[$mappedField] = $headerOriginal[$idx];
             }
             $filasInvalidas = [];
+            $clavesEstimacion = []; // Cambio 3
             $fila = 1; // la fila 1 es el encabezado
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
@@ -1690,6 +1717,12 @@ class ArticulosController extends Controller
                     }
                 }
                 if (!empty($invalidos)) $csvItem['__invalidos'] = $invalidos;
+
+                // Cambio 3: claves de TODO el archivo para estimar cuántos artículos se procesarán
+                if (empty($invalidos)) {
+                    $claveEst = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($csvItem['clave'] ?? '')));
+                    if ($claveEst !== '') $clavesEstimacion[] = $claveEst;
+                }
 
                 // Solo recopilamos los primeros 500 artículos para la previsualización
                 if (count($previewRows) < $maxPreviewRows) {
@@ -1929,6 +1962,9 @@ class ArticulosController extends Controller
                 'changed_cols' => array_keys($changedCols),
                 'column_map'   => $columnMap,
                 'unrecognized' => $unrecognized,
+                // Cambio 3: estimación de tiempo para avisar de archivos grandes
+                'en_maestro'   => $this->contarEnMaestro($clavesEstimacion),
+                'segundos_por_articulo' => self::SEGUNDOS_POR_ARTICULO,
             ];
 
             return response()->json($this->cleanUtf8($responsePayload));

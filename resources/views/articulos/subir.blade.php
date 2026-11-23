@@ -655,6 +655,9 @@
             let isPreviewValid = false;
             let totalRowsInCsv = 0;
             let filasInvalidasPreview = []; // AU-01
+            let articulosEnMaestroPreview = 0;   // Cambio 3
+            let segundosPorArticuloPreview = 2.3; // Cambio 3
+            const LIMITE_ARCHIVO_GRANDE_SEG = 600; // Cambio 3: más de 10 min estimados = archivo grande
 
             // AU-01: escapar texto del CSV antes de pintarlo
             function escHtmlAu01(v) {
@@ -1380,6 +1383,9 @@
 
                     // AU-01: avisar de filas con valores no numéricos (se permite procesar; esas filas se omiten)
                     filasInvalidasPreview = Array.isArray(data.filas_invalidas) ? data.filas_invalidas : [];
+                    // Cambio 3: datos para estimar el tiempo de la carga
+                    articulosEnMaestroPreview = Number(data.en_maestro || 0);
+                    segundosPorArticuloPreview = Number(data.segundos_por_articulo || 2.3);
                     if (filasInvalidasPreview.length > 0) {
                         setPreviewValid(true, `Vista Previa verificada · ${filasInvalidasPreview.length} fila(s) con valores no numéricos se omitirán`);
                         const lista = filasInvalidasPreview.slice(0, 10).map(f => `<li>${escHtmlAu01(f)}</li>`).join('')
@@ -1509,7 +1515,38 @@
                     ? ` (${Number(totalRowsInCsv).toLocaleString()} artículos en total)`
                     : '';
 
-                const result = await Swal.fire({
+                // Cambio 3: archivo grande (más de 10 min estimados) → aviso con tiempo estimado
+                const segEstimados = articulosEnMaestroPreview * segundosPorArticuloPreview;
+                const esGrande = segEstimados > LIMITE_ARCHIVO_GRANDE_SEG;
+                const fmtTiempo = (s) => {
+                    const min = Math.ceil(s / 60);
+                    if (min < 60) return `~${min} min`;
+                    const h = Math.floor(min / 60), m = min % 60;
+                    return `~${h} h${m ? ' ' + m + ' min' : ''}`;
+                };
+                const avisoInvalidas = filasInvalidasPreview.length > 0
+                    ? `<p style="margin-top:8px;">${filasInvalidasPreview.length} fila(s) con valores no numéricos se omitirán.</p>` : '';
+                const sinMaestro = Math.max(0, Number(totalRowsInCsv) - articulosEnMaestroPreview - filasInvalidasPreview.length);
+
+                const result = esGrande ? await Swal.fire({
+                    title: 'Este archivo es demasiado grande',
+                    html: `<table style="margin:4px auto 12px; text-align:left; font-size:14px;">`
+                        + `<tr><td style="padding:2px 12px 2px 0;">Se procesarán:</td><td><b>${articulosEnMaestroPreview.toLocaleString()} artículos</b> (de ${Number(totalRowsInCsv).toLocaleString()} filas)</td></tr>`
+                        + `<tr><td style="padding:2px 12px 2px 0;">Tiempo por artículo:</td><td><b>~${segundosPorArticuloPreview.toLocaleString()} segundos</b></td></tr>`
+                        + `<tr><td style="padding:2px 12px 2px 0;">Tiempo estimado:</td><td><b>${fmtTiempo(segEstimados)}</b></td></tr>`
+                        + `</table>`
+                        + `<p>Puede tardar, pero se ejecutará en <b>segundo plano</b>. Puedes cerrar esta pantalla y consultar el avance después.</p>`
+                        + `<p style="margin-top:8px;">Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas.</p>`
+                        + (sinMaestro > 0 ? `<p style="margin-top:8px;">${sinMaestro.toLocaleString()} fila(s) no están en el Catálogo Maestro y se omitirán (verás el motivo en la tabla de resultados).</p>` : '')
+                        + avisoInvalidas
+                        + `<p style="margin-top:8px;">Esta acción no se puede deshacer.</p>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonText: 'Ejecutar',
+                    cancelButtonText: 'Cancelar'
+                }) : await Swal.fire({
                     title: '¿Confirmar actualización masiva?',
                     text: `Se actualizará el DB MASTER y las ${branches.length} sucursales seleccionadas para todos los artículos en el CSV${totalRowsText}.`
                         + (filasInvalidasPreview.length > 0 ? ` ${filasInvalidasPreview.length} fila(s) con valores no numéricos se omitirán.` : '')
