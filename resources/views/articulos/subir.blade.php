@@ -1594,6 +1594,8 @@
             const CARGA_ESTADO_URL = '{{ route("articulos.subir.estado") }}';
             const CARGA_CANCELAR_URL = '{{ route("articulos.subir.cancelar") }}';
             let cargaPollTimer = null;
+            let cargaGen = 0;              // ciclo de sondeo vigente
+            let resultadoMostrado = null;  // subida cuyo resultado ya se mostró
 
             function htmlAvanceCarga(est) {
                 const total = Number(est.total || 0);
@@ -1618,8 +1620,13 @@
             }
 
             function mostrarResultadoCarga(est) {
+                // Una sola vez por subida: respuestas atrasadas del sondeo no deben abrir otro modal encima
+                if (resultadoMostrado === String(est.historial_id)) return;
+                resultadoMostrado = String(est.historial_id);
+                cargaGen++; // detiene cualquier sondeo que siga vivo
+                clearTimeout(cargaPollTimer);
+
                 const res = est.resultado || {};
-                try { localStorage.setItem('carga_masiva_vista', String(est.historial_id)); } catch (e) {}
                 const cfg = {
                     done:      { icon: 'success', title: '¡Carga completada!', color: 'var(--emerald, #10b981)' },
                     cancelled: { icon: 'warning', title: 'Carga cancelada', color: 'var(--amber, #f59e0b)' },
@@ -1638,9 +1645,12 @@
                     denyButtonText: 'Ver Historial de Subidas',
                     denyButtonColor: '#334155',
                 }).then(r => {
+                    // Cerrado por otro modal (no por el usuario): no marcar como visto ni recargar
+                    if (!r.isConfirmed && !r.isDenied && !r.dismiss) return;
+                    try { localStorage.setItem('carga_masiva_vista', String(est.historial_id)); } catch (e) {}
                     if (r.isDenied) {
                         window.location.href = '{{ route("articulos.historial") }}';
-                    } else {
+                    } else if (r.isConfirmed) {
                         location.reload();
                     }
                 });
@@ -1652,7 +1662,9 @@
             }
 
             function seguirCargaMasiva(historialId) {
-                if (cargaPollTimer) clearInterval(cargaPollTimer);
+                // Cada llamada inicia un ciclo de sondeo nuevo; los anteriores quedan anulados
+                const gen = ++cargaGen;
+                clearTimeout(cargaPollTimer);
                 let fallos = 0;
 
                 Swal.fire({
@@ -1678,22 +1690,31 @@
                         color: '#fff',
                         confirmButtonColor: 'var(--rose, #f43f5e)',
                     });
+                    // Si la carga terminó mientras se preguntaba, ya se está mostrando su resultado
+                    if (resultadoMostrado === String(historialId)) return;
                     if (conf.isConfirmed) {
                         try {
                             await fetch(CARGA_CANCELAR_URL, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } });
                         } catch (e) {}
                     }
+                    if (resultadoMostrado === String(historialId)) return;
                     seguirCargaMasiva(historialId);
                 });
 
+                const siguiente = () => {
+                    if (gen === cargaGen) cargaPollTimer = setTimeout(tick, 2000);
+                };
                 const tick = async () => {
+                    if (gen !== cargaGen) return;
                     let est;
                     try {
                         est = await leerEstadoCarga();
                         fallos = 0;
                     } catch (e) {
-                        if (++fallos >= 5) {
-                            clearInterval(cargaPollTimer);
+                        if (gen !== cargaGen) return;
+                        if (++fallos < 5) {
+                            siguiente();
+                        } else {
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Sin conexión con el servidor',
@@ -1705,18 +1726,19 @@
                         }
                         return;
                     }
-                    if (Number(est.historial_id) !== Number(historialId)) return;
+                    // Respuesta atrasada de un ciclo anterior: ignorar
+                    if (gen !== cargaGen) return;
+                    if (Number(est.historial_id) !== Number(historialId)) { siguiente(); return; }
                     if (est.status === 'running') {
                         const cont = Swal.getHtmlContainer();
                         if (cont && Swal.getTitle() && Swal.getTitle().textContent === 'Carga masiva en proceso') {
                             cont.innerHTML = htmlAvanceCarga(est);
                         }
+                        siguiente();
                         return;
                     }
-                    clearInterval(cargaPollTimer);
                     mostrarResultadoCarga(est);
                 };
-                cargaPollTimer = setInterval(tick, 2000);
                 tick();
             }
 
