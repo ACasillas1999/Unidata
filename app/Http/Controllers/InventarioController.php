@@ -259,15 +259,16 @@ class InventarioController extends Controller
 
     /**
      * IN-03: interpreta una cantidad de inventario del CSV.
-     * Vacío → 0 (igual que antes). Acepta coma de miles solo con formato exacto
-     * (1,500 / 1,234.50), igual que AU-01. Texto o negativos son inválidos.
+     * Vacío → null = no cambiar ese valor (antes se guardaba 0 y borraba el valor anterior).
+     * Acepta coma de miles solo con formato exacto (1,500 / 1,234.50), igual que AU-01.
+     * Texto o negativos son inválidos.
      *
-     * @return array{0: ?string, 1: float} [error o null, valor]
+     * @return array{0: ?string, 1: ?float} [error o null, valor o null si vacío]
      */
     private function parseCantidadCsv(string $v): array
     {
         $v = trim($v);
-        if ($v === '') return [null, 0.0];
+        if ($v === '') return [null, null];
         if (!is_numeric($v) && preg_match('/^-?\d{1,3}(,\d{3})+(\.\d+)?$/', $v)) {
             $v = str_replace(',', '', $v);
         }
@@ -345,6 +346,11 @@ class InventarioController extends Controller
                 $filasInvalidas[] = "Fila {$fila} ({$clave}): " . implode(', ', $detalle);
                 continue;
             }
+            // Celda vacía = no cambiar ese valor; si vienen las dos vacías no hay nada que guardar
+            if ($valMax === null && $valMin === null) {
+                $filasInvalidas[] = "Fila {$fila} ({$clave}): sin mínimo ni máximo";
+                continue;
+            }
 
             $rows[] = [
                 'clave' => $clave,
@@ -383,14 +389,17 @@ class InventarioController extends Controller
 
                 foreach ($filasUnicas as $r) {
                     try {
-                        $affected = $conn->table('articuloalm')
-                            ->where('Clave_Articulo', $r['clave'])
-                            ->update([
-                                'Inventario_Minimo' => $r['min'],
-                                'Inventario_Maximo' => $r['max'],
-                            ]);
-
-                        if ($affected > 0) {
+                        // Solo las columnas que traen valor; una celda vacía conserva lo que había
+                        $campos = [];
+                        if ($r['min'] !== null) $campos['Inventario_Minimo'] = $r['min'];
+                        if ($r['max'] !== null) $campos['Inventario_Maximo'] = $r['max'];
+                        // Se revisa si existe antes de actualizar: si el valor ya era igual, MySQL
+                        // reporta 0 filas afectadas y eso no debe llevar a insertar un renglón duplicado.
+                        $existe = $conn->table('articuloalm')->where('Clave_Articulo', $r['clave'])->exists();
+                        if ($existe) {
+                            $conn->table('articuloalm')
+                                ->where('Clave_Articulo', $r['clave'])
+                                ->update($campos);
                             $actualizados++;
                         } else {
                             // Usar la clave tal como está en el catálogo (la búsqueda ignora mayúsculas en latin1)
@@ -399,8 +408,8 @@ class InventarioController extends Controller
                                 $conn->table('articuloalm')->insert([
                                     'Clave_Articulo'     => $claveReal,
                                     'Almacen'            => 1,
-                                    'Inventario_Minimo'  => $r['min'],
-                                    'Inventario_Maximo'  => $r['max'],
+                                    'Inventario_Minimo'  => $r['min'] ?? 0, // renglón nuevo: sin valor previo
+                                    'Inventario_Maximo'  => $r['max'] ?? 0,
                                     'Punto_Reorden'      => 0,
                                     'Rack'               => '',
                                     'Existencia_Teorica'  => 0,

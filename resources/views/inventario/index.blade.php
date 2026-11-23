@@ -641,11 +641,15 @@ function previewCsvFile(input) {
 
             const cols = rowStr.split(sep).map(c => c.replace(/^["']|["']$/g, '').trim());
             const clave = cols[claveIdx] || '';
-            const minVal = parseFloat(cols[minIdx] || 0);
-            const maxVal = parseFloat(cols[maxIdx] || 0);
+            // Celda vacía = no cambiar ese valor (el servidor la conserva)
+            const minVacio = (cols[minIdx] || '') === '';
+            const maxVacio = (cols[maxIdx] || '') === '';
+            const minVal = minVacio ? 0 : parseFloat(cols[minIdx]);
+            const maxVal = maxVacio ? 0 : parseFloat(cols[maxIdx]);
+            const sinCambio = '<i style="color: var(--text-muted);">sin cambio</i>';
 
             totalRows++;
-            const isValid = (clave !== '') && !isNaN(minVal) && !isNaN(maxVal);
+            const isValid = (clave !== '') && !isNaN(minVal) && !isNaN(maxVal) && !(minVacio && maxVacio);
             if (isValid) validRows++; else invalidRows++;
 
             const tr = document.createElement('tr');
@@ -655,8 +659,8 @@ function previewCsvFile(input) {
             tr.innerHTML = `
                 <td style="padding: 6px 10px; color: var(--text-muted); text-align: center;">${totalRows}</td>
                 <td style="padding: 6px 10px; font-weight: 700; color: #93c5fd;">${clave || '<i style="color:#fca5a5;">(Vacío)</i>'}</td>
-                <td style="padding: 6px 10px; color: white;">${isNaN(minVal) ? '-' : minVal}</td>
-                <td style="padding: 6px 10px; color: white;">${isNaN(maxVal) ? '-' : maxVal}</td>
+                <td style="padding: 6px 10px; color: white;">${minVacio ? sinCambio : (isNaN(minVal) ? '-' : minVal)}</td>
+                <td style="padding: 6px 10px; color: white;">${maxVacio ? sinCambio : (isNaN(maxVal) ? '-' : maxVal)}</td>
                 <td style="padding: 6px 10px; text-align: right;">
                     ${isValid 
                         ? '<span style="color: #86efac; font-weight: 600; font-size: 11px;">✓ Listo</span>' 
