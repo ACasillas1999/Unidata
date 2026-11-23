@@ -441,10 +441,12 @@
                     </div>
                 </div>
                 <div class="card-body"
-                    style="flex: 1; overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
-                    <div class="table-wrap">
+                    style="flex: 1; overflow: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
+                    {{-- Scroll propio: encabezados fijos arriba, barra horizontal siempre visible y CLAVE fija a la izquierda --}}
+                    <div class="table-wrap" id="preview-scroll"
+                        style="overflow: auto; max-height: 72vh;">
                         <table class="data-table" id="preview-table">
-                            <thead>
+                            <thead style="position: sticky; top: 0; z-index: 4;">
                                 <tr id="preview-header-row">
                                     {{-- Se llena con JS --}}
                                 </tr>
@@ -615,6 +617,13 @@
         #upload-container:hover .upload-icon-wrapper svg {
             color: white;
         }
+
+        /* Vista previa: barras de scroll visibles (la global de .table-wrap mide 4px) */
+        #preview-scroll::-webkit-scrollbar { height: 12px; width: 10px; }
+        #preview-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.45); border-radius: 6px; }
+        #preview-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); }
+        #preview-scroll::-webkit-scrollbar-corner { background: transparent; }
+        #preview-table thead th { background: #181b26; }
     </style>
 @endsection
 
@@ -1253,7 +1262,7 @@
                         ? data.column_map.filter(c => c.field !== 'clave')
                         : [];
 
-                    let headerHtml = '<th style="padding:10px 12px; font-size:11px; white-space:nowrap; background:#181b26; position:sticky; left:0; z-index:2; border-right:1px solid var(--border);">CLAVE</th>';
+                    let headerHtml = '<th style="padding:10px 12px; font-size:11px; white-space:nowrap; background:#181b26; position:sticky; left:0; z-index:3; border-right:1px solid var(--border);">CLAVE</th>';
                     activeCols.forEach(col => {
                         const isSelected = col.selected;
                         headerHtml += `<th style="padding:10px 12px; font-size:11px; white-space:nowrap; ${isSelected ? 'color:var(--text-main);' : 'color:var(--text-muted); opacity:0.6;'}">
