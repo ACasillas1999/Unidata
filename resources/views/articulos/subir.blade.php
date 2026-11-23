@@ -1093,6 +1093,32 @@
                 });
             });
 
+            // El navegador no puede enviar un archivo que se modificó, movió o borró después de seleccionarlo:
+            // fetch falla como si fuera un error de red. Se comprueba leyendo un byte antes de enviar.
+            async function archivoLegible(file) {
+                try {
+                    await file.slice(0, 1).arrayBuffer();
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function avisarArchivoCambiado(file, despuesDeVistaPrevia) {
+                const nombre = file && file.name ? `"${file.name}"` : 'El archivo';
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'El archivo cambió',
+                    html: `${escHtmlAu01(nombre)} se modificó (o se movió) después de seleccionarlo.<br><br>`
+                        + (despuesDeVistaPrevia
+                            ? 'Da clic en <b>Cambiar</b>, vuelve a seleccionar el CSV y genera otra vez la <b>Vista Previa</b> antes de ejecutar la actualización.'
+                            : 'Da clic en <b>Cambiar</b> y vuelve a seleccionar el CSV para generar la vista previa con los datos nuevos.'),
+                    background: '#1a1d27',
+                    color: '#fff',
+                    confirmButtonColor: 'var(--amber, #f59e0b)'
+                });
+            }
+
             // Preview Logic (Backend-powered)
             previewBtn.addEventListener('click', async () => {
                 if (!selectedFile) {
@@ -1117,6 +1143,12 @@
                         color: '#fff',
                         confirmButtonColor: 'var(--amber, #f59e0b)'
                     });
+                    return;
+                }
+
+                if (!(await archivoLegible(selectedFile))) {
+                    invalidatePreview('El archivo cambió; vuelve a seleccionarlo.');
+                    avisarArchivoCambiado(selectedFile, false);
                     return;
                 }
 
@@ -1355,7 +1387,18 @@
 
                 } catch (error) {
                     invalidatePreview('Error de conexión con el servidor.');
-                    Swal.fire('Error', 'Fallo al conectar con el servidor para la vista previa.', 'error');
+                    if (!(await archivoLegible(selectedFile))) {
+                        avisarArchivoCambiado(selectedFile, false);
+                        return;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Sin conexión con el servidor',
+                        text: 'No se pudo conectar con el servidor para generar la vista previa. Revisa tu conexión y vuelve a intentar. Si modificaste el CSV, vuelve a seleccionarlo con "Cambiar".',
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonColor: 'var(--amber, #f59e0b)'
+                    });
                 }
             });
 
@@ -1444,6 +1487,12 @@
                     return;
                 }
 
+                if (!(await archivoLegible(selectedFile))) {
+                    invalidatePreview('El archivo cambió; vuelve a seleccionarlo y genera la Vista Previa.');
+                    avisarArchivoCambiado(selectedFile, true);
+                    return;
+                }
+
                 const totalRowsText = (totalRowsInCsv > 0)
                     ? ` (${Number(totalRowsInCsv).toLocaleString()} artículos en total)`
                     : '';
@@ -1521,10 +1570,15 @@
                         });
                     }
                 } catch (error) {
+                    if (!(await archivoLegible(selectedFile))) {
+                        invalidatePreview('El archivo cambió; vuelve a seleccionarlo y genera la Vista Previa.');
+                        avisarArchivoCambiado(selectedFile, true);
+                        return;
+                    }
                     Swal.fire({
                         icon: 'error',
                         title: 'Error de Comunicación',
-                        text: 'Ocurrió un error en la conexión con el servidor.',
+                        text: 'No se pudo confirmar la respuesta del servidor. Antes de reintentar, revisa en "Ver Historial de Subidas" si la actualización se registró, para no aplicarla dos veces.',
                         background: '#1a1d27',
                         color: '#fff',
                         confirmButtonColor: 'var(--rose, #f43f5e)'
