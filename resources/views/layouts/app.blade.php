@@ -651,14 +651,24 @@
     {{-- ═══════════════════════════════════════════════════════
          NOTIFICACIÓN GLOBAL DE SINCRONIZACIÓN (todos los usuarios)
     ════════════════════════════════════════════════════════════ --}}
-    <div id="sync-toast" style="
-        display: none;
+    {{-- Contenedor de avisos de procesos en segundo plano: se acomodan uno debajo del otro --}}
+    <div id="bg-toasts" style="
         position: fixed;
         top: 18px;
         right: 22px;
         z-index: 99999;
         max-width: 340px;
+        width: calc(100% - 44px);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+    ">
+    <div id="sync-toast" style="
+        display: none;
+        position: relative;
         width: 100%;
+        pointer-events: auto;
         animation: toastSlideIn 0.35s cubic-bezier(.16,1,.3,1) both;
     ">
         <div id="sync-toast-inner" style="
@@ -700,6 +710,44 @@
             </button>
         </div>
     </div>
+
+    {{-- Aviso de carga masiva de artículos (mismo diseño que el de sincronización) --}}
+    <div id="carga-toast" style="display:none; position:relative; width:100%; pointer-events:auto; animation: toastSlideIn 0.35s cubic-bezier(.16,1,.3,1) both;">
+        <div id="carga-toast-inner" title="Ver avance" style="
+            background: rgba(15,23,42,0.97);
+            border: 1px solid rgba(245,158,11,0.35);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 13px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(245,158,11,0.08);
+            backdrop-filter: blur(12px);
+            position: relative;
+            cursor: pointer;
+        ">
+            <div style="flex-shrink:0; margin-top:1px;">
+                <svg id="carga-toast-spinner" viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="#f59e0b" stroke-width="2.5" style="animation: spin 1.2s linear infinite;">
+                    <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                    <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                </svg>
+                <svg id="carga-toast-check" viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="#10b981" stroke-width="2.5" style="display:none;">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div style="flex:1; min-width:0; padding-right:14px;">
+                <p id="carga-toast-title" style="font-size:13px; font-weight:800; color:white; margin:0 0 2px;">Carga masiva en proceso</p>
+                <p id="carga-toast-msg" style="font-size:11px; color:#94a3b8; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></p>
+                <div id="carga-toast-bar-wrap" style="margin-top:6px; background:rgba(255,255,255,0.08); border-radius:4px; height:5px; overflow:hidden;">
+                    <div id="carga-toast-bar" style="width:0%; height:100%; background:#f59e0b; transition:width .4s;"></div>
+                </div>
+            </div>
+            <button id="carga-toast-close" title="Cancelar carga" style="background:transparent; border:none; color:#f43f5e; cursor:pointer; padding:2px; height:18px; position:absolute; top:10px; right:12px;">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    </div>
+    </div>{{-- /#bg-toasts --}}
 
     <style>
     @keyframes toastSlideIn {
@@ -851,6 +899,150 @@
         // Iniciar polling (cada 6 segundos para no sobrecargar)
         poll();
         setInterval(poll, 6000);
+    })();
+    </script>
+
+    <script>
+    // Aviso global de la carga masiva de artículos (Actualizar Artículos → segundo plano).
+    // En la pantalla Subir la ventana de avance tiene prioridad: ahí el aviso solo aparece si el
+    // usuario eligió "Seguir en segundo plano" (window.__cargaModalAbierto = false).
+    (function cargaMasivaWatcher() {
+        const ESTADO_URL   = '{{ route("articulos.subir.estado") }}';
+        const CANCELAR_URL = '{{ route("articulos.subir.cancelar") }}';
+        const SUBIR_URL    = '{{ route("articulos.subir") }}';
+        const toast   = document.getElementById('carga-toast');
+        if (!toast) return;
+        const inner   = document.getElementById('carga-toast-inner');
+        const title   = document.getElementById('carga-toast-title');
+        const msg     = document.getElementById('carga-toast-msg');
+        const bar     = document.getElementById('carga-toast-bar');
+        const barWrap = document.getElementById('carga-toast-bar-wrap');
+        const spinner = document.getElementById('carga-toast-spinner');
+        const check   = document.getElementById('carga-toast-check');
+        const closeBtn = document.getElementById('carga-toast-close');
+
+        let ultimo = null;          // último estado leído
+        let vistoCorriendo = false; // en esta página se vio la carga en proceso
+
+        const ss = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch (e) { return null; } };
+        const ls = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+        function ocultar() {
+            if (toast.style.display === 'none') return;
+            toast.style.animation = 'toastSlideOut 0.3s ease both';
+            setTimeout(() => { toast.style.display = 'none'; toast.style.animation = ''; }, 300);
+        }
+        function mostrar() {
+            if (toast.style.display !== 'block') {
+                toast.style.display = 'block';
+                toast.style.animation = 'toastSlideIn 0.35s cubic-bezier(.16,1,.3,1) both';
+            }
+        }
+
+        function pintar(est) {
+            const s = est.status || 'idle';
+            const id = String(est.historial_id || '');
+
+            if (s === 'running') {
+                vistoCorriendo = true;
+                if (window.__cargaModalAbierto) { ocultar(); return; }
+                const total = Number(est.total || 0), step = Math.min(Number(est.step || 0), total || Number(est.step || 0));
+                const pct = total > 0 ? Math.floor(step * 100 / total) : 0;
+                title.textContent = est.cancel_requested ? 'Cancelando carga masiva...' : 'Carga masiva en proceso';
+                msg.textContent = `#${id} · Fila ${step.toLocaleString()} de ${total.toLocaleString()} · ${Number(est.procesados || 0).toLocaleString()} artículos`;
+                inner.style.borderColor = 'rgba(245,158,11,0.35)';
+                spinner.style.display = 'block'; check.style.display = 'none';
+                barWrap.style.display = 'block'; bar.style.width = pct + '%';
+                closeBtn.title = 'Cancelar carga';
+                closeBtn.dataset.accion = 'cancelar';
+                inner.title = 'Ver avance';
+                mostrar();
+                return;
+            }
+
+            const terminado = ['done', 'cancelled', 'error', 'stalled'].includes(s);
+            const reciente = est.finished_at ? (Date.now() / 1000 - Number(est.finished_at)) < 86400 : s === 'stalled';
+            const noVisto = ls('carga_masiva_vista') !== id;
+            const cerrado = ss('carga_toast_cerrado') === id;
+            // Si la pantalla Subir ya está mostrando su ventana (avance o resultado), no duplicar
+            if (!terminado || window.__cargaModalAbierto || cerrado || !(vistoCorriendo || (reciente && noVisto))) { ocultar(); return; }
+
+            const cfg = {
+                done:      ['¡Carga masiva completada!', '#10b981', 'rgba(16,185,129,0.35)'],
+                cancelled: ['Carga masiva cancelada', '#f59e0b', 'rgba(245,158,11,0.35)'],
+                error:     ['Error en la carga masiva', '#f43f5e', 'rgba(244,63,94,0.35)'],
+                stalled:   ['La carga masiva dejó de responder', '#f43f5e', 'rgba(244,63,94,0.35)'],
+            }[s];
+            title.textContent = cfg[0];
+            msg.textContent = `#${id} · ${Number(est.procesados || 0).toLocaleString()} artículos actualizados · clic para ver el resultado`;
+            inner.style.borderColor = cfg[2];
+            spinner.style.display = 'none'; check.style.display = 'block';
+            check.setAttribute('stroke', cfg[1]);
+            check.innerHTML = s === 'done' ? '<polyline points="20 6 9 17 4 12"/>' : '<line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.6"/>';
+            barWrap.style.display = 'none';
+            closeBtn.title = 'Cerrar aviso';
+            closeBtn.dataset.accion = 'cerrar';
+            inner.title = 'Ver resultado';
+            mostrar();
+        }
+
+        async function poll() {
+            try {
+                const r = await fetch(ESTADO_URL, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+                ultimo = await r.json();
+                pintar(ultimo);
+            } catch (e) { /* sin conexión: reintenta en el siguiente ciclo */ }
+        }
+
+        inner.addEventListener('click', (e) => {
+            if (closeBtn.contains(e.target)) return;
+            // Ya en la pantalla Subir: abrir su ventana sin recargar
+            if (window.__cargaEnPantallaSubir && ultimo) {
+                if (ultimo.status === 'running' && typeof window.abrirAvanceCarga === 'function') {
+                    window.abrirAvanceCarga(ultimo.historial_id);
+                    ocultar();
+                    return;
+                }
+                if (ultimo.status !== 'running' && typeof window.verResultadoCarga === 'function') {
+                    window.verResultadoCarga(ultimo);
+                    ocultar();
+                    return;
+                }
+            }
+            window.location.href = SUBIR_URL;
+        });
+
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (closeBtn.dataset.accion === 'cerrar') {
+                ss('carga_toast_cerrado', String(ultimo?.historial_id || ''));
+                ocultar();
+                return;
+            }
+            Swal.fire({
+                title: '¿Cancelar la carga masiva?',
+                text: 'Se detendrá al terminar el artículo en curso. Lo ya procesado queda guardado y se puede revertir desde el historial.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f43f5e',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, cancelar',
+                cancelButtonText: 'No, continuar',
+                background: '#0f172a',
+                color: '#f8fafc',
+            }).then((res) => {
+                if (!res.isConfirmed) return;
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+                fetch(CANCELAR_URL, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf || '', 'Accept': 'application/json' } })
+                    .then(poll).catch(() => {});
+            });
+        });
+
+        // La pantalla Subir avisa cuando abre/cierra su ventana de avance
+        window.addEventListener('carga-masiva:refrescar', poll);
+
+        poll();
+        setInterval(poll, 4000);
     })();
     </script>
 

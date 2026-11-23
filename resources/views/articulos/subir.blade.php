@@ -1597,6 +1597,14 @@
             let cargaGen = 0;              // ciclo de sondeo vigente
             let resultadoMostrado = null;  // subida cuyo resultado ya se mostró
 
+            // Coordinación con el aviso flotante global (layouts/app.blade.php):
+            // mientras esta ventana esté abierta, el aviso no se muestra para no duplicar.
+            window.__cargaEnPantallaSubir = true;
+            function marcarModalCarga(abierto) {
+                window.__cargaModalAbierto = abierto;
+                window.dispatchEvent(new Event('carga-masiva:refrescar'));
+            }
+
             function htmlAvanceCarga(est) {
                 const total = Number(est.total || 0);
                 const step = Math.min(Number(est.step || 0), total || Number(est.step || 0));
@@ -1626,6 +1634,7 @@
                 cargaGen++; // detiene cualquier sondeo que siga vivo
                 clearTimeout(cargaPollTimer);
 
+                marcarModalCarga(true);
                 const res = est.resultado || {};
                 const cfg = {
                     done:      { icon: 'success', title: '¡Carga completada!', color: 'var(--emerald, #10b981)' },
@@ -1648,6 +1657,7 @@
                     // Cerrado por otro modal (no por el usuario): no marcar como visto ni recargar
                     if (!r.isConfirmed && !r.isDenied && !r.dismiss) return;
                     try { localStorage.setItem('carga_masiva_vista', String(est.historial_id)); } catch (e) {}
+                    marcarModalCarga(false);
                     if (r.isDenied) {
                         window.location.href = '{{ route("articulos.historial") }}';
                     } else if (r.isConfirmed) {
@@ -1666,18 +1676,28 @@
                 const gen = ++cargaGen;
                 clearTimeout(cargaPollTimer);
                 let fallos = 0;
+                marcarModalCarga(true);
 
                 Swal.fire({
                     title: 'Carga masiva en proceso',
                     html: htmlAvanceCarga({ historial_id: historialId, step: 0, total: 0, message: 'Iniciando...' }),
                     allowOutsideClick: false,
-                    showConfirmButton: false,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Seguir en segundo plano',
+                    confirmButtonColor: '#334155',
                     showCancelButton: true,
                     cancelButtonText: 'Cancelar carga',
                     cancelButtonColor: 'var(--rose, #f43f5e)',
                     background: '#1a1d27',
                     color: '#fff',
                 }).then(async r => {
+                    if (r.isConfirmed) {
+                        // Cerrar la ventana sin detener la carga; el aviso de arriba a la derecha sigue el avance
+                        cargaGen++;
+                        clearTimeout(cargaPollTimer);
+                        marcarModalCarga(false);
+                        return;
+                    }
                     if (r.dismiss !== Swal.DismissReason.cancel) return;
                     const conf = await Swal.fire({
                         icon: 'warning',
@@ -1715,6 +1735,7 @@
                         if (++fallos < 5) {
                             siguiente();
                         } else {
+                            marcarModalCarga(false);
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Sin conexión con el servidor',
@@ -1741,6 +1762,10 @@
                 };
                 tick();
             }
+
+            // Para el aviso flotante: abrir la ventana de avance o el resultado sin recargar
+            window.abrirAvanceCarga = (id) => seguirCargaMasiva(id);
+            window.verResultadoCarga = (est) => { resultadoMostrado = null; mostrarResultadoCarga(est); };
 
             // Al abrir la pantalla: retomar una carga en curso o mostrar el resultado que no se ha visto
             (async () => {
