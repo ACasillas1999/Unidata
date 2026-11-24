@@ -312,6 +312,20 @@ class InventarioController extends Controller
             return redirect()->back()->with('error', 'No se pudo abrir el archivo CSV.');
         }
 
+        // C07: rechazar archivos que no son texto antes de leer filas (un .xlsx renombrado
+        // a .csv mostraba sus bytes como "claves" en el aviso). Un CSV de texto, incluso
+        // ANSI/Windows-1252 con acentos, nunca trae bytes nulos.
+        $inicio = (string) fread($handle, 4096);
+        if (str_starts_with($inicio, "PK\x03\x04")) {
+            fclose($handle);
+            return redirect()->back()->with('error', 'El archivo es un Excel (.xlsx), no un CSV. En Excel usa Archivo → Guardar como → CSV (delimitado por comas) y súbelo de nuevo.');
+        }
+        if (str_contains($inicio, "\0")) {
+            fclose($handle);
+            return redirect()->back()->with('error', 'El archivo no es un CSV de texto. Guárdalo como CSV (delimitado por comas) y súbelo de nuevo.');
+        }
+        rewind($handle);
+
         // Remover BOM de UTF-8 si existe
         $firstLine = fgets($handle);
         if ($firstLine === false) {
