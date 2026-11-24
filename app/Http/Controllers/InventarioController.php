@@ -178,6 +178,7 @@ class InventarioController extends Controller
         }
 
         $resultados = [];
+        $claveMostrada = null;
         foreach ($targets as $branch) {
             try {
                 $conn = $this->connectionManager->connect($branch->code);
@@ -209,7 +210,11 @@ class InventarioController extends Controller
                             'Capacidad'          => 0,
                         ]);
                         $affected = 1;
+                        $claveMostrada ??= $claveReal;
                     }
+                } elseif ($claveMostrada === null) {
+                    // Mostrar la clave como está guardada, no como se escribió (" qatest-a03 " → QATEST-A03)
+                    $claveMostrada = $conn->table('articuloalm')->where('Clave_Articulo', $clave)->value('Clave_Articulo');
                 }
 
                 $resultados[] = [
@@ -228,6 +233,7 @@ class InventarioController extends Controller
 
         $exitosos = count(array_filter($resultados, fn($r) => $r['status'] === 'ok'));
         $total    = count($resultados);
+        $clave    = $claveMostrada ?? $clave;
 
         return redirect()->back()
             ->with('success', "Mínimo/Máximo de [{$clave}] actualizado en {$exitosos}/{$total} sucursales.")

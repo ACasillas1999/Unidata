@@ -579,6 +579,39 @@ document.addEventListener('DOMContentLoaded', () => {
 </style>
 
 <script>
+// Parte una línea CSV respetando comillas ("1,500" es una sola celda), igual que str_getcsv del servidor
+function splitCsvLine(line, sep) {
+    const out = [];
+    let cur = '', enComillas = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (enComillas) {
+            if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+            else if (ch === '"') enComillas = false;
+            else cur += ch;
+        } else if (ch === '"') {
+            enComillas = true;
+        } else if (ch === sep) {
+            out.push(cur); cur = '';
+        } else {
+            cur += ch;
+        }
+    }
+    out.push(cur);
+    return out.map(c => c.trim());
+}
+
+// Mismas reglas que parseCantidadCsv del servidor: vacío = sin cambio, miles con coma, no negativos
+function parseCantidadPreview(v) {
+    v = (v || '').trim();
+    if (v === '') return { vacio: true, valor: null, error: null };
+    if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(v)) v = v.replace(/,/g, '');
+    if (!/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v)) return { vacio: false, valor: null, error: 'no es un número' };
+    const n = parseFloat(v);
+    if (n < 0) return { vacio: false, valor: null, error: 'negativo' };
+    return { vacio: false, valor: n, error: null };
+}
+
 function previewCsvFile(input) {
     const file = input.files[0];
     const previewContainer = document.getElementById('csv-preview-container');
@@ -608,7 +641,7 @@ function previewCsvFile(input) {
         if (lines[0].includes(';')) sep = ';';
         else if (lines[0].includes('\t')) sep = '\t';
 
-        const rawHeaders = lines[0].split(sep).map(h => h.replace(/^["']|["']$/g, '').trim());
+        const rawHeaders = splitCsvLine(lines[0], sep);
         let claveIdx = 0, maxIdx = 1, minIdx = 2;
 
         rawHeaders.forEach((h, idx) => {
@@ -639,17 +672,17 @@ function previewCsvFile(input) {
             const rowStr = lines[i];
             if (!rowStr) continue;
 
-            const cols = rowStr.split(sep).map(c => c.replace(/^["']|["']$/g, '').trim());
+            const cols = splitCsvLine(rowStr, sep);
             const clave = cols[claveIdx] || '';
             // Celda vacía = no cambiar ese valor (el servidor la conserva)
-            const minVacio = (cols[minIdx] || '') === '';
-            const maxVacio = (cols[maxIdx] || '') === '';
-            const minVal = minVacio ? 0 : parseFloat(cols[minIdx]);
-            const maxVal = maxVacio ? 0 : parseFloat(cols[maxIdx]);
+            const pMin = parseCantidadPreview(cols[minIdx]);
+            const pMax = parseCantidadPreview(cols[maxIdx]);
             const sinCambio = '<i style="color: var(--text-muted);">sin cambio</i>';
+            const celda = (p) => p.vacio ? sinCambio
+                : (p.error ? `<span style="color:#fca5a5;">${p.error}</span>` : p.valor);
 
             totalRows++;
-            const isValid = (clave !== '') && !isNaN(minVal) && !isNaN(maxVal) && !(minVacio && maxVacio);
+            const isValid = (clave !== '') && !pMin.error && !pMax.error && !(pMin.vacio && pMax.vacio);
             if (isValid) validRows++; else invalidRows++;
 
             const tr = document.createElement('tr');
@@ -659,8 +692,8 @@ function previewCsvFile(input) {
             tr.innerHTML = `
                 <td style="padding: 6px 10px; color: var(--text-muted); text-align: center;">${totalRows}</td>
                 <td style="padding: 6px 10px; font-weight: 700; color: #93c5fd;">${clave || '<i style="color:#fca5a5;">(Vacío)</i>'}</td>
-                <td style="padding: 6px 10px; color: white;">${minVacio ? sinCambio : (isNaN(minVal) ? '-' : minVal)}</td>
-                <td style="padding: 6px 10px; color: white;">${maxVacio ? sinCambio : (isNaN(maxVal) ? '-' : maxVal)}</td>
+                <td style="padding: 6px 10px; color: white;">${celda(pMin)}</td>
+                <td style="padding: 6px 10px; color: white;">${celda(pMax)}</td>
                 <td style="padding: 6px 10px; text-align: right;">
                     ${isValid 
                         ? '<span style="color: #86efac; font-weight: 600; font-size: 11px;">✓ Listo</span>' 
