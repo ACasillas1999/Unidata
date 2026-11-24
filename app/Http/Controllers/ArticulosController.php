@@ -888,7 +888,10 @@ class ArticulosController extends Controller
                 $item = [];
                 foreach ($row as $index => $value) {
                     if (isset($headerMap[$index])) {
-                        $item[$headerMap[$index]] = trim((string)$value);
+                        $value = trim((string)$value);
+                        // Celda vacía = conservar el valor actual (no borra ni pone 0); la clave sí se toma
+                        if ($value === '' && $headerMap[$index] !== 'clave') continue;
+                        $item[$headerMap[$index]] = $value;
                     }
                 }
 
@@ -1698,7 +1701,10 @@ class ArticulosController extends Controller
                 $csvItem = [];
                 foreach ($row as $index => $value) {
                     if (isset($headerMap[$index])) {
-                        $csvItem[$headerMap[$index]] = trim((string)$value);
+                        $value = trim((string)$value);
+                        // Misma regla que al procesar: celda vacía = sin cambio
+                        if ($value === '' && $headerMap[$index] !== 'clave') continue;
+                        $csvItem[$headerMap[$index]] = $value;
                     }
                 }
 
