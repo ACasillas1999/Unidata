@@ -503,7 +503,8 @@ class ArticulosController extends Controller
         ];
 
         $columns = [
-            'Clave', 'Descripción', 'U.M.', 'Línea', 'Clasificación', 'MN/USD',
+            // Paso 4: Área solo se usa al crear artículos desde cero (no actualiza los existentes)
+            'Clave', 'Descripción', 'U.M.', 'Línea', 'Clasificación', 'Área', 'MN/USD',
             'P. Lista', 'Desc. P. Venta (Auto)', 'P. Venta', 'Desc. P. Espec', 'P. Especial (Auto)',
             'Desc. Precio 4', 'Precio 4 (Auto)', 'Desc. Proveedor', 'Art. Kit', 'Mg Mín',
             'Std Pack', 'Art. Serie', 'Color', 'Ubicacion', 'Control Pedimentos', 'Protocolo',
@@ -532,6 +533,7 @@ class ArticulosController extends Controller
                     $art->unidad_medida ?? 'PZA',
                     $art->linea ?? 'GEN',
                     $art->clasificacion ?? 'GEN',
+                    $art->area ?? 1,
                     $art->mn_usd ?? 0,
                     number_format($pLista, 2, '.', ''),
                     number_format((float)($art->des_precio_venta ?? 0), 2, '.', ''),
@@ -579,7 +581,7 @@ class ArticulosController extends Controller
                 } else {
                     // Si la BD no tiene registros, exportar ejemplos reales representativos de un ERP
                     $example1 = [
-                        'HERR-00845', 'MARTILLO DE UÑA CURVA 16 OZ MANGO DE FIBRA DE VIDRIO', 'PZA', 'HERR', 'MANU', '0',
+                        'HERR-00845', 'MARTILLO DE UÑA CURVA 16 OZ MANGO DE FIBRA DE VIDRIO', 'PZA', 'HERR', 'MANU', '1', '0',
                         '285.00', '10.00', '256.50', '15.00', '242.25',
                         '20.00', '228.00', '12.50', '0', '18.00',
                         '6.00', '0', '0', 'EST-A1-04', '0', '0',
@@ -587,7 +589,7 @@ class ArticulosController extends Controller
                         '145.00', '25.00', '213.75',
                     ];
                     $example2 = [
-                        'ELEC-01290', 'CABLE THW-LS CALIBRE 12 AWG 600V COLOR NEGRO', 'MTR', 'ELEC', 'CABL', '0',
+                        'ELEC-01290', 'CABLE THW-LS CALIBRE 12 AWG 600V COLOR NEGRO', 'MTR', 'ELEC', 'CABL', '1', '0',
                         '18.50', '8.00', '17.02', '12.00', '16.28',
                         '15.00', '15.73', '10.00', '0', '15.00',
                         '100.00', '0', '1', 'BOD-E3-12', '1', '0',
@@ -595,7 +597,7 @@ class ArticulosController extends Controller
                         '9.80', '20.00', '14.80',
                     ];
                     $example3 = [
-                        'KIT-00501', 'JUEGO DE HERRAMIENTAS INALÁMBRICAS 20V MAX (DRILL + IMPACT)', 'JGO', 'ELEC', 'KITS', '1',
+                        'KIT-00501', 'JUEGO DE HERRAMIENTAS INALÁMBRICAS 20V MAX (DRILL + IMPACT)', 'JGO', 'ELEC', 'KITS', '1', '1',
                         '3490.00', '12.00', '3071.20', '18.00', '2861.80',
                         '22.00', '2722.20', '15.00', '1', '25.00',
                         '1.00', '1', '0', 'MOSTRADOR', '1', '1',
@@ -912,6 +914,7 @@ class ArticulosController extends Controller
 
                 $updateDataMaster = [];
                 $updateDataBranch = [];
+                $createData = [];   // Paso 4: datos para crear desde cero (columnas seleccionadas + obligatorias, incl. Área)
                 $filaConError = false;
 
                 // Normalizamos las columnas seleccionadas en la UI
@@ -928,8 +931,11 @@ class ArticulosController extends Controller
                             break;
                         }
                     }
+                    // Paso 4: los obligatorios para crear (p. ej. Área, que no es columna de la pantalla) se leen
+                    // aunque no estén seleccionados, pero SOLO se usan si la clave se crea desde cero
+                    $soloParaCrear = !$foundInUi && in_array($field, self::CAMPOS_CREAR, true);
 
-                    if ($foundInUi) {
+                    if ($foundInUi || $soloParaCrear) {
                         // 1. Manejo de booleanos (excluyendo color que es un entero de 0 a 9)
                         $booleanFields = ['habilitado', 'articulo_kit', 'articulo_serie', 'en_promocion', 'critico', 'control_pedimentos', 'protocolo'];
                         if (in_array($field, $booleanFields, true)) {
@@ -956,6 +962,7 @@ class ArticulosController extends Controller
                         if (in_array($field, $this->columnasNumericasCsv(), true)) {
                             // AU-01: "1,234.50" se acepta como 1234.50; texto como "abc" ya no se guarda como 0
                             [$esNumero, $numero] = $this->parseNumeroCsv($val);
+                            if (!$esNumero && $soloParaCrear) continue;   // se reporta como "falta" si hay que crear
                             if (!$esNumero) {
                                 $filaConError = true;
                                 $filasInvalidas[] = "Fila {$fila} ({$clave}): " . ($headerLabel[$field] ?? $field) . " = '{$val}' no es un número";
@@ -964,7 +971,10 @@ class ArticulosController extends Controller
                             }
                             $val = $numero;
                         }
-                        
+
+                        $createData[$field] = $val;
+                        if ($soloParaCrear) continue;   // no toca artículos existentes
+
                         // Para el Maestro (snake_case estándar)
                         $updateDataMaster[$field] = $val;
 
@@ -1000,6 +1010,31 @@ class ArticulosController extends Controller
                         $masterCurrent = DbMasterArticle::where('clave', $cleanClave)
                             ->orWhereRaw("REPLACE(REPLACE(REPLACE(clave, '-', ''), ' ', ''), '_', '') = ?", [$cleanClave])
                             ->first();
+                    }
+                }
+                // Paso 3: si existe activa en alguna sucursal, crearla donde falta y darla de alta en el maestro
+                $altaFila = null;
+                $branchesFila = $branchesSelected;
+                if (!$masterCurrent) {
+                    $altaFila = $this->crearDondeFalta((string)$clave, $updateDataBranch, $historialId, $createData);
+                    if (!empty($altaFila['master'])) {
+                        $masterCurrent = $altaFila['master'];
+                        // Las sucursales recién creadas también reciben las fórmulas de esta fila
+                        $nombreACodigo = array_flip($branchesMap);
+                        foreach ($altaFila['creadas'] as $nombreSuc) {
+                            if (!isset($nombreACodigo[$nombreSuc])) continue;
+                            $codSuc = $nombreACodigo[$nombreSuc];
+                            $branchesFila[] = $codSuc;
+                            if (!isset($branchStats[$codSuc])) $branchStats[$codSuc] = ['ok' => 0, 'fail' => 0, 'errors' => []];
+                        }
+                        $branchesFila = array_values(array_unique($branchesFila));
+                    } elseif (!empty($altaFila['error'])) {
+                        $registrar($fila, $claveCsv, $descCsv, 'error', $this->cleanUtf8($altaFila['detalle']));
+                        continue;
+                    } elseif (!empty($altaFila['motivo'])) {
+                        // Regla de línea / paso 4: omitida con su motivo, sin tocar nada
+                        $registrar($fila, $claveCsv, $descCsv, $altaFila['motivo'], $this->cleanUtf8($altaFila['detalle'] ?? ''));
+                        continue;
                     }
                 }
                 if (!$masterCurrent) {
@@ -1070,7 +1105,7 @@ class ArticulosController extends Controller
 
                 // 2. Audit & Update Sucursales
                 if (!empty($updateDataBranch)) {
-                    foreach ($branchesSelected as $suc) {
+                    foreach ($branchesFila as $suc) {
                         if (isset($branchesMap[$suc])) {
                             try {
                                 $connection = $this->connectionManager->connect($suc);
@@ -1151,13 +1186,23 @@ class ArticulosController extends Controller
                 $updatedCount++;
 
                 $detalleFila = [];
+                if (!empty($altaFila['master'])) {
+                    if (!empty($altaFila['activadas'])) $detalleFila[] = 'Activado en: ' . implode(', ', $altaFila['activadas']);
+                    if (($altaFila['accion'] ?? '') === 'creado_nuevo') {
+                        $detalleFila[] = 'Creado desde cero en: ' . implode(', ', $altaFila['creadas']) . ' (datos del archivo)';
+                    } elseif (!empty($altaFila['creadas'])) {
+                        $detalleFila[] = 'Creado en: ' . implode(', ', $altaFila['creadas']) . ' (copiado de ' . $altaFila['fuente'] . ')';
+                    } elseif (empty($altaFila['activadas'])) {
+                        $detalleFila[] = 'Ya estaba activo en todas las sucursales';
+                    }
+                }
                 if ($noExisteEn) $detalleFila[] = 'No existe en: ' . implode(', ', $noExisteEn);
                 if ($fallosFila) $detalleFila[] = 'Falló en: ' . implode(' | ', $fallosFila);
                 $registrar(
                     $fila,
                     $claveCsv,
                     $descCsv !== '' ? $descCsv : (string)($masterCurrent->descripcion ?? ''),
-                    $fallosFila ? 'error_sucursal' : 'actualizado',
+                    $fallosFila ? 'error_sucursal' : (!empty($altaFila['master']) ? $altaFila['accion'] : 'actualizado'),
                     implode('. ', $detalleFila)
                 );
                 } catch (Throwable $e) {
@@ -1353,11 +1398,14 @@ class ArticulosController extends Controller
                     $acc = ['omitir', 'omitir', 'SE OMITIRÁ: no existe y el CSV la marca inactiva'];
                 } elseif ($faltan) {
                     $acc = ['omitir', 'omitir', 'SE OMITIRÁ: falta ' . implode(', ', array_map(fn ($f) => self::ETIQUETAS_CREAR[$f] ?? $f, $faltan))];
+                } elseif (!is_numeric($areaCsv = $infoClaves[$k]['area'] ?? null) || !in_array((int) $areaCsv, $areasOk ??= $this->areasValidas(), true)) {
+                    $acc = ['omitir', 'omitir', "SE OMITIRÁ: el Área '{$areaCsv}' no existe en el catálogo de áreas"];
                 } else {
                     $acc = ['crear_nuevo', 'crear', "SE CREARÁ en las {$totalSuc} sucursales + maestro"];
                 }
             } elseif ($estatus === 0) {
-                $acc = ['solo_sucursales', 'inactivo', 'SE ACTUALIZARÁ solo en sucursales (inactiva); no entra al maestro'];
+                // Paso 2 (opción b): si el CSV la marca inactiva no se activa ni se actualiza
+                $acc = ['omitir', 'omitir', 'SE OMITIRÁ: el CSV la marca inactiva'];
             } elseif ($inactivaEn && $estatus === null) {
                 $acc = ['omitir', 'omitir', 'SE OMITIRÁ: inactiva en ' . implode(', ', $inactivaEn) . ' y el CSV no indica Estatus'];
             } else {
@@ -1366,26 +1414,288 @@ class ArticulosController extends Controller
                 if ($inactivaEn) $partes[] = 'SE ACTIVARÁ en ' . implode(', ', $inactivaEn);
                 if ($partes) {
                     $codigo = $crearEn && $inactivaEn ? 'crear_activar' : ($crearEn ? 'crear_faltantes' : 'activar');
-                    $acc = [$codigo, 'crear', implode(' y ', $partes) . ' + maestro'];
+                    // Paso 2: las que se activan se marcan en ámbar (aviso), las que solo se crean en azul
+                    $acc = [$codigo, $inactivaEn ? 'inactivo' : 'crear', implode(' y ', $partes) . ' + maestro'];
                 } else {
                     $acc = ['alta_maestro', 'crear', 'SE AGREGARÁ al maestro (ya activa en todas las sucursales)'];
                 }
             }
 
+            // Regla de línea: lo que se daría de alta en el maestro se omite si su línea no es "Sí se pasa"
+            if ($acc[0] !== 'omitir' && ($motivoLinea = $this->lineaNoAprobada($k)) !== null) {
+                $acc = ['omitir', 'omitir', 'SE OMITIRÁ: ' . $motivoLinea];
+            }
+
             $out[$k] = ['accion' => $acc[0], 'tipo' => $acc[1], 'texto' => $acc[2]];
+            if (in_array($acc[0], ['activar', 'crear_activar'], true)) $out[$k]['inactiva_en'] = $inactivaEn;
         }
         return $out;
+    }
+
+    /** Regla de línea: cache de Homologación → Líneas por petición (linea => 'si'|'no'). */
+    private ?array $lineasConfigCache = null;
+
+    /**
+     * Regla de línea (pasos 2, 3 y 4): la línea son los primeros 5 caracteres de la clave, igual que en
+     * SyncMatrizHomologacion. Solo las líneas "Sí se pasa" entran a la matriz y de ahí al maestro, así que
+     * la carga masiva no da de alta claves de otras líneas. Devuelve null si pasa o el texto del motivo.
+     */
+    private function lineaNoAprobada(string $clave): ?string
+    {
+        if ($this->lineasConfigCache === null) {
+            $this->lineasConfigCache = \App\Models\HomologacionLineaConfig::pluck('tipo', 'linea')
+                ->mapWithKeys(fn ($t, $l) => [strtoupper(trim((string) $l)) => (string) $t])->toArray();
+        }
+        $linea = strtoupper(substr(trim($clave), 0, 5));
+        $tipo = $this->lineasConfigCache[$linea] ?? null;
+        if ($tipo === 'si') return null;
+        return $tipo === 'no'
+            ? "la línea {$linea} está marcada \"No se pasa\" en Homologación"
+            : "la línea {$linea} no está configurada en Homologación (Líneas)";
+    }
+
+    /** Paso 3: columnas propias de cada sucursal que NO se copian al crear el artículo en otra (columna => valor). */
+    private const COLUMNAS_PROPIAS_SUCURSAL = [
+        'Existencia_Teorica' => 0, 'Existencia_Fisica' => 0, 'Apartado' => 0, 'PendientedeEntrega' => 0,
+        'Costo_Promedio' => 0, 'Costo_Promedio_Ant' => 0, 'Costo_Ult_Compra' => 0, 'Costo_Compra_Ant' => 0,
+        'Fecha_Ult_Compra' => '1901-01-01', 'Fecha_Compra_Ant' => '1901-01-01',
+        'Inventario_Maximo' => 0, 'Inventario_Minimo' => 0, 'Punto_Reorden' => 0, 'Ubicacion' => '',
+    ];
+
+    /**
+     * Paso 3: la clave no está en el maestro pero existe (activa) en alguna sucursal. Copia el renglón de esa
+     * sucursal a las sucursales activas donde falta (con los valores del CSV encima), da de alta el artículo
+     * en el maestro y en la matriz, y deja la auditoría. Paso 2: si está inactiva en alguna sucursal y el CSV
+     * trae Estatus activo, la activa ahí. No existe en ninguna (paso 4), CSV inactivo o CSV sin Estatus con
+     * sucursales inactivas se devuelven sin tocar nada para que la fila se siga omitiendo.
+     *
+     * @return array{master: ?DbMasterArticle, accion?: string, creadas?: array, fuente?: string, detalle?: string}
+     */
+    private function crearDondeFalta(string $clave, array $updateDataBranch, int $historialId, array $createData = []): array
+    {
+        $k = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $clave));
+        $branches = $this->connectionManager->getActiveBranches();
+
+        $filas = [];   // codigo => renglón (array) donde existe
+        $conns = [];
+        foreach ($branches as $b) {
+            try {
+                $cn = $this->connectionManager->connect($b->code);
+                $conns[$b->code] = $cn;
+                $r = $cn->table('articulo')->where('Clave_Articulo', $k)->first();
+                if (!$r && $clave !== $k) $r = $cn->table('articulo')->where('Clave_Articulo', $clave)->first();
+                if ($r) $filas[$b->code] = (array) $r;
+            } catch (Throwable $e) {
+                return ['master' => null, 'detalle' => "Sin respuesta de {$b->name}; no se creó el artículo"];
+            }
+        }
+
+        $nuevo = empty($filas);   // paso 4: no existe en ninguna sucursal → se crea desde cero con el CSV
+        if (array_key_exists('Habilitado', $updateDataBranch) && (int) $updateDataBranch['Habilitado'] === 0) {
+            return ['master' => null];                    // el CSV la marca inactiva (no entra al maestro)
+        }
+        // Regla de línea: no dar de alta claves cuya línea no es "Sí se pasa" (la sync de Homologación las sacaría)
+        $motivoLinea = $this->lineaNoAprobada($nuevo ? $clave : (string) reset($filas)['Clave_Articulo']);
+        if ($motivoLinea !== null) {
+            return ['master' => null, 'motivo' => 'linea_no_aprobada', 'detalle' => 'No se dio de alta: ' . $motivoLinea];
+        }
+        $nombres = $branches->pluck('name', 'code')->toArray();
+
+        if ($nuevo) {
+            // Paso 4: renglón armado con valores por defecto (igual que Crear Artículo) + datos del CSV
+            [$base, $faltaDetalle] = $this->renglonNuevoDesdeCsv($clave, $createData);
+            if ($base === null) return ['master' => null, 'motivo' => 'faltan_datos', 'detalle' => $faltaDetalle];
+            $inactivas = [];
+            $codigoFuente = null;
+            $claveReal = $clave;
+        } else {
+            // Paso 2: inactiva en alguna sucursal → solo se activa si el CSV trae Estatus activo
+            $inactivas = array_keys(array_filter($filas, fn ($r) => (int) ($r['Habilitado'] ?? 0) !== 1));
+            $csvActiva = array_key_exists('Habilitado', $updateDataBranch) && (int) $updateDataBranch['Habilitado'] === 1;
+            if ($inactivas && !$csvActiva) return ['master' => null];   // el CSV no indica Estatus: se omite
+
+            // Fuente para copiar: de preferencia una sucursal donde esté activa
+            $activas = array_values(array_diff(array_keys($filas), $inactivas));
+            $codigoFuente = $activas ? $activas[0] : array_key_first($filas);
+            $fuente = $filas[$codigoFuente];
+            $claveReal = (string) $fuente['Clave_Articulo'];
+
+            // Renglón base: el de la sucursal fuente, sin lo propio de cada sucursal, con los valores del CSV encima
+            $base = $fuente;
+            foreach (self::COLUMNAS_PROPIAS_SUCURSAL as $col => $valor) {
+                if (array_key_exists($col, $base)) $base[$col] = $valor;
+            }
+            $base['Habilitado'] = 1;
+            $base['Fecha_Alta'] = now()->toDateString();
+            $base = array_merge($base, $updateDataBranch, ['Clave_Articulo' => $claveReal, 'Habilitado' => 1]);
+        }
+        $origen = $nuevo ? 'el archivo' : ($nombres[$codigoFuente] ?? $codigoFuente);
+
+        $creadas = [];
+        $audit = [];
+        foreach ($nombres as $code => $name) {
+            if (isset($filas[$code])) continue;
+            try {
+                $cn = $conns[$code];
+                // Solo las columnas que tiene la tabla de ESA sucursal, sin autoincrementables
+                $columnas = [];
+                foreach ($cn->select('SHOW COLUMNS FROM articulo') as $c) {
+                    if (!str_contains(strtolower((string) $c->Extra), 'auto_increment')) $columnas[$c->Field] = true;
+                }
+                $cn->table('articulo')->insert(array_intersect_key($base, $columnas));
+                $creadas[] = $name;
+                $audit[] = [
+                    'historial_id' => $historialId, 'clave' => $claveReal, 'columna' => 'TODAS (CREACIÓN)',
+                    'valor_anterior' => 'NO EXISTÍA', 'valor_nuevo' => $nuevo ? 'CREADO (desde el archivo)' : 'CREADO (copiado de ' . $origen . ')',
+                    'sucursal' => $code,
+                ];
+            } catch (Throwable $e) {
+                if ($audit) DB::table('csv_historial_detalles')->insert($audit);
+                $detalle = ($creadas ? 'Creado en: ' . implode(', ', $creadas) . '. ' : '')
+                    . "Falló al crear en {$name}: " . $this->friendlyDbError($e) . '. No se dio de alta en el maestro';
+                return ['master' => null, 'detalle' => $detalle, 'error' => true];
+            }
+        }
+
+        // Paso 2: activar en las sucursales donde está inactiva (Revertir lo regresa a su valor anterior)
+        $activadas = [];
+        foreach ($inactivas as $code) {
+            $name = $nombres[$code] ?? $code;
+            try {
+                $anterior = $filas[$code]['Habilitado'] ?? null;
+                $conns[$code]->table('articulo')->where('Clave_Articulo', $filas[$code]['Clave_Articulo'])->update(['Habilitado' => 1]);
+                $activadas[] = $name;
+                $audit[] = [
+                    'historial_id' => $historialId, 'clave' => $claveReal, 'columna' => 'Habilitado',
+                    'valor_anterior' => $anterior === null ? null : (string) $anterior, 'valor_nuevo' => '1',
+                    'sucursal' => $code,
+                ];
+            } catch (Throwable $e) {
+                if ($audit) DB::table('csv_historial_detalles')->insert($audit);
+                $detalle = ($creadas ? 'Creado en: ' . implode(', ', $creadas) . '. ' : '')
+                    . ($activadas ? 'Activado en: ' . implode(', ', $activadas) . '. ' : '')
+                    . "Falló al activar en {$name}: " . $this->friendlyDbError($e) . '. No se dio de alta en el maestro';
+                return ['master' => null, 'detalle' => $detalle, 'error' => true];
+            }
+        }
+
+        // Alta en el maestro con los datos del renglón base (fechas inválidas del ERP como null)
+        $masterData = ['clave' => $claveReal];
+        foreach (\App\Support\ArticuloFieldMap::map() as $snake => $pascal) {
+            if (!array_key_exists($pascal, $base)) continue;
+            $v = $base[$pascal];
+            if (is_string($v) && str_starts_with($v, '0000-00-00')) $v = null;
+            $masterData[$snake] = $v;
+        }
+        $masterData['habilitado'] = 1;
+
+        // Auditoría de lo creado en sucursales ANTES del alta en el maestro, por si esta falla
+        if ($audit) DB::table('csv_historial_detalles')->insert($audit);
+        $master = DbMasterArticle::create($masterData);
+        DB::table('csv_historial_detalles')->insert([
+            'historial_id' => $historialId, 'clave' => $claveReal, 'columna' => 'TODAS (CREACIÓN)',
+            'valor_anterior' => 'NO EXISTÍA', 'valor_nuevo' => 'ALTA EN MAESTRO', 'sucursal' => 'maestro',
+        ]);
+
+        // Matriz de Homologación: presente y activo en todas las sucursales (igual que Crear Artículo)
+        try {
+            $matrizData = array_intersect_key($masterData, array_flip([
+                'descripcion', 'unidad_medida', 'linea', 'clasificacion', 'area', 'mn_usd', 'precio_lista',
+                'des_precio_venta', 'precio_venta', 'desc_precio_espec', 'precio_especial', 'desc_precio4', 'precio4',
+                'desc_proveedor', 'precio_gerente', 'precio_tope', 'costo_venta', 'porcetaje_descuento', 'articulo_kit',
+                'articulo_serie', 'margen_minimo', 'color', 'protocolo', 'idsat', 'id_impuesto_sat', 'iva', 'habilitado', 'fecha_alta',
+            ]));
+            $physicalCols = \App\Models\MatrizHomologacion::getPhysicalBranchColumns();
+            foreach (array_keys($nombres) as $bCode) {
+                $colName = \App\Models\MatrizHomologacion::resolveColumnName($bCode);
+                if (in_array($colName, $physicalCols)) $matrizData[$colName] = 1;
+            }
+            \App\Models\MatrizHomologacion::updateOrCreate(['clave' => $claveReal], $matrizData);
+        } catch (Throwable $e) {
+            Log::warning("Carga masiva: no se pudo actualizar la matriz al dar de alta {$claveReal}: " . $e->getMessage());
+        }
+
+        return [
+            'master'  => $master,
+            'accion'  => $nuevo ? 'creado_nuevo' : ($activadas ? 'activado' : ($creadas ? 'creado_sucursales' : 'alta_maestro')),
+            'creadas' => $creadas,
+            'activadas' => $activadas,
+            'fuente'  => $origen,
+        ];
+    }
+
+    /**
+     * Paso 4: arma el renglón de sucursal (PascalCase) para una clave que no existe en ninguna sucursal,
+     * con los mismos valores por defecto de Crear Artículo (storeManual) y los datos del CSV encima.
+     * Valida lo mismo que Crear Artículo para los obligatorios. Devuelve [renglón, null] o [null, motivo].
+     *
+     * @param array $createData campos snake_case ya convertidos (booleanos, numéricos, MN/USD, truncados)
+     */
+    private function renglonNuevoDesdeCsv(string $clave, array $createData): array
+    {
+        $faltan = [];
+        foreach (self::CAMPOS_CREAR as $f) {
+            if (!array_key_exists($f, $createData) || trim((string) $createData[$f]) === '') {
+                $faltan[] = self::ETIQUETAS_CREAR[$f] ?? $f;
+            }
+        }
+        if ($faltan) return [null, 'Para crearlo falta: ' . implode(', ', $faltan)];
+
+        $errores = [];
+        if (mb_strlen($clave) > 40 || !preg_match('/^[A-Za-z0-9Ññ\/.\-+*"_() ]+$/u', $clave)) {
+            $errores[] = 'la clave tiene caracteres no permitidos o más de 40';
+        }
+        $um = strtoupper(trim((string) $createData['unidad_medida']));
+        if (!preg_match('/^[A-Z0-9]{1,4}$/', $um)) $errores[] = "U.M. '{$um}' no válida (letras/números, máx. 4)";
+        $linea = strtoupper(trim((string) $createData['linea']));
+        if (!preg_match('/^[A-Z0-9]{1,4}$/', $linea)) $errores[] = "Línea '{$linea}' no válida (letras/números, máx. 4)";
+        $area = $createData['area'];
+        if (!is_numeric($area) || (float) $area != (int) $area || !in_array((int) $area, $this->areasValidas(), true)) {
+            $errores[] = "Área '{$area}' no existe en el catálogo de áreas";
+        }
+        if ($errores) return [null, 'No se pudo crear: ' . implode('; ', $errores)];
+
+        // Valores por defecto de Crear Artículo (evitan NOT NULL en las sucursales)
+        $data = array_merge([
+            'id_impuesto_sat' => '002', 'iva' => 16, 'id_tipo_factor' => 'Tasa', 'color' => 0,
+            'protocolo' => 0, 'articulo_kit' => 0, 'articulo_serie' => 0, 'en_promocion' => 0, 'critico' => 0,
+            'control_pedimentos' => 0, 'ubicacion' => 'GENERAL', 'idsat' => '01010101',
+            'sustituto' => '0', 'sustituto1' => '0', 'sustituto2' => '0', 'peso' => 0, 'std_pack' => 1,
+            'precio_lista' => 0, 'precio_venta' => 0, 'des_precio_venta' => 0, 'precio_especial' => 0,
+            'desc_precio_espec' => 0, 'precio4' => 0, 'desc_precio4' => 0, 'desc_proveedor' => 0, 'precio_gerente' => 0,
+            'precio_tope' => 0, 'costo_venta' => 0, 'porcetaje_descuento' => 0, 'margen_minimo' => 0,
+        ], array_filter($createData, fn ($v) => $v !== null && $v !== ''));
+        $data['unidad_medida'] = $um;
+        $data['linea'] = $linea;
+        $data['area'] = (int) $area;
+        $data['habilitado'] = 1;
+        $data['fecha_alta'] = now()->toDateString();
+
+        // Lo propio de cada sucursal en cero (existencias, costos, mín/máx…), luego los datos del artículo
+        $row = self::COLUMNAS_PROPIAS_SUCURSAL;
+        foreach (\App\Support\ArticuloFieldMap::map() as $snake => $pascal) {
+            if (array_key_exists($snake, $data)) $row[$pascal] = $data[$snake];
+        }
+        $row['Clave_Articulo'] = $clave;
+        $row['Habilitado'] = 1;
+        return [$row, null];
     }
 
     /** Cambio 2: motivos del resultado por fila de la carga masiva (código => texto). */
     public const MOTIVOS_CARGA = [
         'actualizado'          => 'Actualizado',
+        'creado_sucursales'    => 'Agregado en sucursales y en el Catálogo Maestro',
+        'alta_maestro'         => 'Agregado al Catálogo Maestro (ya estaba activo en todas las sucursales)',
+        'activado'             => 'Activado (estaba inactivo) y agregado al Catálogo Maestro',
+        'creado_nuevo'         => 'Creado desde cero en las sucursales y en el Catálogo Maestro',
+        'faltan_datos'         => 'No se pudo crear (faltan o no son válidos datos obligatorios)',
         'error_sucursal'       => 'Actualizado con error en sucursal',
         'error'                => 'Error al procesar la fila',
         'inactivo_todas'       => 'Inactivo en todas las sucursales donde existe',
         'inactivo_algunas'     => 'Inactivo o sin alta en algunas sucursales',
         'activo_falta_maestro' => 'Activo en todas las sucursales, pero falta en el Catálogo Maestro',
         'no_existe'            => 'No existe en ninguna sucursal',
+        'linea_no_aprobada'    => 'Línea no aprobada en Homologación (solo pasan las líneas "Sí se pasa")',
         'clave_invalida'       => 'Clave con espacios o caracteres especiales',
         'no_numerico'          => 'Valor no numérico',
         'sin_clave'            => 'Fila sin clave',
@@ -1820,6 +2130,7 @@ class ArticulosController extends Controller
                             'estatus' => ($estatusSeleccionado && array_key_exists('habilitado', $csvItem))
                                 ? $this->parseBooleanValue($csvItem['habilitado']) : null,
                             'faltan'  => array_values(array_diff(self::CAMPOS_CREAR, array_keys($csvItem))),
+                            'area'    => $csvItem['area'] ?? null,   // paso 4: se valida contra el catálogo de áreas
                         ];
                     }
                 }
@@ -1892,9 +2203,13 @@ class ArticulosController extends Controller
             $enMaestroSet = $this->clavesEnMaestro(array_keys($infoClaves));
             $clavesNoMaestro = array_values(array_filter(array_keys($infoClaves), fn ($k) => !isset($enMaestroSet[$k])));
             $accionesNoMaestro = $this->accionesNoMaestro($clavesNoMaestro, $infoClaves);
-            $resumenNoMaestro = ['total' => count($accionesNoMaestro), 'por_accion' => []];
-            foreach ($accionesNoMaestro as $acc) {
+            $resumenNoMaestro = ['total' => count($accionesNoMaestro), 'por_accion' => [], 'activar' => []];
+            foreach ($accionesNoMaestro as $kNm => $acc) {
                 $resumenNoMaestro['por_accion'][$acc['accion']] = ($resumenNoMaestro['por_accion'][$acc['accion']] ?? 0) + 1;
+                // Paso 2: lista para el aviso de artículos inactivos que se activarán
+                if (!empty($acc['inactiva_en']) && count($resumenNoMaestro['activar']) < 200) {
+                    $resumenNoMaestro['activar'][] = ['clave' => (string) $kNm, 'en' => implode(', ', $acc['inactiva_en'])];
+                }
             }
 
             $diffs = [];
@@ -2076,7 +2391,13 @@ class ArticulosController extends Controller
                 'column_map'   => $columnMap,
                 'unrecognized' => $unrecognized,
                 // Cambio 3: estimación de tiempo para avisar de archivos grandes
-                'en_maestro'   => $this->contarEnMaestro($clavesEstimacion),
+                // Paso 3: las que se crearán donde faltan o se agregarán al maestro también se procesan
+                'en_maestro'   => $this->contarEnMaestro($clavesEstimacion)
+                    + ($resumenNoMaestro['por_accion']['crear_faltantes'] ?? 0)
+                    + ($resumenNoMaestro['por_accion']['alta_maestro'] ?? 0)
+                    + ($resumenNoMaestro['por_accion']['activar'] ?? 0)
+                    + ($resumenNoMaestro['por_accion']['crear_activar'] ?? 0)
+                    + ($resumenNoMaestro['por_accion']['crear_nuevo'] ?? 0),
                 'segundos_por_articulo' => self::SEGUNDOS_POR_ARTICULO,
                 // Paso 1: resumen de TODO el archivo de las claves que no están en el maestro
                 'no_maestro'   => $resumenNoMaestro,
@@ -2130,6 +2451,8 @@ class ArticulosController extends Controller
 
             // Revertir cada cambio
             foreach ($detalles as $log) {
+                // Paso 3: los artículos creados por la carga no se borran al revertir (solo se regresan valores)
+                if (str_starts_with((string)$log->columna, 'TODAS (')) continue;
                 if ($log->sucursal === 'maestro') {
                     // Restaurar en Maestro
                     DbMasterArticle::where('clave', $log->clave)->update([

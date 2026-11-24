@@ -660,6 +660,7 @@
             let totalRowsInCsv = 0;
             let filasInvalidasPreview = []; // AU-01
             let articulosEnMaestroPreview = 0;   // Cambio 3
+            let activarPreview = 0;              // Paso 2: artículos inactivos que se activarán
             let segundosPorArticuloPreview = 2.3; // Cambio 3
             const LIMITE_ARCHIVO_GRANDE_SEG = 600; // Cambio 3: más de 10 min estimados = archivo grande
 
@@ -792,6 +793,7 @@
                 if (limitBanner) limitBanner.style.display = 'none';
                 const noMaestroBanner = document.getElementById('preview-no-maestro');
                 if (noMaestroBanner) noMaestroBanner.style.display = 'none';
+                activarPreview = 0;
                 const badgeCount = document.getElementById('preview-badge-count');
                 if (badgeCount) badgeCount.style.display = 'none';
 
@@ -1391,10 +1393,23 @@
                             ].filter(p => p[1] > 0).map(p => `${p[0]}: <strong style="color:white;">${p[1]}</strong>`);
                             noMaestroBanner.innerHTML = `<strong style="color:white;">${nm.total} claves no están en el Catálogo Maestro.</strong> `
                                 + partes.join(' · ')
-                                + `<span style="display:block; color: var(--text-muted); font-size: 10.5px; margin-top: 2px;">Vista previa del plan de creación/activación: por ahora "Ejecutar Actualización" todavía omite estas claves.</span>`;
+                                + `<span style="display:block; color: var(--text-muted); font-size: 10.5px; margin-top: 2px;">"Ejecutar Actualización" crea las que faltan en algunas sucursales, crea desde cero las que no existen en ninguna (con Descripción, U.M., Línea, Clasificación, Área y MN/USD del archivo), activa las inactivas cuando el CSV las trae activas y agrega al maestro las que ya están activas en todas. Omite las que el CSV marca inactivas, las de líneas que no son "Sí se pasa" y las que no traen los datos obligatorios. La columna Área solo se usa para crear: no cambia el Área de los artículos que ya existen.</span>`;
+                            // Paso 2: aviso de artículos inactivos que se activarán
+                            const act = Array.isArray(nm.activar) ? nm.activar : [];
+                            const totalAct = n('activar') + n('crear_activar');
+                            if (totalAct > 0) {
+                                const lista = act.map(a => `<li><strong style="color:white;">${escHtmlAu01(a.clave)}</strong> — inactiva en ${escHtmlAu01(a.en)}</li>`).join('');
+                                noMaestroBanner.innerHTML += `<div style="margin-top:8px; padding:8px 10px; background: rgba(245, 158, 11, 0.10); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; color: #fcd34d;">`
+                                    + `⚠ <strong>El archivo trae ${totalAct} artículo(s) que están INACTIVOS en alguna sucursal.</strong> Al ejecutar la actualización se <strong>ACTIVARÁN</strong> en esas sucursales y se darán de alta en el Catálogo Maestro.`
+                                    + `<ul style="margin:6px 0 0 18px; max-height:120px; overflow:auto; font-size:11px;">${lista}</ul>`
+                                    + (totalAct > act.length ? `<div style="font-size:10.5px; margin-top:2px;">… y ${totalAct - act.length} más.</div>` : '')
+                                    + `</div>`;
+                            }
+                            activarPreview = totalAct;
                             noMaestroBanner.style.display = 'block';
                         } else {
                             noMaestroBanner.style.display = 'none';
+                            activarPreview = 0;
                         }
                     }
 
@@ -1550,6 +1565,21 @@
                     invalidatePreview('El archivo cambió; vuelve a seleccionarlo y genera la Vista Previa.');
                     avisarArchivoCambiado(selectedFile, true);
                     return;
+                }
+
+                // Paso 2: confirmar antes si se van a activar artículos inactivos
+                if (activarPreview > 0) {
+                    const conf = await Swal.fire({
+                        title: 'Se activarán artículos inactivos',
+                        text: `Se activarán ${activarPreview} artículo(s) que hoy están inactivos en alguna sucursal (el CSV los trae activos). ¿Continuar?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        background: '#1a1d27',
+                        color: '#fff',
+                        confirmButtonText: 'Sí, continuar',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    if (!conf.isConfirmed) return;
                 }
 
                 const totalRowsText = (totalRowsInCsv > 0)
