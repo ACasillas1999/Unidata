@@ -319,6 +319,14 @@ class PowerSalesService
         return $this->buildPayload('articuloalm', $source);
     }
 
+    public const MSG_DESACTIVADO = 'Envío desactivado (POWERSALES_SYNC=false)';
+
+    /** Paso 0: interruptor para probar en QA sin mandar nada a PowerSales (config/services.php). */
+    protected function envioHabilitado(): bool
+    {
+        return filter_var(config('services.powersales.sync_enabled', true), FILTER_VALIDATE_BOOLEAN);
+    }
+
     protected function post(string $entity, string $endpoint, array $payload, string $refLabel): array
     {
         $logger = $this->logger();
@@ -331,6 +339,16 @@ class PowerSalesService
                     'success' => false,
                     'status'  => null,
                     'message' => 'Payload vacío (revisar field_mapping)',
+                ];
+            }
+
+            if (!$this->envioHabilitado()) {
+                $logger->info("PowerSales {$endpoint} [{$refLabel}] NO enviado (POWERSALES_SYNC=false): " . json_encode($payload));
+                $this->saveAudit($entity, $endpoint, $refLabel, $payload, false, null, self::MSG_DESACTIVADO);
+                return [
+                    'success' => false,
+                    'status'  => null,
+                    'message' => self::MSG_DESACTIVADO,
                 ];
             }
 
@@ -401,6 +419,12 @@ class PowerSalesService
             if (empty($rows)) {
                 $logger->warning("PowerSales {$endpoint} [{$refLabel}]: sin filas, no se envia.");
                 $this->saveAudit($entity, $endpoint, $refLabel, [], false, null, 'Sin filas para enviar.');
+                return;
+            }
+
+            if (!$this->envioHabilitado()) {
+                $logger->info("PowerSales {$endpoint} [{$refLabel}] NO enviado (POWERSALES_SYNC=false): " . json_encode($rows));
+                $this->saveAudit($entity, $endpoint, $refLabel, $rows, false, null, self::MSG_DESACTIVADO);
                 return;
             }
 

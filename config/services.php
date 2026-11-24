@@ -38,6 +38,9 @@ return [
     'powersales' => [
         'base_url' => env('PS_BASE_URL'),
         'token'    => env('PS_TOKEN'),
+        // Paso 0: POWERSALES_SYNC=false en el .env de QA apaga los envíos (post/postBatch) para probar
+        // sin mandar nada. Sin la línea queda encendido, así producción no cambia.
+        'sync_enabled' => env('POWERSALES_SYNC', true),
     ],
 
 ];

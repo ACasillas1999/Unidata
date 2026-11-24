@@ -588,6 +588,13 @@
                 </div>
             </header>
 
+            {{-- Paso 0: aviso mientras POWERSALES_SYNC=false en el .env (los envíos a PowerSales están apagados) --}}
+            @if(!filter_var(config('services.powersales.sync_enabled', true), FILTER_VALIDATE_BOOLEAN))
+                <div role="alert" style="background: rgba(245,158,11,0.15); border-bottom: 1px solid rgba(245,158,11,0.45); color: #fbbf24; padding: 8px 20px; font-size: 13px; font-weight: 700; text-align: center;">
+                    ⚠ Envíos a PowerSales APAGADOS (POWERSALES_SYNC=false en el .env). Los cambios no se mandan a PowerSales.
+                </div>
+            @endif
+
             {{-- PAGE CONTENT --}}
             <main class="page-content">
                 @yield('content')
