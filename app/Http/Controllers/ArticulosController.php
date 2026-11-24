@@ -1278,6 +1278,17 @@ class ArticulosController extends Controller
     private function contarEnMaestro(array $claves): int
     {
         if (empty($claves)) return 0;
+        $enMaestro = $this->clavesEnMaestro($claves);
+        $total = 0;
+        foreach ($claves as $c) {
+            if (isset($enMaestro[$c])) $total++;
+        }
+        return $total;
+    }
+
+    /** Claves (normalizadas a A-Z0-9) que sí están en el maestro, como conjunto [clave => true]. */
+    private function clavesEnMaestro(array $claves): array
+    {
         $enMaestro = [];
         foreach (array_chunk(array_values(array_unique($claves)), 1000) as $chunk) {
             $encontradas = DbMasterArticle::whereIn('clave', $chunk)
@@ -1287,11 +1298,83 @@ class ArticulosController extends Controller
                 $enMaestro[strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$c))] = true;
             }
         }
-        $total = 0;
-        foreach ($claves as $c) {
-            if (isset($enMaestro[$c])) $total++;
+        return $enMaestro;
+    }
+
+    /** Paso 1: datos obligatorios para crear un artículo desde cero (los mismos que exige Crear Artículo). */
+    public const CAMPOS_CREAR = ['descripcion', 'unidad_medida', 'linea', 'clasificacion', 'area', 'mn_usd'];
+    private const ETIQUETAS_CREAR = [
+        'descripcion' => 'Descripción', 'unidad_medida' => 'U.M.', 'linea' => 'Línea',
+        'clasificacion' => 'Clasificación', 'area' => 'Área', 'mn_usd' => 'MN/USD',
+    ];
+
+    /**
+     * Paso 1 (solo lectura): para las claves que no están en el maestro, consulta en las sucursales
+     * activas si existen y si están activas, y decide qué hará la carga con cada una.
+     * Devuelve [clave => ['accion' => código, 'tipo' => crear|inactivo|omitir, 'texto' => para la vista previa]].
+     */
+    private function accionesNoMaestro(array $claves, array $infoClaves): array
+    {
+        if (empty($claves)) return [];
+
+        $branchesMap = $this->connectionManager->getActiveBranches()->pluck('name', 'code')->toArray();
+        $info = [];          // clave => [codigo_sucursal => Habilitado]
+        $sinRespuesta = [];
+        foreach ($branchesMap as $code => $name) {
+            try {
+                $cn = $this->connectionManager->connect($code);
+                foreach (array_chunk($claves, 500) as $chunk) {
+                    foreach ($cn->table('articulo')->whereIn('Clave_Articulo', $chunk)->get(['Clave_Articulo', 'Habilitado']) as $r) {
+                        $info[strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$r->Clave_Articulo))][$code] = (int)$r->Habilitado;
+                    }
+                }
+            } catch (Throwable $e) {
+                $sinRespuesta[] = $name;
+            }
         }
-        return $total;
+
+        $out = [];
+        $totalSuc = count($branchesMap);
+        foreach ($claves as $k) {
+            $en      = $info[$k] ?? [];
+            $estatus = $infoClaves[$k]['estatus'] ?? null;   // 1, 0 o null (no viene / no seleccionado)
+            $faltan  = $infoClaves[$k]['faltan'] ?? [];
+
+            $crearEn = $inactivaEn = [];
+            foreach ($branchesMap as $code => $name) {
+                if (!array_key_exists($code, $en)) $crearEn[] = $name;
+                elseif ($en[$code] !== 1) $inactivaEn[] = $name;
+            }
+
+            if ($sinRespuesta) {
+                $acc = ['omitir', 'omitir', 'SE OMITIRÁ: sin respuesta de ' . implode(', ', $sinRespuesta)];
+            } elseif (empty($en)) {
+                if ($estatus === 0) {
+                    $acc = ['omitir', 'omitir', 'SE OMITIRÁ: no existe y el CSV la marca inactiva'];
+                } elseif ($faltan) {
+                    $acc = ['omitir', 'omitir', 'SE OMITIRÁ: falta ' . implode(', ', array_map(fn ($f) => self::ETIQUETAS_CREAR[$f] ?? $f, $faltan))];
+                } else {
+                    $acc = ['crear_nuevo', 'crear', "SE CREARÁ en las {$totalSuc} sucursales + maestro"];
+                }
+            } elseif ($estatus === 0) {
+                $acc = ['solo_sucursales', 'inactivo', 'SE ACTUALIZARÁ solo en sucursales (inactiva); no entra al maestro'];
+            } elseif ($inactivaEn && $estatus === null) {
+                $acc = ['omitir', 'omitir', 'SE OMITIRÁ: inactiva en ' . implode(', ', $inactivaEn) . ' y el CSV no indica Estatus'];
+            } else {
+                $partes = [];
+                if ($crearEn)    $partes[] = 'SE CREARÁ en ' . implode(', ', $crearEn);
+                if ($inactivaEn) $partes[] = 'SE ACTIVARÁ en ' . implode(', ', $inactivaEn);
+                if ($partes) {
+                    $codigo = $crearEn && $inactivaEn ? 'crear_activar' : ($crearEn ? 'crear_faltantes' : 'activar');
+                    $acc = [$codigo, 'crear', implode(' y ', $partes) . ' + maestro'];
+                } else {
+                    $acc = ['alta_maestro', 'crear', 'SE AGREGARÁ al maestro (ya activa en todas las sucursales)'];
+                }
+            }
+
+            $out[$k] = ['accion' => $acc[0], 'tipo' => $acc[1], 'texto' => $acc[2]];
+        }
+        return $out;
     }
 
     /** Cambio 2: motivos del resultado por fila de la carga masiva (código => texto). */
@@ -1679,6 +1762,9 @@ class ArticulosController extends Controller
             }
             $filasInvalidas = [];
             $clavesEstimacion = []; // Cambio 3
+            // Paso 1: por clave (de TODO el archivo), Estatus del CSV y datos obligatorios que faltan para crearla
+            $infoClaves = [];
+            $estatusSeleccionado = in_array($normalize('Estatus'), $colsUiNorm, true);
             $fila = 1; // la fila 1 es el encabezado
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== FALSE) {
@@ -1727,7 +1813,15 @@ class ArticulosController extends Controller
                 // Cambio 3: claves de TODO el archivo para estimar cuántos artículos se procesarán
                 if (empty($invalidos)) {
                     $claveEst = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($csvItem['clave'] ?? '')));
-                    if ($claveEst !== '') $clavesEstimacion[] = $claveEst;
+                    if ($claveEst !== '') {
+                        $clavesEstimacion[] = $claveEst;
+                        // Si la clave se repite, manda la última fila (igual que al procesar)
+                        $infoClaves[$claveEst] = [
+                            'estatus' => ($estatusSeleccionado && array_key_exists('habilitado', $csvItem))
+                                ? $this->parseBooleanValue($csvItem['habilitado']) : null,
+                            'faltan'  => array_values(array_diff(self::CAMPOS_CREAR, array_keys($csvItem))),
+                        ];
+                    }
                 }
 
                 // Solo recopilamos los primeros 500 artículos para la previsualización
@@ -1794,6 +1888,15 @@ class ArticulosController extends Controller
                 return null;
             };
 
+            // Paso 1: qué pasará con las claves que no están en el maestro (solo lectura en sucursales)
+            $enMaestroSet = $this->clavesEnMaestro(array_keys($infoClaves));
+            $clavesNoMaestro = array_values(array_filter(array_keys($infoClaves), fn ($k) => !isset($enMaestroSet[$k])));
+            $accionesNoMaestro = $this->accionesNoMaestro($clavesNoMaestro, $infoClaves);
+            $resumenNoMaestro = ['total' => count($accionesNoMaestro), 'por_accion' => []];
+            foreach ($accionesNoMaestro as $acc) {
+                $resumenNoMaestro['por_accion'][$acc['accion']] = ($resumenNoMaestro['por_accion'][$acc['accion']] ?? 0) + 1;
+            }
+
             $diffs = [];
             $colsUiNorm = array_map($normalize, $columnsSelected);
             $changedCols = [];
@@ -1803,12 +1906,16 @@ class ArticulosController extends Controller
                 $masterItem = $resolveMaster($clave);
 
                 if (!$masterItem) {
-                    // Nuevo artículo (no está en el maestro)
+                    // Nuevo artículo (no está en el maestro). Paso 1: qué se hará con él
+                    $acc = $accionesNoMaestro[strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$clave))] ?? null;
                     $diffs[] = [
                         'clave'           => $clave,
                         'canonical_clave' => $clave,
                         'status'          => 'new',
-                        'data'            => $csvItem
+                        'data'            => $csvItem,
+                        'accion'          => $acc['accion'] ?? null,
+                        'accion_tipo'     => $acc['tipo'] ?? null,
+                        'accion_texto'    => $acc['texto'] ?? null,
                     ];
                     continue;
                 }
@@ -1971,6 +2078,8 @@ class ArticulosController extends Controller
                 // Cambio 3: estimación de tiempo para avisar de archivos grandes
                 'en_maestro'   => $this->contarEnMaestro($clavesEstimacion),
                 'segundos_por_articulo' => self::SEGUNDOS_POR_ARTICULO,
+                // Paso 1: resumen de TODO el archivo de las claves que no están en el maestro
+                'no_maestro'   => $resumenNoMaestro,
             ];
 
             return response()->json($this->cleanUtf8($responsePayload));

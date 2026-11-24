@@ -440,6 +440,10 @@
                         Vista previa de 500 filas
                     </div>
                 </div>
+                {{-- Paso 1: resumen de TODO el archivo de las claves que no están en el maestro --}}
+                <div id="preview-no-maestro"
+                    style="display: none; padding: 10px 16px; background: rgba(56, 189, 248, 0.06); border-bottom: 1px solid rgba(56, 189, 248, 0.2); font-size: 11.5px; color: #bae6fd;">
+                </div>
                 <div class="card-body"
                     style="flex: 1; overflow: hidden !important; max-height: none !important; height: auto !important; padding: 0;">
                     {{-- Scroll propio: encabezados fijos arriba, barra horizontal siempre visible y CLAVE fija a la izquierda --}}
@@ -786,6 +790,8 @@
                 totalRowsInCsv = 0;
                 const limitBanner = document.getElementById('preview-limit-banner');
                 if (limitBanner) limitBanner.style.display = 'none';
+                const noMaestroBanner = document.getElementById('preview-no-maestro');
+                if (noMaestroBanner) noMaestroBanner.style.display = 'none';
                 const badgeCount = document.getElementById('preview-badge-count');
                 if (badgeCount) badgeCount.style.display = 'none';
 
@@ -1293,11 +1299,22 @@
                         </td>`;
 
                             if (item.status === 'new') {
-                                activeCols.forEach(col => {
+                                // Paso 1: qué se hará con la clave que no está en el maestro (crear / activar / omitir)
+                                const estilosAccion = {
+                                    crear:    { bg: 'rgba(56, 189, 248, 0.08)', color: '#7dd3fc', tag: 'rgba(56,189,248,0.2)' },
+                                    inactivo: { bg: 'rgba(245, 158, 11, 0.08)', color: '#fbbf24', tag: 'rgba(245,158,11,0.2)' },
+                                    omitir:   { bg: 'rgba(239, 68, 68, 0.06)',  color: '#f87171', tag: 'rgba(239,68,68,0.2)' },
+                                };
+                                const est = estilosAccion[item.accion_tipo] || estilosAccion.omitir;
+                                const textoAccion = item.accion_texto || 'NO EXISTE · se omitirá';
+                                activeCols.forEach((col, i) => {
                                     const val = item.data ? (item.data[col.field] ?? item.data[col.csv] ?? '') : '';
-                                    // AU-02: la carga masiva no crea artículos; esta fila se omitirá al procesar
-                                    rowHtml += `<td style="padding:8px 12px; vertical-align:middle; background:rgba(239, 68, 68, 0.06); color:#f87171; font-size:11px; white-space:nowrap;" title="La clave no existe en el Catálogo Maestro. La carga masiva no crea artículos; esta fila se omitirá.">
-                                    <span style="font-size:9px; font-weight:bold; background:rgba(239,68,68,0.2); padding:1px 4px; border-radius:3px; margin-right:4px;">NO EXISTE · se omitirá</span> ${val}
+                                    // La etiqueta va solo en la primera columna para no repetirla en toda la fila
+                                    const etiqueta = i === 0
+                                        ? `<span style="font-size:9px; font-weight:bold; background:${est.tag}; padding:1px 4px; border-radius:3px; margin-right:4px;">${escHtmlAu01(textoAccion)}</span> `
+                                        : '';
+                                    rowHtml += `<td style="padding:8px 12px; vertical-align:middle; background:${est.bg}; color:${est.color}; font-size:11px; white-space:nowrap;" title="${escHtmlAu01(textoAccion)}">
+                                    ${etiqueta}${escHtmlAu01(String(val))}
                                 </td>`;
                                 });
                             } else {
@@ -1356,6 +1373,30 @@
                     totalRowsInCsv = data.total_rows || (data.diffs ? data.diffs.length : 0);
                     const limitBanner = document.getElementById('preview-limit-banner');
                     const badgeCount = document.getElementById('preview-badge-count');
+
+                    // Paso 1: resumen de las claves que no están en el maestro (de todo el archivo)
+                    const noMaestroBanner = document.getElementById('preview-no-maestro');
+                    const nm = data.no_maestro || { total: 0, por_accion: {} };
+                    if (noMaestroBanner) {
+                        if (nm.total > 0) {
+                            const pa = nm.por_accion || {};
+                            const n = k => pa[k] || 0;
+                            const partes = [
+                                ['Se crearán donde faltan', n('crear_faltantes') + n('crear_activar')],
+                                ['Se activarán', n('activar') + n('crear_activar')],
+                                ['Se crearán desde cero', n('crear_nuevo')],
+                                ['Se agregarán al maestro (ya activas)', n('alta_maestro')],
+                                ['Solo en sucursales (inactivas)', n('solo_sucursales')],
+                                ['Se omitirán', n('omitir')],
+                            ].filter(p => p[1] > 0).map(p => `${p[0]}: <strong style="color:white;">${p[1]}</strong>`);
+                            noMaestroBanner.innerHTML = `<strong style="color:white;">${nm.total} claves no están en el Catálogo Maestro.</strong> `
+                                + partes.join(' · ')
+                                + `<span style="display:block; color: var(--text-muted); font-size: 10.5px; margin-top: 2px;">Vista previa del plan de creación/activación: por ahora "Ejecutar Actualización" todavía omite estas claves.</span>`;
+                            noMaestroBanner.style.display = 'block';
+                        } else {
+                            noMaestroBanner.style.display = 'none';
+                        }
+                    }
 
                     if (data.is_truncated) {
                         if (limitBanner) {
