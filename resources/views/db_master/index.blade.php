@@ -116,7 +116,8 @@
         </div>
     </div>
 
-    <div class="table-responsive-wide" id="table-inner-wrap" style="overflow-x: auto; overflow-y: hidden !important; max-height: none !important; height: auto !important; width: 100%; max-width: 100%; position:relative; background: rgba(0,0,0,0.1);">
+    {{-- Scroll propio (vertical y horizontal) para que el encabezado se quede fijo al bajar --}}
+    <div class="table-responsive-wide" id="table-inner-wrap" style="overflow: auto; max-height: calc(100vh - 160px); width: 100%; max-width: 100%; position:relative; background: rgba(0,0,0,0.1);">
         <table class="data-table table-wide" style="width: 100%; border-collapse: separate; border-spacing: 0;">
             <thead>
                 <tr style="background: var(--bg-card-2);">
@@ -336,7 +337,8 @@
     </div>
 
     @if($articles->hasPages())
-        <div style="padding: 16px 24px; background: var(--bg-card); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
+        {{-- Esquinas inferiores redondeadas como la tarjeta (la tarjeta usa overflow:visible y el fondo cuadrado se salía del borde) --}}
+        <div style="padding: 16px 24px; background: var(--bg-card); border-radius: 0 0 var(--radius-xl) var(--radius-xl); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;">
             <p style="font-size: 12px; color: var(--text-muted); margin:0;">
                 Mostrando página <span style="color:var(--text-primary); font-weight:700;">{{ $articles->currentPage() }}</span> de {{ $articles->lastPage() }}
             </p>
@@ -1225,6 +1227,13 @@ document.addEventListener('focusin', function (e) {
 </div>
 
 <style>
+/* Encabezado fijo dentro de #table-inner-wrap (Acciones y Clave ya traen su z-index 12/11 inline) */
+#table-inner-wrap .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-card-2);
+}
 .modal-label { font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px; text-transform: uppercase; letter-spacing: 0.08em; }
 .modal-input { width:100%; background:var(--bg-root); border:1px solid var(--border); padding:12px 14px; border-radius:10px; color:white; font-size:13px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
 .modal-input.readonly { background:rgba(0,0,0,0.25); color:var(--text-muted); cursor:not-allowed; }
