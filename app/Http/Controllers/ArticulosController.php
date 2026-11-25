@@ -1539,10 +1539,20 @@ class ArticulosController extends Controller
                 $cn = $conns[$code];
                 // Solo las columnas que tiene la tabla de ESA sucursal, sin autoincrementables
                 $columnas = [];
+                $sinNulos = [];   // columnas NOT NULL de ESTA sucursal => valor de reemplazo
                 foreach ($cn->select('SHOW COLUMNS FROM articulo') as $c) {
-                    if (!str_contains(strtolower((string) $c->Extra), 'auto_increment')) $columnas[$c->Field] = true;
+                    if (str_contains(strtolower((string) $c->Extra), 'auto_increment')) continue;
+                    $columnas[$c->Field] = true;
+                    if (strtoupper((string) $c->Null) === 'NO') {
+                        $sinNulos[$c->Field] = $c->Default ?? $this->valorVacioColumna((string) $c->Type);
+                    }
                 }
-                $cn->table('articulo')->insert(array_intersect_key($base, $columnas));
+                $renglon = array_intersect_key($base, $columnas);
+                // El renglón copiado puede traer NULL (p. ej. Precio_gerente) donde esta sucursal no los acepta
+                foreach ($renglon as $col => $v) {
+                    if ($v === null && array_key_exists($col, $sinNulos)) $renglon[$col] = $sinNulos[$col];
+                }
+                $cn->table('articulo')->insert($renglon);
                 $creadas[] = $name;
                 $audit[] = [
                     'historial_id' => $historialId, 'clave' => $claveReal, 'columna' => 'TODAS (CREACIÓN)',
@@ -1585,6 +1595,8 @@ class ArticulosController extends Controller
             if (!array_key_exists($pascal, $base)) continue;
             $v = $base[$pascal];
             if (is_string($v) && str_starts_with($v, '0000-00-00')) $v = null;
+            // Precios/descuentos NULL en la sucursal fuente (p. ej. Precio_gerente) → 0; las fórmulas los recalculan después
+            if ($v === null && in_array($snake, $this->columnasNumericasCsv(), true)) $v = 0;
             $masterData[$snake] = $v;
         }
         $masterData['habilitado'] = 1;
@@ -1622,6 +1634,17 @@ class ArticulosController extends Controller
             'activadas' => $activadas,
             'fuente'  => $origen,
         ];
+    }
+
+    /** Valor "vacío" según el tipo de columna MySQL, para columnas NOT NULL sin default. */
+    private function valorVacioColumna(string $tipo): string|int
+    {
+        $t = strtolower($tipo);
+        if (preg_match('/^(tinyint|smallint|mediumint|int|integer|bigint|decimal|numeric|float|double|real|bit|year)/', $t)) return 0;
+        if (str_starts_with($t, 'datetime') || str_starts_with($t, 'timestamp')) return '1901-01-01 00:00:00';
+        if (str_starts_with($t, 'date')) return '1901-01-01';
+        if (str_starts_with($t, 'time')) return '00:00:00';
+        return '';
     }
 
     /**
