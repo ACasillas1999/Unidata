@@ -523,44 +523,47 @@ class ArticulosController extends Controller
                 return;
             }
 
-            $formatRow = function ($art) {
-                $pLista = (float)($art->precio_lista ?? 0);
-                $dProv  = (float)($art->desc_proveedor ?? 0);
+            // Parte 2 machotes: dato vacío en el maestro → celda vacía (al subir, vacía = conservar
+            // el valor actual de cada sucursal). Antes se inventaban valores (Ubicación GENERAL,
+            // Color 0, Área 1…) que al subir el machote pisaban lo propio de cada sucursal.
+            $txt = fn ($v) => ($v === null || trim((string) $v) === '') ? '' : $v;
+            $num = fn ($v) => ($v === null || trim((string) $v) === '') ? '' : number_format((float) $v, 2, '.', '');
 
+            $formatRow = function ($art) use ($txt, $num) {
                 return [
                     $art->clave,
-                    $art->descripcion,
-                    $art->unidad_medida ?? 'PZA',
-                    $art->linea ?? 'GEN',
-                    $art->clasificacion ?? 'GEN',
-                    $art->area ?? 1,
-                    $art->mn_usd ?? 0,
-                    number_format($pLista, 2, '.', ''),
-                    number_format((float)($art->des_precio_venta ?? 0), 2, '.', ''),
-                    number_format((float)($art->precio_venta ?? 0), 2, '.', ''),
-                    number_format((float)($art->desc_precio_espec ?? 0), 2, '.', ''),
-                    number_format((float)($art->precio_especial ?? 0), 2, '.', ''),
-                    number_format((float)($art->desc_precio4 ?? 0), 2, '.', ''),
-                    number_format((float)($art->precio4 ?? 0), 2, '.', ''),
-                    number_format($dProv, 2, '.', ''),
-                    $art->articulo_kit ?? 0,
-                    number_format((float)($art->margen_minimo ?? 0), 2, '.', ''),
-                    number_format((float)($art->std_pack ?? 1), 2, '.', ''),
-                    $art->articulo_serie ?? 0,
-                    $art->color ?? 0,
-                    $art->ubicacion ?? 'GENERAL',
-                    $art->control_pedimentos ?? 0,
-                    $art->protocolo ?? 0,
-                    $art->idsat ?? '01010101',
-                    number_format((float)($art->peso ?? 0), 2, '.', ''),
-                    $art->critico ?? 0,
-                    ($art->habilitado ?? 1) ? 'ACTIVO' : 'INACTIVO',
-                    $art->sustituto ?? '0',
-                    $art->sustituto1 ?? '0',
-                    $art->sustituto2 ?? '0',
-                    number_format((float)($art->costo_venta ?? 0), 2, '.', ''),
-                    number_format((float)($art->porcetaje_descuento ?? 0), 2, '.', ''),
-                    number_format((float)($art->precio_tope ?? 0), 2, '.', ''),
+                    $txt($art->descripcion),
+                    $txt($art->unidad_medida),
+                    $txt($art->linea),
+                    $txt($art->clasificacion),
+                    $txt($art->area),
+                    $txt($art->mn_usd),
+                    $num($art->precio_lista),
+                    $num($art->des_precio_venta),
+                    $num($art->precio_venta),
+                    $num($art->desc_precio_espec),
+                    $num($art->precio_especial),
+                    $num($art->desc_precio4),
+                    $num($art->precio4),
+                    $num($art->desc_proveedor),
+                    $txt($art->articulo_kit),
+                    $num($art->margen_minimo),
+                    $num($art->std_pack),
+                    $txt($art->articulo_serie),
+                    $txt($art->color),
+                    $txt($art->ubicacion),
+                    $txt($art->control_pedimentos),
+                    $txt($art->protocolo),
+                    $txt($art->idsat),
+                    $num($art->peso),
+                    $txt($art->critico),
+                    $art->habilitado === null || $art->habilitado === '' ? '' : ($art->habilitado ? 'ACTIVO' : 'INACTIVO'),
+                    $txt($art->sustituto),
+                    $txt($art->sustituto1),
+                    $txt($art->sustituto2),
+                    $num($art->costo_venta),
+                    $num($art->porcetaje_descuento),
+                    $num($art->precio_tope),
                 ];
             };
 
