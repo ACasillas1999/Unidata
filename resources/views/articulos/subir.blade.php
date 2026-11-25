@@ -1760,9 +1760,21 @@
                 }[est.status] || { icon: 'info', title: 'Carga masiva', color: 'var(--amber, #f59e0b)' };
                 // Cambio 2: el texto queda como resumen corto y abajo va la tabla de resultados por fila
                 // (las listas de filas omitidas ya salen completas en la tabla)
-                const mensajeCorto = String(res.message || est.message || '')
-                    .split(' Filas omitidas por valores no numéricos')[0]
-                    .split(' Claves no encontradas en el Catálogo Maestro')[0];
+                const mensajeServidor = String(res.message || est.message || '');
+                let mensajeCorto;
+                if (est.status === 'error' || est.status === 'stalled') {
+                    // Puede no haber tabla: el mensaje es lo único que explica qué pasó
+                    mensajeCorto = mensajeServidor
+                        .split(' Filas omitidas por valores no numéricos')[0]
+                        .split(' Claves no encontradas en el Catálogo Maestro')[0];
+                } else {
+                    // Los conteos y errores por sucursal ya salen en la tabla y en el CSV
+                    mensajeCorto = String(est.archivo ?? '');
+                    const filaCancel = mensajeServidor.match(/después de la fila (\d+)/);
+                    if (est.status === 'cancelled' || res.cancelado) {
+                        mensajeCorto += filaCancel ? ` · Cancelada después de la fila ${filaCancel[1]}.` : ' · Cancelada.';
+                    }
+                }
                 Swal.fire({
                     icon: cfg.icon,
                     title: cfg.title,
