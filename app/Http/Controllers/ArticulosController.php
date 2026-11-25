@@ -845,7 +845,7 @@ class ArticulosController extends Controller
                 return [
                     'success' => false,
                     'procesados' => 0,
-                    'message' => 'El archivo CSV debe incluir una columna válida para la clave del artículo (ej: "Clave" o "Código").',
+                    'message' => $this->mensajeSinClave($headerMap, $headerOriginal),
                 ];
             }
 
@@ -1654,6 +1654,24 @@ class ArticulosController extends Controller
      *
      * @param array $createData campos snake_case ya convertidos (booleanos, numéricos, MN/USD, truncados)
      */
+    /**
+     * Mensaje cuando la primera fila no trae la columna Clave.
+     * Si no se reconoce ninguna columna, el archivo casi seguro no trae encabezado (empieza con datos).
+     */
+    private function mensajeSinClave(array $headerMap, array $headerOriginal): string
+    {
+        if (empty($headerMap)) {
+            $primero = trim((string) ($headerOriginal[0] ?? ''));
+            return 'El archivo no tiene encabezado: la primera fila debe ser el encabezado del machote '
+                . '(Clave, Descripción, U.M., Línea, …) y tu archivo empieza directamente con datos'
+                . ($primero !== '' ? ' ("' . mb_substr($primero, 0, 40) . '")' : '') . '. '
+                . 'Descarga el machote, pega tus datos debajo del encabezado y vuelve a subirlo.';
+        }
+        $colsFound = array_filter(array_map('trim', $headerOriginal));
+        return 'Falta la columna "Clave" en el encabezado del archivo. Usa el encabezado del machote. '
+            . 'Columnas detectadas: ' . implode(', ', $colsFound);
+    }
+
     private function renglonNuevoDesdeCsv(string $clave, array $createData): array
     {
         $faltan = [];
@@ -2020,10 +2038,9 @@ class ArticulosController extends Controller
 
             if (!in_array('clave', $headerMap)) {
                 fclose($handle);
-                $colsFound = array_filter(array_map('trim', $headerOriginal));
                 return response()->json([
                     'success' => false,
-                    'message' => 'El archivo CSV debe incluir obligatoriamente una columna de clave (ej: "Clave" o "Código"). Columnas detectadas: ' . (empty($colsFound) ? 'ninguna' : implode(', ', $colsFound))
+                    'message' => $this->mensajeSinClave($headerMap, $headerOriginal),
                 ], 422);
             }
 
