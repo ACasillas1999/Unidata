@@ -45,8 +45,8 @@
                             <span style="font-size: 15px;">📊</span>
                             <div>
                                 <div style="font-weight: 700;">Con Datos de Ejemplo</div>
-                                <div style="font-size: 10px; color: var(--text-muted);">Valores numéricos limpios (el
-                                    sistema calcula automáticamente)</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">2 filas de ejemplo para ver el
+                                    formato. Bórralas antes de subir (si se quedan, se rechaza el archivo)</div>
                             </div>
                         </a>
                         <a href="{{ route('articulos.subir.machote', ['tipo' => 'vacio']) }}" class="machote-item"

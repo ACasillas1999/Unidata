@@ -576,44 +576,28 @@ class ArticulosController extends Controller
                     fputcsv($handle, $formatRow($art));
                 }
             } else {
-                // con_datos: intentamos obtener artículos reales de la BD primero
-                $articles = DbMasterArticle::take(5)->get();
+                // Parte 4 machotes: filas de EJEMPLO (no artículos reales: escribir encima de uno real lo
+                // actualizaría sin querer). La carga rechaza el archivo si alguna clave empieza con EJEMPLO.
+                // Valores coherentes con las fórmulas (P. Venta, P. Especial, Precio 4, Precio Tope).
+                $example1 = [
+                    'EJEMPLO-BORRAR-1', 'EJEMPLO: CONTACTO DUPLEX 15A BLANCO (BORRA ESTA FILA)', 'PZA', 'ELEC', 'CONT', '0', 'M',
+                    '100.00', '5.27', '94.73', '10.00', '90.00',
+                    '20.00', '80.00', '30.00', '0', '5.00',
+                    '1.00', '0', '0', 'A1-01', '0', '0',
+                    '39121100', '16', '002', '0.50', '0', 'ACTIVO', '', '', '',
+                    '70.00', '10.00', '90.00',
+                ];
+                $example2 = [
+                    'EJEMPLO-BORRAR-2', 'EJEMPLO: CABLE THW CAL 12 NEGRO POR METRO (BORRA ESTA FILA)', 'MTR', 'ELEC', 'CABL', '0', 'U',
+                    '50.00', '5.00', '47.50', '15.00', '42.50',
+                    '25.00', '37.50', '35.00', '0', '5.00',
+                    '100.00', '0', '1', 'B2-03', '0', '0',
+                    '26121500', '16', '002', '0.04', '0', 'ACTIVO', '', '', '',
+                    '30.00', '5.00', '47.50',
+                ];
 
-                if ($articles->count() > 0) {
-                    foreach ($articles as $art) {
-                        fputcsv($handle, $formatRow($art));
-                    }
-                } else {
-                    // Si la BD no tiene registros, exportar ejemplos reales representativos de un ERP
-                    $example1 = [
-                        'HERR-00845', 'MARTILLO DE UÑA CURVA 16 OZ MANGO DE FIBRA DE VIDRIO', 'PZA', 'HERR', 'MANU', '1', '0',
-                        '285.00', '10.00', '256.50', '15.00', '242.25',
-                        '20.00', '228.00', '12.50', '0', '18.00',
-                        '6.00', '0', '0', 'EST-A1-04', '0', '0',
-                        '27111602', '16', '002', '0.65', '0', 'ACTIVO', 'HERR-00846', '0', '0',
-                        '145.00', '25.00', '213.75',
-                    ];
-                    $example2 = [
-                        'ELEC-01290', 'CABLE THW-LS CALIBRE 12 AWG 600V COLOR NEGRO', 'MTR', 'ELEC', 'CABL', '1', '0',
-                        '18.50', '8.00', '17.02', '12.00', '16.28',
-                        '15.00', '15.73', '10.00', '0', '15.00',
-                        '100.00', '0', '1', 'BOD-E3-12', '1', '0',
-                        '26121500', '16', '002', '0.04', '1', 'ACTIVO', 'ELEC-01291', 'ELEC-01292', '0',
-                        '9.80', '20.00', '14.80',
-                    ];
-                    $example3 = [
-                        'KIT-00501', 'JUEGO DE HERRAMIENTAS INALÁMBRICAS 20V MAX (DRILL + IMPACT)', 'JGO', 'ELEC', 'KITS', '1', '1',
-                        '3490.00', '12.00', '3071.20', '18.00', '2861.80',
-                        '22.00', '2722.20', '15.00', '1', '25.00',
-                        '1.00', '1', '0', 'MOSTRADOR', '1', '1',
-                        '27112700', '16', '002', '4.80', '1', 'ACTIVO', 'KIT-00502', '0', '0',
-                        '1850.00', '30.00', '2443.00',
-                    ];
-
-                    fputcsv($handle, $example1);
-                    fputcsv($handle, $example2);
-                    fputcsv($handle, $example3);
-                }
+                fputcsv($handle, $example1);
+                fputcsv($handle, $example2);
             }
 
             fclose($handle);
@@ -851,6 +835,16 @@ class ArticulosController extends Controller
                     'success' => false,
                     'procesados' => 0,
                     'message' => $this->mensajeSinClave($headerMap, $headerOriginal),
+                ];
+            }
+
+            // Parte 4 machotes: si quedaron filas de ejemplo del machote, no se procesa nada
+            if ($msgEjemplo = $this->mensajeFilasEjemplo($fullPath, $delimiter, $headerMap)) {
+                fclose($handle);
+                return [
+                    'success' => false,
+                    'procesados' => 0,
+                    'message' => $msgEjemplo,
                 ];
             }
 
@@ -1691,6 +1685,33 @@ class ArticulosController extends Controller
         return [false, $val, "ID Impuesto SAT '{$val}' no válido (3 dígitos, ej. 002)"];
     }
 
+    /** Parte 4 machotes: prefijo de las claves de ejemplo del machote (nunca son artículos reales). */
+    public const PREFIJO_EJEMPLO = 'EJEMPLO';
+
+    /**
+     * Revisa SOLO la columna Clave (nunca precios u otras columnas, que pueden coincidir con un
+     * artículo real). Si alguna clave empieza con EJEMPLO (sin importar mayúsculas, guiones ni
+     * espacios) devuelve el mensaje de rechazo; si no, null.
+     */
+    private function mensajeFilasEjemplo(string $path, string $delimiter, array $headerMap): ?string
+    {
+        $idxClave = array_search('clave', $headerMap, true);
+        if ($idxClave === false || !($h = @fopen($path, 'r'))) return null;
+        fgetcsv($h, 0, $delimiter); // encabezado
+        $filas = [];
+        $fila = 1;
+        while (($row = fgetcsv($h, 0, $delimiter)) !== false) {
+            $fila++;
+            $clave = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($row[$idxClave] ?? '')));
+            if (str_starts_with($clave, self::PREFIJO_EJEMPLO)) $filas[] = $fila;
+        }
+        fclose($h);
+        if (!$filas) return null;
+        $lista = implode(', ', array_slice($filas, 0, 10)) . (count($filas) > 10 ? '…' : '');
+        return 'Tu archivo todavía trae las filas de ejemplo del machote (fila' . (count($filas) > 1 ? 's' : '') . " {$lista}, "
+            . 'clave "' . self::PREFIJO_EJEMPLO . '-…"). Bórralas, revisa tu archivo y vuelve a subirlo. No se procesó nada.';
+    }
+
     private function mensajeSinClave(array $headerMap, array $headerOriginal): string
     {
         if (empty($headerMap)) {
@@ -2075,6 +2096,12 @@ class ArticulosController extends Controller
                     'success' => false,
                     'message' => $this->mensajeSinClave($headerMap, $headerOriginal),
                 ], 422);
+            }
+
+            // Parte 4 machotes: archivo con las filas de ejemplo del machote → se rechaza completo
+            if ($msgEjemplo = $this->mensajeFilasEjemplo($file->getRealPath(), $delimiter, $headerMap)) {
+                fclose($handle);
+                return response()->json(['success' => false, 'message' => $msgEjemplo], 422);
             }
 
             // Columnas del CSV no reconocidas por el sistema
