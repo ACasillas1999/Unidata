@@ -508,7 +508,7 @@ class ArticulosController extends Controller
             'P. Lista', 'Desc. P. Venta (Auto)', 'P. Venta', 'Desc. P. Espec', 'P. Especial (Auto)',
             'Desc. Precio 4', 'Precio 4 (Auto)', 'Desc. Proveedor', 'Art. Kit', 'Mg Mín',
             'Std Pack', 'Art. Serie', 'Color', 'Ubicacion', 'Control Pedimentos', 'Protocolo',
-            'IDSAT', 'Peso', 'Crítico', 'Estatus', 'Sustituto', 'Sustituto 1', 'Sustituto 2',
+            'IDSAT', 'IVA', 'ID Impuesto SAT', 'Peso', 'Crítico', 'Estatus', 'Sustituto', 'Sustituto 1', 'Sustituto 2',
             'Costo Venta', '% Descuento', 'Precio Tope (Auto)',
         ];
 
@@ -555,6 +555,8 @@ class ArticulosController extends Controller
                     $txt($art->control_pedimentos),
                     $txt($art->protocolo),
                     $txt($art->idsat),
+                    ($art->iva === null || trim((string) $art->iva) === '') ? '' : (string) ($art->iva + 0),
+                    $txt($art->id_impuesto_sat),
                     $num($art->peso),
                     $txt($art->critico),
                     $art->habilitado === null || $art->habilitado === '' ? '' : ($art->habilitado ? 'ACTIVO' : 'INACTIVO'),
@@ -588,7 +590,7 @@ class ArticulosController extends Controller
                         '285.00', '10.00', '256.50', '15.00', '242.25',
                         '20.00', '228.00', '12.50', '0', '18.00',
                         '6.00', '0', '0', 'EST-A1-04', '0', '0',
-                        '27111602', '0.65', '0', 'ACTIVO', 'HERR-00846', '0', '0',
+                        '27111602', '16', '002', '0.65', '0', 'ACTIVO', 'HERR-00846', '0', '0',
                         '145.00', '25.00', '213.75',
                     ];
                     $example2 = [
@@ -596,7 +598,7 @@ class ArticulosController extends Controller
                         '18.50', '8.00', '17.02', '12.00', '16.28',
                         '15.00', '15.73', '10.00', '0', '15.00',
                         '100.00', '0', '1', 'BOD-E3-12', '1', '0',
-                        '26121500', '0.04', '1', 'ACTIVO', 'ELEC-01291', 'ELEC-01292', '0',
+                        '26121500', '16', '002', '0.04', '1', 'ACTIVO', 'ELEC-01291', 'ELEC-01292', '0',
                         '9.80', '20.00', '14.80',
                     ];
                     $example3 = [
@@ -604,7 +606,7 @@ class ArticulosController extends Controller
                         '3490.00', '12.00', '3071.20', '18.00', '2861.80',
                         '22.00', '2722.20', '15.00', '1', '25.00',
                         '1.00', '1', '0', 'MOSTRADOR', '1', '1',
-                        '27112700', '4.80', '1', 'ACTIVO', 'KIT-00502', '0', '0',
+                        '27112700', '16', '002', '4.80', '1', 'ACTIVO', 'KIT-00502', '0', '0',
                         '1850.00', '30.00', '2443.00',
                     ];
 
@@ -958,8 +960,20 @@ class ArticulosController extends Controller
                         if ($field === 'unidad_medida') $val = mb_substr((string)$val, 0, 4);
                         if ($field === 'ubicacion') $val = mb_substr((string)$val, 0, 10);
                         if ($field === 'idsat') $val = mb_substr((string)$val, 0, 25);
-                        if ($field === 'id_impuesto_sat') $val = mb_substr((string)$val, 0, 3);
                         if (in_array($field, ['sustituto', 'sustituto1', 'sustituto2'])) $val = mb_substr((string)$val, 0, 40);
+
+                        // Parte 3 machotes: IVA 0/8/16 (acepta "16%") e ID Impuesto SAT de 3 dígitos ("2" → "002")
+                        if ($field === 'iva' || $field === 'id_impuesto_sat') {
+                            [$okImp, $valImp, $msgImp] = $this->valorImpuestoCsv($field, $val);
+                            if (!$okImp) {
+                                if ($soloParaCrear) continue;
+                                $filaConError = true;
+                                $filasInvalidas[] = "Fila {$fila} ({$clave}): {$msgImp}";
+                                $erroresFila[] = $msgImp;
+                                continue;
+                            }
+                            $val = $valImp;
+                        }
 
                         // 3. Gestión de numéricos (evitar Not Null errors)
                         if (in_array($field, $this->columnasNumericasCsv(), true)) {
@@ -1661,6 +1675,22 @@ class ArticulosController extends Controller
      * Mensaje cuando la primera fila no trae la columna Clave.
      * Si no se reconoce ninguna columna, el archivo casi seguro no trae encabezado (empieza con datos).
      */
+    /**
+     * Parte 3 machotes: valida y normaliza IVA (0, 8 o 16; acepta "16%" y "16.00") e
+     * ID Impuesto SAT (1 a 3 dígitos, se completa con ceros: Excel convierte "002" en "2").
+     * @return array{0: bool, 1: mixed, 2: string} [ok, valor normalizado, mensaje de error]
+     */
+    private function valorImpuestoCsv(string $field, $val): array
+    {
+        $s = trim(str_replace(['%', ' '], '', (string) $val));
+        if ($field === 'iva') {
+            if (is_numeric($s) && in_array((float) $s, [0.0, 8.0, 16.0], true)) return [true, (int) $s, ''];
+            return [false, $val, "IVA '{$val}' no válido (0, 8 o 16)"];
+        }
+        if (preg_match('/^\d{1,3}$/', $s)) return [true, str_pad($s, 3, '0', STR_PAD_LEFT), ''];
+        return [false, $val, "ID Impuesto SAT '{$val}' no válido (3 dígitos, ej. 002)"];
+    }
+
     private function mensajeSinClave(array $headerMap, array $headerOriginal): string
     {
         if (empty($headerMap)) {
@@ -1741,7 +1771,7 @@ class ArticulosController extends Controller
         'no_existe'            => 'No existe en ninguna sucursal',
         'linea_no_aprobada'    => 'Línea no aprobada en Homologación (solo pasan las líneas "Sí se pasa")',
         'clave_invalida'       => 'Clave con espacios o caracteres especiales',
-        'no_numerico'          => 'Valor no numérico',
+        'no_numerico'          => 'Valor no numérico o no válido',
         'sin_clave'            => 'Fila sin clave',
         'sin_datos'            => 'Sin columnas para actualizar',
         'no_procesado'         => 'No procesado',
@@ -2109,6 +2139,12 @@ class ArticulosController extends Controller
                     }
                 }
             }
+            $impuestosSeleccionados = array_values(array_filter(['iva', 'id_impuesto_sat'], function ($f) use ($standardMapping, $colsUiNorm) {
+                foreach ($standardMapping as $uiNameNorm => $mappedField) {
+                    if ($mappedField === $f && in_array($uiNameNorm, $colsUiNorm, true)) return true;
+                }
+                return false;
+            }));
             $headerLabel = [];
             foreach ($headerMap as $idx => $mappedField) {
                 $headerLabel[$mappedField] = $headerOriginal[$idx];
@@ -2150,8 +2186,19 @@ class ArticulosController extends Controller
                 // AU-01: validar números en TODO el archivo (no solo las 500 filas visibles).
                 // "1,234.50" se toma como 1234.50; "abc" se marca y esa fila se omitirá al procesar.
                 $invalidos = [];
+                // Parte 3 machotes: mismas reglas de IVA / ID Impuesto SAT que al procesar
+                foreach ($impuestosSeleccionados as $impField) {
+                    if (!array_key_exists($impField, $csvItem)) continue;
+                    [$okImp, $valImp, $msgImp] = $this->valorImpuestoCsv($impField, $csvItem[$impField]);
+                    if ($okImp) {
+                        $csvItem[$impField] = $valImp;
+                    } else {
+                        $invalidos[$impField] = true;
+                        $filasInvalidas[] = "Fila {$fila} (" . ($csvItem['clave'] ?? '') . "): {$msgImp}";
+                    }
+                }
                 foreach ($numericasSeleccionadas as $numField) {
-                    if (!array_key_exists($numField, $csvItem)) continue;
+                    if (!array_key_exists($numField, $csvItem) || isset($invalidos[$numField])) continue;
                     [$esNumero, $numero] = $this->parseNumeroCsv($csvItem[$numField]);
                     if ($esNumero) {
                         if ($csvItem[$numField] !== '') $csvItem[$numField] = (string)$numero;

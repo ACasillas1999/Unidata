@@ -179,6 +179,8 @@
                                 'Control Pedimentos' => ['type' => 'normal'],
                                 'Protocolo' => ['type' => 'normal'],
                                 'IDSAT' => ['type' => 'normal'],
+                                'IVA' => ['type' => 'normal'],
+                                'ID Impuesto SAT' => ['type' => 'normal'],
                                 'Peso' => ['type' => 'normal'],
                                 'Crítico' => ['type' => 'normal'],
                                 'Estatus' => ['type' => 'normal'],
@@ -962,6 +964,8 @@
                 'protocolo': 'Protocolo',
                 'idsat': 'IDSAT',
                 'clavesat': 'IDSAT',
+                'iva': 'IVA',
+                'idimpuestosat': 'ID Impuesto SAT',
                 'peso': 'Peso',
                 'critico': 'Crítico',
                 'estatus': 'Estatus',
@@ -1330,7 +1334,7 @@
                                         rowHtml += `<td style="padding:6px 10px; vertical-align:middle; background:rgba(239, 68, 68, 0.12); border:1px solid rgba(239, 68, 68, 0.45); white-space:nowrap;" title="Este valor no es un número. La fila completa se omitirá al procesar.">
                                         <div style="display:flex; flex-direction:column; gap:2px;">
                                             <span style="color:#f87171; font-weight:800; font-size:11.5px;">${escHtmlAu01(diff.new)}</span>
-                                            <span style="font-size:9px; font-weight:bold; color:#f87171;">NO ES NÚMERO · se omitirá la fila</span>
+                                            <span style="font-size:9px; font-weight:bold; color:#f87171;">NO VÁLIDO · se omitirá la fila</span>
                                         </div>
                                     </td>`;
                                     } else if (diff) {
