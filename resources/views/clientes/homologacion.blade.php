@@ -148,6 +148,15 @@
 (() => {
     const URL_PLAN = @json(route('clientes.homologacion.plan'));
     const URL_HOMOLOGAR = @json(route('clientes.homologacion.homologar'));
+    // Mismo estilo oscuro que los demás modales de la app (layouts/app, partials/sync_modal, clientes/editar)
+    const Modal = Swal.mixin({
+        background: '#0f172a',
+        color: '#f8fafc',
+        backdrop: 'rgba(0,0,0,0.6)',
+        confirmButtonColor: '#6366f1',
+        cancelButtonColor: '#64748b',
+        customClass: { popup: 'shadow-premium' },
+    });
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const estatus = s => s === 'A' ? 'Activo' : (s === '' || s == null ? 'Sin estatus' : `Status Magic (${esc(s)})`);
 
@@ -171,10 +180,10 @@
         }
     }
 
-    const fila = (k, v) => `<tr><td style="padding:6px 10px; font-weight:700; white-space:nowrap; vertical-align:top;">${k}</td><td style="padding:6px 10px;">${v}</td></tr>`;
+    const fila = (k, v) => `<tr style="border-bottom:1px solid rgba(255,255,255,0.08);"><td style="padding:8px 10px; font-weight:700; white-space:nowrap; vertical-align:top; color:#cbd5e1;">${k}</td><td style="padding:8px 10px;">${v}</td></tr>`;
 
     window.abrirHomologar = async function (rfc, origen = null) {
-        Swal.fire({ title: 'Calculando…', text: 'Consultando las sucursales (no se escribe nada).', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Modal.fire({ title: 'Calculando…', text: 'Consultando las sucursales (no se escribe nada).', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         let data;
         try {
@@ -183,7 +192,7 @@
             data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
         } catch (e) {
-            Swal.fire({ icon: 'error', title: 'No se pudo calcular', text: e.message });
+            Modal.fire({ icon: 'error', title: 'No se pudo calcular', text: e.message });
             return;
         }
 
@@ -192,7 +201,7 @@
         let html = `<div style="text-align:left; font-size:13px;">`;
 
         if (p.origenes.length) {
-            html += `<div style="margin-bottom:10px; font-weight:700;">Sucursal de origen de los datos:</div><div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">`;
+            html += `<div style="margin-bottom:10px; font-weight:700;">Sucursal de origen de los datos:</div><div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px 12px;">`;
             for (const code of p.origenes) {
                 const s = p.sucursales[code];
                 html += `<label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
@@ -224,7 +233,7 @@
 
         const hayAlgo = !p.bloqueo && (!p.maestro.existe || p.maestro.id_global !== p.id_global || suc.some(s => ['alta', 'id_global'].includes(s.accion)));
 
-        const r = await Swal.fire({
+        const r = await Modal.fire({
             title: `Homologar ${esc(p.rfc || rfc)}`,
             html,
             width: 720,
@@ -242,7 +251,7 @@
         });
         if (!r.isConfirmed) return;
 
-        Swal.fire({ title: 'Homologando…', text: 'Escribiendo en el maestro y en las sucursales.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Modal.fire({ title: 'Homologando…', text: 'Escribiendo en el maestro y en las sucursales.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         let out;
         try {
             const res = await fetch(URL_HOMOLOGAR, {
@@ -253,7 +262,7 @@
             out = await res.json();
             if (!res.ok && !out.resultado) throw new Error(out.message || `HTTP ${res.status}`);
         } catch (e) {
-            Swal.fire({ icon: 'error', title: 'No se pudo homologar', text: e.message });
+            Modal.fire({ icon: 'error', title: 'No se pudo homologar', text: e.message });
             return;
         }
 
@@ -265,7 +274,7 @@
         for (const s of Object.values(out.resultado.sucursales || {})) rh += fila(esc(s.name), accionResultado(s));
         rh += `</table>`;
 
-        await Swal.fire({ icon: out.success ? 'success' : 'error', title: out.message, html: rh, width: 720 });
+        await Modal.fire({ icon: out.success ? 'success' : 'error', title: out.message, html: rh, width: 720 });
         window.location.reload();
     };
 })();

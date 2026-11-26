@@ -51,9 +51,15 @@ class ClientesController extends Controller
         $query = ClienteMaestro::query();
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            // RFC sin importar espacios o guiones ("CVA050825H75" encuentra "CVA 050825H75"),
+            // igual que en Homologación de clientes
+            $rfcBuscado = ClientesHomologacionController::normalizarRfc($search);
+            $query->where(function ($q) use ($search, $rfcBuscado) {
                 $q->where('rfc', 'LIKE', "%{$search}%")
                     ->orWhere('razon_social', 'LIKE', "%{$search}%");
+                if ($rfcBuscado !== '') {
+                    $q->orWhereRaw("REPLACE(REPLACE(UPPER(rfc), ' ', ''), '-', '') LIKE ?", ['%' . $rfcBuscado . '%']);
+                }
             });
         }
 
