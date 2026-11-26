@@ -354,6 +354,17 @@
                                         <span class="sidebar-link-label">Nuevo Cliente</span>
                                     </a>
                                 </li>
+                                @if(auth()->user()->hasPermission('actions.clientes_homologar'))
+                                <li>
+                                    <a href="{{ route('clientes.homologacion') }}"
+                                       class="sidebar-dropdown-link {{ request()->routeIs('clientes.homologacion') ? 'active' : '' }}">
+                                        <span class="sidebar-link-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                                        </span>
+                                        <span class="sidebar-link-label">Homologación de Clientes</span>
+                                    </a>
+                                </li>
+                                @endif
                             </ul>
                         </li>
 

@@ -2,6 +2,21 @@
 
 Shared handoff notes for any AI tool editing this project. Capped at 10 entries, most recent first.
 
+## 2026-11-26 — Claude Code (Opus 5.5)
+**PLAN (sin código aún) — submódulo Clientes → "Homologación de clientes":** cliente viejo (ej. RFC `CVA 050825H75`, solo en Tapatía) no sale en Lista Clientes porque `SyncClientesMaestro` solo importa `IdGlobal > 0`. Decisiones del usuario:
+- Búsqueda en vivo por RFC/razón social en las 4 sucursales (sin tabla nueva); tabla ✅/❌ por sucursal + "en maestro"; botón Homologar → crea en maestro + alta en sucursales faltantes.
+- RFC se copia tal cual (buscador con/sin espacio). Usuario elige sucursal origen de datos; `fecha_alta` = la más antigua de todas. Status se copia tal cual (inactivo sigue inactivo, solo aviso).
+- IdGlobal (decisión final): nuevo = MAX(`db_master.clientes_maestro.id_global`)+1 y se escribe en maestro Y en las 4 sucursales (también donde ya existía con 0 u otro valor). Si RFC ya en maestro → usar su id_global. Si el candidato lo usa OTRO cliente (otro RFC) en alguna sucursal → saltar al siguiente libre (maestro + 4 sucursales) y anotarlo en el resumen (no bloquear). Candado anti-concurrencia.
+- Edición/sync/crear existentes que copian IdGlobal maestro→sucursal se quedan como están (usuario: "que todo se homologue").
+- PowerSales: enviar igual que editar (avisar POWERSALES_SYNC=false antes de probar). Permiso nuevo `actions.clientes_homologar` (solo Administrador).
+- Bug a corregir: `importarDesdeRamas()` usa `IdGlobal ?? nuevo` (0 no es null → id_global 0).
+- **Parte 1 APLICADA (solo lectura):** `ClientesHomologacionController@index` + `clientes/homologacion.blade.php`, ruta GET `/clientes/homologacion` (`clientes.homologacion`), menú Clientes → "Homologación de Clientes". Busca en cada sucursal activa `clientes` por RFC normalizado (`REPLACE(REPLACE(UPPER(RFC),' ',''),'-','') LIKE`) o `Razon_Social LIKE`, mín. 3 caracteres, máx. 50 por sucursal; agrupa por RFC normalizado; marca si está en `clientes_maestro`. Permiso nuevo `actions.clientes_homologar` (Role::defaultPermissions, RolesSeeder, pantalla Roles) + migración `2026_11_26_000000_add_clientes_homologar_permission_to_roles` que lo activa solo en slug `administrador` (sin tocar otros permisos). Rutas sin middleware de permiso: el controlador hace `abort_unless(...hasPermission)`.
+
+**PENDIENTE (sin código aún, usuario espera más info):** campo nuevo junto a "Precio Proveedor (Gerente)", SIN cambiar la fórmula actual (`precio_gerente = P.Lista × (100 − Desc_Proveedor) / 100`).
+- Fórmula nueva (archivo de compras "Copia de Base para subir.xlsx", Hoja1 fila 16, nota "Gerente/si se cambia la lista"): `Desc ajustado = 100 − ((100 − Desc_Proveedor)/(100 − 3))×100`, luego `P.Lista × (100 − Desc ajustado)/100` ⇒ `P.Lista × (100 − Desc_Proveedor) / 97` (= actual / 0.97). Ej. lista 2898.47, desc 47.1 → actual 1533.29, nueva 1580.71.
+- Usuario: el 3 es fijo (no configurable). "Dinámico" = probablemente calcular al mostrar sin guardar (opción B, recomendada: sin cambios de BD). Opción A = columna nueva solo en `db_master.Articulos` + `matriz_homologacions` (no tocar tablas `articulo` de sucursales, son del ERP) + backfill.
+- Falta decidir: A o B, nombre del campo, dónde se muestra (crear/editar/listado/detalle/machote). PowerSales no cambia (sigue mandando `desc_proveedor` como Descuento Gerente lista 4).
+
 ## 2026-11-18 — Claude Code (Opus 5.5)
 QA Artículos e Inventario (`DBMasterController`, `ArticulosController`, `InventarioController`, `inventario/index.blade.php`):
 - **ED-08:** precios `max:99999999999` (cabe en decimal(15,4) del maestro) + revisión del precio de venta calculado; `ValidationException` se relanza (antes daba 500), otros errores → mensaje genérico + log.

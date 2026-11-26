@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ArticulosController;
 use App\Http\Controllers\ClientesController;
+use App\Http\Controllers\ClientesHomologacionController;
 use App\Http\Controllers\ConexionesController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomologacionController;
@@ -99,6 +100,7 @@ Route::get('/clientes/campos-sucursal',                    [ClientesController::
 Route::post('/clientes/campos-sucursal',                   [ClientesController::class, 'updateCamposSucursal'])->name('clientes.campos_sucursal.update');
 Route::post('/clientes/sync',                              [ClientesController::class, 'sync'])->name('clientes.sync');
 Route::get('/clientes/sync/status',                        [ClientesController::class, 'syncStatus'])->name('clientes.sync.status');
+Route::get('/clientes/homologacion',                       [ClientesHomologacionController::class, 'index'])->name('clientes.homologacion');
 Route::get('/clientes/{rfc}/editar',                       [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
 // rfc sin "/": con '.+' esta ruta también atrapaba PUT /clientes/{rfc}/sucursal/{id} (404 en Editar por sucursal)
 Route::put('/clientes/{rfc}',                              [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '[^/]+');

@@ -72,6 +72,7 @@ class Role extends Model
                 'homologacion_export'    => false,
                 'db_master_sync'         => false,
                 'db_master_export'       => false,
+                'clientes_homologar'     => false,
                 'usuarios_gestionar'     => false,
                 'conexiones_gestionar'   => false,
                 'roles_gestionar'        => false,

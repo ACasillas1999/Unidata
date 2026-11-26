@@ -208,6 +208,7 @@ const PERM_DEFS = {
             homologacion_export:  { label: 'Exportar Homologación',      desc: 'Exportar resultado de homologación a Excel'  },
             db_master_sync:       { label: 'Sincronizar DB Master',      desc: 'Actualizar la lista maestra desde sucursales'},
             db_master_export:     { label: 'Exportar DB Master',         desc: 'Exportar lista maestra en Excel'             },
+            clientes_homologar:   { label: 'Homologar Clientes',         desc: 'Buscar clientes en sucursales y darlos de alta en maestro y sucursales faltantes' },
             usuarios_gestionar:   { label: 'Gestionar Usuarios',         desc: 'Crear, editar y eliminar usuarios'           },
             conexiones_gestionar: { label: 'Gestionar Conexiones',       desc: 'Administrar conexiones a bases de datos'     },
             roles_gestionar:      { label: 'Gestionar Roles',            desc: 'Crear y modificar roles y permisos'          },
