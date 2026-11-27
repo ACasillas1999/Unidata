@@ -556,6 +556,8 @@ function calculateEditPrices() {
         const pGerente = lista * (100 - dProv) / 100;
         editResDescProv.value = pGerente.toFixed(2);
     }
+    const editDescAplicado = document.getElementById('edit-desc_aplicado_gerente');
+    if (editDescAplicado) editDescAplicado.textContent = 'Desc. aplicado: ' + dProv.toFixed(2) + ' %';
 
     // 5b. Precio Gerente (lista cambiada), solo informativo: P_Lista * (100 - Desc_Proveedor) / 97
     //     Desc. ajustado = 100 - ((100 - Desc_Proveedor) / 97) * 100
@@ -1106,6 +1108,7 @@ document.addEventListener('focusin', function (e) {
                         <div class="form-group">
                             <label class="modal-label">Precio Proveedor (Gerente)</label>
                             <input type="number" step="0.01" id="edit-resultado_desc_proveedor" name="precio_gerente" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+                            <small id="edit-desc_aplicado_gerente" style="display:block; margin-top:4px; font-size:11px; color: var(--text-muted);">Desc. aplicado: 0.00 %</small>
                         </div>
                         {{-- Solo informativo (sin name: no se guarda ni se envía): P. Lista × (100 − Desc_Proveedor) / 97 --}}
                         <div class="form-group">

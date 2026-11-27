@@ -118,6 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 5. Precio Proveedor (Resultado) = Precio_Lista * (100 - Desc_Proveedor) / 100
         const resProv = lista * (100 - dProv) / 100;
         if (resDescProvInput) resDescProvInput.value = resProv.toFixed(2);
+        const descAplicadoTxt = document.getElementById('desc_aplicado_gerente');
+        if (descAplicadoTxt) descAplicadoTxt.textContent = 'Desc. aplicado: ' + dProv.toFixed(2) + ' %';
 
         // 5b. Precio Gerente (lista cambiada), solo informativo: P_Lista * (100 - Desc_Proveedor) / 97
         //     Desc. ajustado = 100 - ((100 - Desc_Proveedor) / 97) * 100
