@@ -234,7 +234,7 @@ class PowerSalesService
                 'ps_field'    => 'DiscountList 4 (Descuento Gerente)',
                 'erp_column'  => 'desc_proveedor',
                 'fixed_value' => null,
-                'auto_note'   => 'Columna ERP: desc_proveedor (Desc. Proveedor/Gerente)',
+                'auto_note'   => 'Columna ERP: desc_proveedor, enviado AJUSTADO: 100 − ((100 − desc_proveedor) / 97) × 100 (Precio Gerente lista cambiada)',
             ],
             (object) [
                 'ps_field'    => 'DiscountList 5 (Descuento Pricing)',
@@ -621,11 +621,17 @@ class PowerSalesService
                 return (string) $default;
             };
 
+            // Lista 4 (Descuento Gerente): PowerSales usa el "Precio Gerente (lista cambiada)", no el de Magic.
+            // Desc. ajustado = 100 - ((100 - Desc_Proveedor) / 97) * 100  => P.Lista * (100 - Desc_Proveedor) / 97.
+            // Magic/maestro siguen guardando Desc_Proveedor original. Con Desc_Proveedor < 3 sale negativo y se manda así (decisión del usuario).
+            $descProveedor = (float) $getVal('Desc_Proveedor', 'desc_proveedor');
+            $descGerenteAjustado = 100 - ((100 - $descProveedor) / 97) * 100;
+
             $discountMap = [
                 1 => $getVal('Desc_Precio_Venta', 'des_precio_venta'),
                 2 => $getVal('Desc_Precio_Espec', 'desc_precio_espec'),
                 3 => $getVal('Desc_Precio4', 'desc_precio4'),
-                4 => $getVal('Desc_Proveedor', 'desc_proveedor'),
+                4 => (string) $descGerenteAjustado,
                 5 => $getVal('PorcentajeDescuento', 'porcetaje_descuento'),
                 6 => '100',
             ];
