@@ -557,6 +557,13 @@ function calculateEditPrices() {
         editResDescProv.value = pGerente.toFixed(2);
     }
 
+    // 5b. Precio Gerente (lista cambiada), solo informativo: P_Lista * (100 - Desc_Proveedor) / 97
+    //     Desc. ajustado = 100 - ((100 - Desc_Proveedor) / 97) * 100
+    const editPgCambiada = document.getElementById('edit-precio_gerente_lista_cambiada');
+    const editDescAjustado = document.getElementById('edit-desc_ajustado_lista_cambiada');
+    if (editPgCambiada) editPgCambiada.value = (lista * (100 - dProv) / 97).toFixed(2);
+    if (editDescAjustado) editDescAjustado.textContent = 'Desc. ajustado: ' + (100 - ((100 - dProv) / 97) * 100).toFixed(2) + ' %';
+
     // 6. Precio Tope = Precio_Lista * (100 - Porcentaje_Descuento) / 100
     if (editPrecioTope && document.activeElement !== editPrecioTope) {
         const pTope = lista * (100 - pDesc) / 100;
@@ -1099,6 +1106,12 @@ document.addEventListener('focusin', function (e) {
                         <div class="form-group">
                             <label class="modal-label">Precio Proveedor (Gerente)</label>
                             <input type="number" step="0.01" id="edit-resultado_desc_proveedor" name="precio_gerente" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+                        </div>
+                        {{-- Solo informativo (sin name: no se guarda ni se envía): P. Lista × (100 − Desc_Proveedor) / 97 --}}
+                        <div class="form-group">
+                            <label class="modal-label" title="P. Lista × (100 − Desc. Proveedor) / 97 · solo informativo, no se guarda">Precio Gerente (lista cambiada)</label>
+                            <input type="number" step="0.01" id="edit-precio_gerente_lista_cambiada" value="0" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+                            <small id="edit-desc_ajustado_lista_cambiada" style="display:block; margin-top:4px; font-size:11px; color: var(--text-muted);">Desc. ajustado: 0.00 %</small>
                         </div>
                         <div class="form-group">
                             <label class="modal-label">Porcentaje Descuento (Pricing)</label>

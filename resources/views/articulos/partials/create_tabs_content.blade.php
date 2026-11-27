@@ -184,6 +184,12 @@
             <label class="modal-label">Precio Proveedor (Gerente)</label>
             <input type="number" step="0.01" id="resultado_desc_proveedor" name="precio_gerente" value="{{ old('precio_gerente', 0) }}" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
         </div>
+        {{-- Solo informativo (sin name: no se guarda ni se envía): P. Lista × (100 − Desc_Proveedor) / 97 --}}
+        <div class="form-group">
+            <label class="modal-label" title="P. Lista × (100 − Desc. Proveedor) / 97 · solo informativo, no se guarda">Precio Gerente (lista cambiada)</label>
+            <input type="number" step="0.01" id="precio_gerente_lista_cambiada" value="0" readonly class="modal-input" style="background: rgba(255,255,255,0.05); cursor: not-allowed; border-color: rgba(255,255,255,0.1);">
+            <small id="desc_ajustado_lista_cambiada" style="display:block; margin-top:4px; font-size:11px; color: var(--text-muted);">Desc. ajustado: 0.00 %</small>
+        </div>
         <div class="form-group">
             <label class="modal-label">Porcentaje Descuento (Pricing)</label>
             <input type="number" step="0.01" id="porcetaje_descuento" name="porcetaje_descuento" min="0" max="100" value="{{ old('porcetaje_descuento', 0) }}" class="modal-input">

@@ -119,6 +119,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const resProv = lista * (100 - dProv) / 100;
         if (resDescProvInput) resDescProvInput.value = resProv.toFixed(2);
 
+        // 5b. Precio Gerente (lista cambiada), solo informativo: P_Lista * (100 - Desc_Proveedor) / 97
+        //     Desc. ajustado = 100 - ((100 - Desc_Proveedor) / 97) * 100
+        const pgCambiadaInput = document.getElementById('precio_gerente_lista_cambiada');
+        const descAjustadoTxt = document.getElementById('desc_ajustado_lista_cambiada');
+        if (pgCambiadaInput) pgCambiadaInput.value = (lista * (100 - dProv) / 97).toFixed(2);
+        if (descAjustadoTxt) descAjustadoTxt.textContent = 'Desc. ajustado: ' + (100 - ((100 - dProv) / 97) * 100).toFixed(2) + ' %';
+
         // 6. Precio Tope = Precio_Lista * (100 - PorcentajeDescuento) / 100
         const pTope = lista * (100 - pDesc) / 100;
         if (precioTopeInput) precioTopeInput.value = pTope.toFixed(2);
