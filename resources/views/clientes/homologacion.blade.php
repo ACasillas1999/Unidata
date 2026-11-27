@@ -131,7 +131,9 @@
                                     <button type="button" class="btn btn--primary btn--sm" data-rfc="{{ $c['rfc'] }}" onclick="abrirHomologar(this.dataset.rfc)"
                                             style="background:linear-gradient(135deg, #10b981, #059669); border:none; padding:6px 12px; font-size:11.5px; cursor:pointer;">Homologar</button>
                                 @else
-                                    <span style="color:var(--text-muted); font-size:11.5px;">—</span>
+                                    <button type="button" class="btn btn--ghost btn--sm" data-rfc="{{ $c['rfc'] }}" onclick="enviarPowerSales(this.dataset.rfc)"
+                                            title="Ya está homologado: solo lo manda a PowerSales (no toca Magic)"
+                                            style="border:1px solid rgba(99,102,241,0.4); color:#a5b4fc; padding:6px 10px; font-size:11px; cursor:pointer;">Enviar a PowerSales</button>
                                 @endif
                             </td>
                         </tr>
@@ -148,6 +150,8 @@
 (() => {
     const URL_PLAN = @json(route('clientes.homologacion.plan'));
     const URL_HOMOLOGAR = @json(route('clientes.homologacion.homologar'));
+    const URL_POWERSALES = @json(route('clientes.homologacion.powersales'));
+    const MSG_PS_APAGADO = @json(\App\Services\PowerSalesService::MSG_DESACTIVADO);
     // Mismo estilo oscuro que los demás modales de la app (layouts/app, partials/sync_modal, clientes/editar)
     const Modal = Swal.mixin({
         background: '#0f172a',
@@ -179,6 +183,41 @@
             default:          return `<span style="color:var(--text-muted)">Sin cambios (cliente #${esc(r.cliente)})</span>`;
         }
     }
+
+    function textoPowerSales(ps) {
+        if (!ps) return `<span style="color:var(--text-muted)">No se envió (el maestro no quedó bien)</span>`;
+        if (ps.message === MSG_PS_APAGADO) return `<span style="color:#fbbf24">No enviado (POWERSALES_SYNC=false)</span>`;
+        if (ps.success) return `<span style="color:#34d399">✅ OK${ps.message ? ' · ' + esc(String(ps.message).slice(0, 120)) : ''}</span>`;
+        return `<span style="color:#f87171">⚠️ FALLO: ${esc(String(ps.message || '').slice(0, 220))}</span>`;
+    }
+
+    window.enviarPowerSales = async function (rfc) {
+        const ok = await Modal.fire({
+            icon: 'question',
+            title: `Enviar ${esc(rfc)} a PowerSales`,
+            html: `<div style="font-size:13px;">El cliente ya está homologado. Se manda a PowerSales con los datos del maestro, igual que al editar.<br>No se toca Magic.</div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Enviar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            focusCancel: true,
+        });
+        if (!ok.isConfirmed) return;
+
+        Modal.fire({ title: 'Enviando a PowerSales…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const res = await fetch(URL_POWERSALES, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content },
+                body: JSON.stringify({ rfc }),
+            });
+            const out = await res.json();
+            if (!res.ok && !out.powersales) throw new Error(out.message || `HTTP ${res.status}`);
+            Modal.fire({ icon: out.success ? 'success' : 'warning', title: 'PowerSales', html: `<div style="font-size:13px;">${textoPowerSales(out.powersales)}</div>` });
+        } catch (e) {
+            Modal.fire({ icon: 'error', title: 'No se pudo enviar', text: e.message });
+        }
+    };
 
     const fila = (k, v) => `<tr style="border-bottom:1px solid rgba(255,255,255,0.08);"><td style="padding:8px 10px; font-weight:700; white-space:nowrap; vertical-align:top; color:#cbd5e1;">${k}</td><td style="padding:8px 10px;">${v}</td></tr>`;
 
@@ -227,7 +266,7 @@
             for (const s of suc) html += fila(esc(s.name), accionPlan(s, p));
             html += `</table>`;
             for (const x of (p.saltos || [])) html += `<div style="color:var(--text-muted); font-size:12px; margin-top:6px;">ℹ️ ${esc(x)}</div>`;
-            html += `<div style="color:var(--text-muted); font-size:11.5px; margin-top:10px;">El IdGlobal y los números de cliente se vuelven a calcular al confirmar.</div>`;
+            html += `<div style="color:var(--text-muted); font-size:11.5px; margin-top:10px;">El IdGlobal y los números de cliente se vuelven a calcular al confirmar. Al terminar, el cliente se manda a PowerSales (igual que al editar).</div>`;
         }
         html += `</div>`;
 
@@ -272,6 +311,7 @@
             ? `<span style="color:#34d399">✅ ${m.accion === 'creado' ? 'Creado' : (m.accion === 'id_global' ? 'IdGlobal actualizado' : 'Ya existía')} · IdGlobal ${esc(m.id_global)}</span>`
             : `<span style="color:#f87171">⚠️ Error: ${esc((m.mensaje || '').slice(0, 200))}</span>`);
         for (const s of Object.values(out.resultado.sucursales || {})) rh += fila(esc(s.name), accionResultado(s));
+        rh += fila('PowerSales', textoPowerSales(out.resultado.powersales));
         rh += `</table>`;
 
         await Modal.fire({ icon: out.success ? 'success' : 'error', title: out.message, html: rh, width: 720 });

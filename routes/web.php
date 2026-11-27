@@ -103,6 +103,7 @@ Route::get('/clientes/sync/status',                        [ClientesController::
 Route::get('/clientes/homologacion',                       [ClientesHomologacionController::class, 'index'])->name('clientes.homologacion');
 Route::get('/clientes/homologacion/plan',                  [ClientesHomologacionController::class, 'plan'])->name('clientes.homologacion.plan');
 Route::post('/clientes/homologacion/homologar',            [ClientesHomologacionController::class, 'homologar'])->name('clientes.homologacion.homologar');
+Route::post('/clientes/homologacion/powersales',           [ClientesHomologacionController::class, 'powersales'])->name('clientes.homologacion.powersales');
 Route::get('/clientes/{rfc}/editar',                       [ClientesController::class, 'edit'])->name('clientes.edit')->where('rfc', '.+');
 // rfc sin "/": con '.+' esta ruta también atrapaba PUT /clientes/{rfc}/sucursal/{id} (404 en Editar por sucursal)
 Route::put('/clientes/{rfc}',                              [ClientesController::class, 'update'])->name('clientes.update')->where('rfc', '[^/]+');

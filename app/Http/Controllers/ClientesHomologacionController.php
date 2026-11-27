@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClienteMaestro;
 use App\Services\BranchConnectionManager;
+use App\Services\PowerSalesService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,8 +34,10 @@ class ClientesHomologacionController extends Controller
     /** Máximo de renglones por sucursal. */
     private const MAX_POR_SUCURSAL = 50;
 
-    public function __construct(protected BranchConnectionManager $connectionManager)
-    {
+    public function __construct(
+        protected BranchConnectionManager $connectionManager,
+        protected PowerSalesService $powerSales
+    ) {
     }
 
     public function index(Request $request): View
@@ -217,6 +220,11 @@ class ClientesHomologacionController extends Controller
 
                 $resultado = $this->ejecutarPlan($plan, $filaOrigen);
 
+                // Parte 3: si el maestro quedó bien, mandar a PowerSales (igual que Editar; si falla no se deshace nada)
+                if (($resultado['maestro']['status'] ?? '') === 'ok') {
+                    $resultado['powersales'] = $this->enviarPowerSales($rfc);
+                }
+
                 Log::build(['driver' => 'single', 'path' => storage_path('logs/homologacion_clientes.log')])
                     ->info('Homologación de cliente', [
                         'usuario' => $request->user()?->username ?? $request->user()?->name,
@@ -238,6 +246,61 @@ class ClientesHomologacionController extends Controller
             });
         } catch (LockTimeoutException) {
             return $this->json(['success' => false, 'message' => 'Hay otra homologación en curso. Intenta de nuevo en unos segundos.'], 409);
+        }
+    }
+
+    /**
+     * Solo envía a PowerSales un cliente que ya está en el maestro (p. ej. homologado antes de la Parte 3).
+     * No toca Magic ni el maestro.
+     * POST /clientes/homologacion/powersales  (rfc)
+     */
+    public function powersales(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->hasPermission('actions.clientes_homologar'), 403);
+
+        $rfc = self::normalizarRfc((string) $request->input('rfc'));
+        if ($rfc === '' || !ClienteMaestro::whereRaw(self::RFC_SQL_MAESTRO . ' = ?', [$rfc])->exists()) {
+            return $this->json(['success' => false, 'message' => 'El cliente no está en el maestro; homológalo primero.'], 422);
+        }
+
+        $ps = $this->enviarPowerSales($rfc);
+
+        Log::build(['driver' => 'single', 'path' => storage_path('logs/homologacion_clientes.log')])
+            ->info('Envío a PowerSales desde homologación', [
+                'usuario' => $request->user()?->username ?? $request->user()?->name,
+                'rfc' => $rfc,
+                'powersales' => $ps,
+            ]);
+
+        return $this->json(['success' => (bool) ($ps['success'] ?? false), 'powersales' => $ps]);
+    }
+
+    /**
+     * Manda el cliente del maestro a PowerSales con la misma función y datos que Editar cliente
+     * (toBranchFormat del maestro, saldo de AIESA, sucursal PowerSales 9). Respeta POWERSALES_SYNC.
+     */
+    private function enviarPowerSales(string $rfc): array
+    {
+        try {
+            $maestro = ClienteMaestro::whereRaw(self::RFC_SQL_MAESTRO . ' = ?', [$rfc])->firstOrFail();
+            $data = $this->toBranchFormat($maestro->toArray());
+
+            // Saldo: el de AIESA, igual que ClientesController::update (0 si no existe ahí)
+            $saldo = 0.0;
+            try {
+                $conn = $this->connectionManager->connect('AIESA');
+                $row = ((int) $maestro->id_global > 0)
+                    ? $conn->table('clientes')->where('IdGlobal', $maestro->id_global)->first(['Saldo_Actual'])
+                    : null;
+                $row ??= $conn->table('clientes')->whereRaw(self::RFC_SQL_SUCURSAL . ' = ?', [$rfc])->first(['Saldo_Actual']);
+                $saldo = (float) ($row->Saldo_Actual ?? 0);
+            } catch (Throwable) {
+            }
+            $data['Saldo_Actual'] = $saldo;
+
+            return $this->powerSales->syncCliente($data);
+        } catch (Throwable $e) {
+            return ['success' => false, 'message' => 'Error preparando el envío: ' . $this->utf8($e->getMessage())];
         }
     }
 
