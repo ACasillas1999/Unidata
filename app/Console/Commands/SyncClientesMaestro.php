@@ -107,7 +107,9 @@ class SyncClientesMaestro extends Command
                                 'limite_credito'     => (float)($row->Limite_Credito ?? 0),
                                 'otorgo_credito'     => (int)($row->OtorgoCreditO ?? 0),
                                 'saldo_actual'       => (float)($row->Saldo_Actual ?? 0),
-                                'status'             => $row->Status ?? 'A',
+                                // Regla Magic (igual que Homologación de clientes): al homologar todo queda Activo 'A',
+                                // salvo bloqueado (IdOpcionBloqueo > 0), que conserva el Status de Magic.
+                                'status'             => (int)($row->IdOpcionBloqueo ?? 0) > 0 ? (string)($row->Status ?? '') : 'A',
                                 'cta_contable'       => $row->Cta_Contable ?? '',
                                 'fecha_alta'         => $row->Fecha_Alta ?? now()->toDateString(),
                                 'representante'      => $row->Representante ?? '',
@@ -143,6 +145,13 @@ class SyncClientesMaestro extends Command
                 continue;
             }
         }
+
+        // Maestro existente: activar los no bloqueados que no estén en 'A' (igual que Homologación de clientes)
+        $activadosMaestro = ClienteMaestro::query()
+            ->where(fn($q) => $q->whereNull('id_opcion_bloqueo')->orWhere('id_opcion_bloqueo', '<=', 0))
+            ->where(fn($q) => $q->whereNull('status')->orWhere('status', '!=', 'A'))
+            ->update(['status' => 'A', 'updated_at' => now()]);
+        $this->info("Maestro: {$activadosMaestro} clientes no bloqueados pasados a Activo (A).");
 
         // FASE 2: EMPUJAR DATOS A SUCURSALES (Push down)
         $this->info("Fase 2: Empujando datos maestros a sucursales...");
@@ -201,6 +210,15 @@ class SyncClientesMaestro extends Command
                                                           : $codigoVendedorAsesor;
                             }
 
+                            // Status y bloqueo son por sucursal: bloqueado (IdOpcionBloqueo > 0) se queda como está;
+                            // no bloqueado → Activo 'A'. El bloqueo del maestro no se empuja.
+                            unset($dataFiltrada['IdOpcionBloqueo']);
+                            if ((int)($row->IdOpcionBloqueo ?? 0) > 0) {
+                                unset($dataFiltrada['Status']);
+                            } elseif (in_array('Status', $columnasReales)) {
+                                $dataFiltrada['Status'] = 'A';
+                            }
+
                             // Actualizar en la sucursal
                             $conn->table('clientes')
                                  ->where('Cliente', $row->Cliente)
@@ -214,7 +232,7 @@ class SyncClientesMaestro extends Command
             }
         }
 
-        $this->writeStatus('done', "¡Homologación Bidireccional completada! {$nuevosImportados} importados.", $totalBranches * 2, $totalBranches * 2);
+        $this->writeStatus('done', "¡Homologación Bidireccional completada! {$nuevosImportados} importados, {$activadosMaestro} activados en maestro.", $totalBranches * 2, $totalBranches * 2);
         $this->info("¡Finalizado! {$nuevosImportados} agregados y empujados a sucursales.");
     }
 
