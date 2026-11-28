@@ -2,6 +2,13 @@
 
 Shared handoff notes for any AI tool editing this project. Capped at 10 entries, most recent first.
 
+## 2026-11-27 — Claude Code (Opus 5.5) — rama `clientes-status-sn`
+**Homologación: status Activo al homologar (APLICADO, sin probar: sucursales sin conexión al probar).** Decisión equipo Magic: en Magic hay Status S, N, vacío, X, I, A; al homologar todo queda **'A'** (el de Unidata), sin importar el de Magic. Excepción: bloqueado = `IdOpcionBloqueo > 0` → se queda como está (inactivo y bloqueado), **por sucursal**.
+- `ClientesHomologacionController`: `armarPlan` marca `bloqueado`/`activar` por sucursal; acción nueva `activar` (solo Status) además de `id_global` (IdGlobal y, si aplica, Status). `ejecutarPlan` actualiza solo `IdGlobal` y/o `Status='A'` (nunca IdOpcionBloqueo ni otros campos). Maestro: nuevo → status 'A' (o el del origen si el origen está bloqueado, con su IdOpcionBloqueo); existente no bloqueado → status 'A'. Altas toman status/bloqueo del maestro (`toBranchFormat`). PowerSales recibe el del maestro (A → IsActive 1).
+- Aviso si está bloqueado en unas sucursales y no en otras: "…Se homologará y se activará en las que no están bloqueadas. Favor de determinar manualmente si se bloqueará o desactivará."
+- Vista: "🔒 Bloqueado" por sucursal; botón Homologar también si hay algo por activar (no bloqueado y Status ≠ 'A' en sucursal o maestro) → CVA 050825H75 y AASD491004DZ5 (ya homologados) vuelven a mostrarlo; el usuario los activará desde la pantalla (escribe en Magic real).
+- Crear/editar/bloquear clientes siguen con A/I (no se tocaron).
+
 ## 2026-11-26 — Claude Code (Opus 5.5)
 **PLAN (sin código aún) — submódulo Clientes → "Homologación de clientes":** cliente viejo (ej. RFC `CVA 050825H75`, solo en Tapatía) no sale en Lista Clientes porque `SyncClientesMaestro` solo importa `IdGlobal > 0`. Decisiones del usuario:
 - Búsqueda en vivo por RFC/razón social en las 4 sucursales (sin tabla nueva); tabla ✅/❌ por sucursal + "en maestro"; botón Homologar → crea en maestro + alta en sucursales faltantes.

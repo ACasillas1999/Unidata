@@ -86,7 +86,7 @@ class ClientesHomologacionController extends Controller
             try {
                 $filas = $this->connectionManager->connect($branch->code)
                     ->table('clientes')
-                    ->select(['Cliente', 'RFC', 'Razon_Social', 'IdGlobal', 'Status', 'Fecha_Alta'])
+                    ->select(['Cliente', 'RFC', 'Razon_Social', 'IdGlobal', 'Status', 'IdOpcionBloqueo', 'Fecha_Alta'])
                     ->where(function ($q) use ($search, $rfcBuscado) {
                         if ($rfcBuscado !== '') {
                             $q->whereRaw("REPLACE(REPLACE(UPPER(RFC), ' ', ''), '-', '') LIKE ?", ['%' . $rfcBuscado . '%']);
@@ -134,6 +134,7 @@ class ClientesHomologacionController extends Controller
                     'razon_social' => $this->utf8(trim((string) $fila->Razon_Social)),
                     'id_global' => (int) ($fila->IdGlobal ?? 0),
                     'status' => strtoupper(trim((string) $fila->Status)),
+                    'bloqueado' => (int) ($fila->IdOpcionBloqueo ?? 0) > 0,
                     'fecha_alta' => $fecha,
                     'duplicado' => false,
                 ];
@@ -149,7 +150,7 @@ class ClientesHomologacionController extends Controller
         if ($clientes) {
             $claves = array_map('strval', array_keys($clientes));
             $maestros = ClienteMaestro::query()
-                ->select(['id_global', 'rfc', 'razon_social', 'status'])
+                ->select(['id_global', 'rfc', 'razon_social', 'status', 'id_opcion_bloqueo'])
                 ->whereRaw(
                     "REPLACE(REPLACE(UPPER(rfc), ' ', ''), '-', '') IN (" . implode(',', array_fill(0, count($claves), '?')) . ')',
                     $claves
@@ -161,7 +162,8 @@ class ClientesHomologacionController extends Controller
                     $clientes[$clave]['maestro'] = [
                         'id_global' => (int) $m->id_global,
                         'rfc' => $m->rfc,
-                        'status' => $m->status,
+                        'status' => strtoupper(trim((string) $m->status)),
+                        'bloqueado' => (int) ($m->id_opcion_bloqueo ?? 0) > 0,
                     ];
                 }
             }
@@ -363,6 +365,7 @@ class ClientesHomologacionController extends Controller
                     'razon_social' => $this->utf8(trim((string) $r->Razon_Social)),
                     'id_global_actual' => (int) ($r->IdGlobal ?? 0),
                     'status' => strtoupper(trim((string) $r->Status)),
+                    'bloqueado' => (int) ($r->IdOpcionBloqueo ?? 0) > 0,
                     'fecha_alta' => $r->Fecha_Alta ? mb_substr((string) $r->Fecha_Alta, 0, 10) : null,
                 ];
             }
@@ -409,18 +412,34 @@ class ClientesHomologacionController extends Controller
         $plan['rfc'] = $this->utf8(trim((string) $filaOrigen->RFC));
         $plan['razon_social'] = $this->utf8(trim((string) $filaOrigen->Razon_Social));
         $plan['status'] = strtoupper(trim((string) $filaOrigen->Status));
-
-        if ($plan['status'] !== 'A') {
-            $plan['avisos'][] = 'El estatus en la sucursal de origen es '
-                . ($plan['status'] === '' ? 'vacío (sin estatus)' : "Status Magic ({$plan['status']})")
-                . '; se copiará tal cual.';
-        }
+        $plan['origen_bloqueado'] = (int) ($filaOrigen->IdOpcionBloqueo ?? 0) > 0;
 
         // ── Maestro e IdGlobal ───────────────────────────────────────────────
+        // Estatus (decisión equipo Magic, 2026-11-27): al homologar todo queda Activo ('A', el de Unidata),
+        // sin importar el Status de Magic (S, N, vacío, X, I...). Excepción: lo bloqueado (IdOpcionBloqueo > 0)
+        // se queda como está (inactivo y bloqueado), por sucursal.
         $maestro = ClienteMaestro::whereRaw(self::RFC_SQL_MAESTRO . ' = ?', [$rfc])->first();
-        $plan['maestro'] = $maestro
-            ? ['existe' => true, 'id_global' => (int) $maestro->id_global, 'rfc' => $maestro->rfc]
-            : ['existe' => false];
+        if ($maestro) {
+            $mStatus = strtoupper(trim((string) $maestro->status));
+            $mBloqueado = (int) ($maestro->id_opcion_bloqueo ?? 0) > 0;
+            $plan['maestro'] = [
+                'existe' => true,
+                'id_global' => (int) $maestro->id_global,
+                'rfc' => $maestro->rfc,
+                'status' => $mStatus,
+                'bloqueado' => $mBloqueado,
+                'activar' => !$mBloqueado && $mStatus !== 'A',
+                'status_final' => $mBloqueado ? $mStatus : 'A',
+            ];
+        } else {
+            // Se crea con los datos del origen: si el origen está bloqueado, se copia tal cual (inactivo y bloqueado)
+            $plan['maestro'] = [
+                'existe' => false,
+                'bloqueado' => $plan['origen_bloqueado'],
+                'activar' => false,
+                'status_final' => $plan['origen_bloqueado'] ? $plan['status'] : 'A',
+            ];
+        }
 
         if ($maestro && (int) $maestro->id_global > 0) {
             $plan['id_global'] = (int) $maestro->id_global;
@@ -444,8 +463,11 @@ class ClientesHomologacionController extends Controller
         // ── Qué se hará en cada sucursal ─────────────────────────────────────
         foreach ($plan['sucursales'] as $code => &$s) {
             if ($s['estado'] === 'existe') {
-                $s['accion'] = $s['id_global_actual'] === $plan['id_global'] ? 'ninguna' : 'id_global';
+                $s['activar'] = !$s['bloqueado'] && $s['status'] !== 'A';
+                $s['accion'] = $s['id_global_actual'] !== $plan['id_global'] ? 'id_global' : ($s['activar'] ? 'activar' : 'ninguna');
             } elseif ($s['estado'] === 'falta') {
+                $s['status_alta'] = $plan['maestro']['status_final'];
+                $s['bloqueado_alta'] = $plan['maestro']['bloqueado'];
                 try {
                     $conn = $conexiones[$code];
                     $s['siguiente_cliente'] = $this->calcularSiguienteClienteSucursal($conn);
@@ -463,6 +485,22 @@ class ClientesHomologacionController extends Controller
             }
         }
         unset($s);
+
+        // Bloqueado en unas sucursales y no en otras: se activa en las no bloqueadas y se avisa
+        $bloqueadas = [];
+        $activas = [];
+        foreach ($plan['sucursales'] as $s) {
+            if ($s['estado'] === 'existe') {
+                $s['bloqueado'] ? $bloqueadas[] = $s['name'] : $activas[] = $s['name'];
+            } elseif (($s['accion'] ?? null) === 'alta' && !$plan['maestro']['bloqueado']) {
+                $activas[] = $s['name'];
+            }
+        }
+        if ($bloqueadas && $activas) {
+            $plan['avisos'][] = 'Está bloqueado en ' . implode(', ', $bloqueadas) . ' pero no en ' . implode(', ', $activas)
+                . '. Se homologará y se activará en las que no están bloqueadas. '
+                . 'Favor de determinar manualmente si se bloqueará o desactivará.';
+        }
 
         return [$plan, $filaOrigen];
     }
@@ -507,13 +545,28 @@ class ClientesHomologacionController extends Controller
         try {
             $maestro = ClienteMaestro::whereRaw(self::RFC_SQL_MAESTRO . ' = ?', [self::normalizarRfc($plan['rfc'])])->first();
             if (!$maestro) {
-                $maestro = ClienteMaestro::create($this->datosMaestroDesdeSucursal($filaOrigen, $plan['origen'], $idGlobal, $plan['fecha_alta']));
-                $resultado['maestro'] = ['status' => 'ok', 'accion' => 'creado', 'id_global' => $idGlobal];
-            } elseif ((int) $maestro->id_global !== $idGlobal) {
-                $maestro->update(['id_global' => $idGlobal]);
-                $resultado['maestro'] = ['status' => 'ok', 'accion' => 'id_global', 'id_global' => $idGlobal];
+                $datos = $this->datosMaestroDesdeSucursal($filaOrigen, $plan['origen'], $idGlobal, $plan['fecha_alta']);
+                $datos['status'] = $plan['maestro']['status_final'];   // 'A', o el del origen si está bloqueado
+                $maestro = ClienteMaestro::create($datos);
+                $resultado['maestro'] = ['status' => 'ok', 'accion' => 'creado', 'id_global' => $idGlobal, 'status_final' => $datos['status']];
             } else {
-                $resultado['maestro'] = ['status' => 'ok', 'accion' => 'ya_existia', 'id_global' => $idGlobal];
+                $cambios = [];
+                if ((int) $maestro->id_global !== $idGlobal) {
+                    $cambios['id_global'] = $idGlobal;
+                }
+                if ((int) ($maestro->id_opcion_bloqueo ?? 0) === 0 && strtoupper(trim((string) $maestro->status)) !== 'A') {
+                    $cambios['status'] = 'A';
+                }
+                if ($cambios) {
+                    $maestro->update($cambios);
+                }
+                $resultado['maestro'] = [
+                    'status' => 'ok',
+                    'accion' => $cambios ? 'actualizado' : 'ya_existia',
+                    'id_global' => $idGlobal,
+                    'id_global_cambio' => isset($cambios['id_global']),
+                    'activado' => isset($cambios['status']),
+                ];
             }
         } catch (Throwable $e) {
             $resultado['maestro'] = ['status' => 'error', 'mensaje' => $this->utf8($e->getMessage())];
@@ -541,11 +594,23 @@ class ClientesHomologacionController extends Controller
             try {
                 $conn = $this->connectionManager->connect($code);
 
-                if ($s['accion'] === 'id_global') {
-                    $conn->table('clientes')->where('Cliente', $s['cliente'])->update(['IdGlobal' => $idGlobal]);
+                if (in_array($s['accion'], ['id_global', 'activar'], true)) {
+                    // Solo IdGlobal y/o Status; el resto de los datos del cliente en Magic no se toca.
+                    // Bloqueado (IdOpcionBloqueo > 0): 'activar' viene en false y el Status se queda como está.
+                    $cambios = [];
+                    if ($s['accion'] === 'id_global') {
+                        $cambios['IdGlobal'] = $idGlobal;
+                    }
+                    if (!empty($s['activar'])) {
+                        $cambios['Status'] = 'A';
+                    }
+                    $conn->table('clientes')->where('Cliente', $s['cliente'])->update($cambios);
                     $resultado['sucursales'][$code] = $base + [
-                        'status' => 'ok', 'accion' => 'id_global', 'cliente' => $s['cliente'],
-                        'de' => $s['id_global_actual'], 'a' => $idGlobal,
+                        'status' => 'ok', 'accion' => 'actualizado', 'cliente' => $s['cliente'],
+                        'de' => isset($cambios['IdGlobal']) ? $s['id_global_actual'] : null,
+                        'a' => isset($cambios['IdGlobal']) ? $idGlobal : null,
+                        'status_de' => isset($cambios['Status']) ? $s['status'] : null,
+                        'bloqueado' => $s['bloqueado'],
                     ];
                     continue;
                 }

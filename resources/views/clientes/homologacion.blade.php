@@ -82,6 +82,9 @@
                         @php
                             $faltan = $branches->filter(fn($b) => !isset($c['sucursales'][$b->code]) && !isset($erroresSucursal[$b->code]))->count();
                             $inactivo = collect($c['sucursales'])->contains(fn($s) => $s['status'] !== 'A');
+                            // Algo que la homologación pondría Activo (no bloqueado y Status distinto de 'A')
+                            $porActivar = collect($c['sucursales'])->contains(fn($s) => !$s['bloqueado'] && $s['status'] !== 'A')
+                                || ($c['maestro'] && !$c['maestro']['bloqueado'] && $c['maestro']['status'] !== 'A');
                         @endphp
                         <tr>
                             <td style="font-family:monospace; font-weight:700; white-space:nowrap;">{{ $c['rfc'] }}</td>
@@ -97,6 +100,9 @@
                                         <div style="color:{{ $s['status'] === 'A' ? 'var(--text-muted)' : '#fbbf24' }};">
                                             {{ $s['status'] === 'A' ? 'Activo' : ($s['status'] === '' ? 'Sin estatus' : "Status Magic ({$s['status']})") }} · {{ $s['fecha_alta'] ?: 's/f' }}
                                         </div>
+                                        @if($s['bloqueado'])
+                                            <div style="color:#f87171;" title="IdOpcionBloqueo > 0: al homologar se queda como está">🔒 Bloqueado</div>
+                                        @endif
                                         @if($s['duplicado'])
                                             <div style="color:#fbbf24;" title="El mismo RFC aparece en más de un cliente de esta sucursal">RFC repetido</div>
                                         @endif
@@ -127,7 +133,7 @@
                                 @endif
                             </td>
                             <td style="text-align:center;">
-                                @if(!($c['maestro'] && $faltan === 0 && collect($c['sucursales'])->every(fn($s) => $s['id_global'] === $c['maestro']['id_global'])))
+                                @if($porActivar || !($c['maestro'] && $faltan === 0 && collect($c['sucursales'])->every(fn($s) => $s['id_global'] === $c['maestro']['id_global'])))
                                     <button type="button" class="btn btn--primary btn--sm" data-rfc="{{ $c['rfc'] }}" onclick="abrirHomologar(this.dataset.rfc)"
                                             style="background:linear-gradient(135deg, #10b981, #059669); border:none; padding:6px 12px; font-size:11.5px; cursor:pointer;">Homologar</button>
                                 @else
@@ -164,11 +170,17 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const estatus = s => s === 'A' ? 'Activo' : (s === '' || s == null ? 'Sin estatus' : `Status Magic (${esc(s)})`);
 
+    const ACTIVO_A = '<b>Activo (A)</b>';
+    const txtStatus = s => s.activar
+        ? ` · Status ${estatus(s.status)} → ${ACTIVO_A}`
+        : (s.bloqueado ? ` · <span style="color:#f87171">🔒 Bloqueado en Magic: se queda como está (${estatus(s.status)})</span>` : '');
+
     function accionPlan(s, plan) {
         switch (s.accion) {
-            case 'alta':      return `<span style="color:#34d399">Se da de alta como cliente <b>#${esc(s.siguiente_cliente)}</b></span>`;
-            case 'id_global': return `<span style="color:#60a5fa">Cliente #${esc(s.cliente)}: IdGlobal ${esc(s.id_global_actual)} → <b>${esc(plan.id_global)}</b> (sus datos no cambian)</span>`;
-            case 'ninguna':   return `<span style="color:var(--text-muted)">Cliente #${esc(s.cliente)}: ya tiene IdGlobal ${esc(plan.id_global)}</span>`;
+            case 'alta':      return `<span style="color:#34d399">Se da de alta como cliente <b>#${esc(s.siguiente_cliente)}</b> · ${s.bloqueado_alta ? 'inactivo y bloqueado (como el maestro)' : ACTIVO_A}</span>`;
+            case 'id_global': return `<span style="color:#60a5fa">Cliente #${esc(s.cliente)}: IdGlobal ${esc(s.id_global_actual)} → <b>${esc(plan.id_global)}</b>${txtStatus(s)} (sus demás datos no cambian)</span>`;
+            case 'activar':   return `<span style="color:#60a5fa">Cliente #${esc(s.cliente)}: ya tiene IdGlobal ${esc(plan.id_global)}${txtStatus(s)} (sus demás datos no cambian)</span>`;
+            case 'ninguna':   return `<span style="color:var(--text-muted)">Cliente #${esc(s.cliente)}: ya tiene IdGlobal ${esc(plan.id_global)}${txtStatus(s)}</span>`;
             case 'bloqueada': return `<span style="color:#f87171">⛔ ${esc(s.mensaje)}</span>`;
             default:          return `<span style="color:#f87171">⚠️ No se pudo consultar: ${esc((s.mensaje || '').slice(0, 160))}</span>`;
         }
@@ -179,7 +191,13 @@
         if (r.status === 'omitida') return `<span style="color:#fbbf24">⛔ Omitida: ${esc(r.mensaje)}</span>`;
         switch (r.accion) {
             case 'creado':    return `<span style="color:#34d399">✅ Dado de alta como cliente #${esc(r.cliente)}</span>`;
-            case 'id_global': return `<span style="color:#34d399">✅ Cliente #${esc(r.cliente)}: IdGlobal ${esc(r.de)} → ${esc(r.a)}</span>`;
+            case 'actualizado': {
+                const partes = [];
+                if (r.a !== null && r.a !== undefined) partes.push(`IdGlobal ${esc(r.de)} → ${esc(r.a)}`);
+                if (r.status_de !== null && r.status_de !== undefined) partes.push(`Status ${estatus(r.status_de)} → Activo (A)`);
+                if (r.bloqueado) partes.push('🔒 bloqueado: status sin cambio');
+                return `<span style="color:#34d399">✅ Cliente #${esc(r.cliente)}: ${partes.join(' · ')}</span>`;
+            }
             default:          return `<span style="color:var(--text-muted)">Sin cambios (cliente #${esc(r.cliente)})</span>`;
         }
     }
@@ -245,7 +263,7 @@
                 const s = p.sucursales[code];
                 html += `<label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
                     <input type="radio" name="hom-origen" value="${esc(code)}" ${code === p.origen ? 'checked' : ''}>
-                    <span><b>${esc(s.name)}</b> · #${esc(s.cliente)} · alta ${esc(s.fecha_alta || 's/f')} · ${estatus(s.status)}<br>
+                    <span><b>${esc(s.name)}</b> · #${esc(s.cliente)} · alta ${esc(s.fecha_alta || 's/f')} · ${estatus(s.status)}${s.bloqueado ? ' · <span style="color:#f87171">🔒 Bloqueado</span>' : ''}<br>
                     <span style="color:var(--text-muted); font-size:12px;">${esc(s.razon_social)}</span></span></label>`;
             }
             html += `</div>`;
@@ -261,8 +279,8 @@
         if (!p.bloqueo) {
             html += `<table style="width:100%; border-collapse:collapse; font-size:12.5px;">`;
             html += fila('Maestro', p.maestro.existe
-                ? `Ya existe (IdGlobal ${esc(p.maestro.id_global)})${p.maestro.id_global !== p.id_global ? ` → se cambia a <b>${esc(p.id_global)}</b>` : ''}`
-                : `<span style="color:#34d399">Se crea con IdGlobal <b>${esc(p.id_global)}</b> y fecha de alta <b>${esc(p.fecha_alta || 'hoy')}</b></span>`);
+                ? `Ya existe (IdGlobal ${esc(p.maestro.id_global)})${p.maestro.id_global !== p.id_global ? ` → se cambia a <b>${esc(p.id_global)}</b>` : ''}${txtStatus(p.maestro)}`
+                : `<span style="color:#34d399">Se crea con IdGlobal <b>${esc(p.id_global)}</b>, fecha de alta <b>${esc(p.fecha_alta || 'hoy')}</b> y ${p.maestro.bloqueado ? `<span style="color:#f87171">🔒 inactivo y bloqueado, como el origen (${estatus(p.status)})</span>` : `status ${ACTIVO_A}`}</span>`);
             for (const s of suc) html += fila(esc(s.name), accionPlan(s, p));
             html += `</table>`;
             for (const x of (p.saltos || [])) html += `<div style="color:var(--text-muted); font-size:12px; margin-top:6px;">ℹ️ ${esc(x)}</div>`;
@@ -270,7 +288,7 @@
         }
         html += `</div>`;
 
-        const hayAlgo = !p.bloqueo && (!p.maestro.existe || p.maestro.id_global !== p.id_global || suc.some(s => ['alta', 'id_global'].includes(s.accion)));
+        const hayAlgo = !p.bloqueo && (!p.maestro.existe || p.maestro.id_global !== p.id_global || p.maestro.activar || suc.some(s => ['alta', 'id_global', 'activar'].includes(s.accion)));
 
         const r = await Modal.fire({
             title: `Homologar ${esc(p.rfc || rfc)}`,
@@ -308,7 +326,7 @@
         const m = out.resultado.maestro;
         let rh = `<table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:left;">`;
         rh += fila('Maestro', m.status === 'ok'
-            ? `<span style="color:#34d399">✅ ${m.accion === 'creado' ? 'Creado' : (m.accion === 'id_global' ? 'IdGlobal actualizado' : 'Ya existía')} · IdGlobal ${esc(m.id_global)}</span>`
+            ? `<span style="color:#34d399">✅ ${m.accion === 'creado' ? `Creado (status ${estatus(m.status_final)})` : (m.accion === 'actualizado' ? [m.id_global_cambio ? 'IdGlobal actualizado' : '', m.activado ? 'Activado (A)' : ''].filter(Boolean).join(' · ') : 'Ya existía')} · IdGlobal ${esc(m.id_global)}</span>`
             : `<span style="color:#f87171">⚠️ Error: ${esc((m.mensaje || '').slice(0, 200))}</span>`);
         for (const s of Object.values(out.resultado.sucursales || {})) rh += fila(esc(s.name), accionResultado(s));
         rh += fila('PowerSales', textoPowerSales(out.resultado.powersales));
