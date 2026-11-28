@@ -2,6 +2,13 @@
 
 Shared handoff notes for any AI tool editing this project. Capped at 10 entries, most recent first.
 
+## 2026-11-28 — Claude Code (Opus 5.5) — Cómo trabajar en rama (git worktree)
+**Regla del usuario:** cuando pida "trabajar con una rama", usar **`git worktree`**, no `git checkout -b` en `Unidata`. La carpeta `\\192.168.60.117\xampp\htdocs\Unidata` es compartida con ACasillas1999 (sigue en `main`); un checkout ahí cambia la rama para los dos. Pasó con `clientes-status-sn`: sus 5 commits cayeron en la rama del usuario sin querer (ya integrada en main y borrada).
+- Crear: `git worktree add ..\Unidata_trabajo -b <rama>` (desde `Unidata`). Copiar `.env` y `vendor` de `Unidata`; levantar en otro puerto (ej. `php artisan serve --host=0.0.0.0 --port=8001`, `APP_URL` acorde). Mismas BDs (Magic real, PS QA): migraciones solo una vez.
+- Cerrar (desde `Unidata`): `git merge <rama>`, `git push`, `git worktree remove ..\Unidata_trabajo`, `git branch -d <rama>`.
+- Precedente: rama `bug-07` (2026-11-10) se hizo así y no chocó.
+- Pendiente: probar status 'A' en Homologación (entrada siguiente) cuando sucursales respondan.
+
 ## 2026-11-27 — Claude Code (Opus 5.5) — rama `clientes-status-sn`
 **Homologación: status Activo al homologar (APLICADO, sin probar: sucursales sin conexión al probar).** Decisión equipo Magic: en Magic hay Status S, N, vacío, X, I, A; al homologar todo queda **'A'** (el de Unidata), sin importar el de Magic. Excepción: bloqueado = `IdOpcionBloqueo > 0` → se queda como está (inactivo y bloqueado), **por sucursal**.
 - `ClientesHomologacionController`: `armarPlan` marca `bloqueado`/`activar` por sucursal; acción nueva `activar` (solo Status) además de `id_global` (IdGlobal y, si aplica, Status). `ejecutarPlan` actualiza solo `IdGlobal` y/o `Status='A'` (nunca IdOpcionBloqueo ni otros campos). Maestro: nuevo → status 'A' (o el del origen si el origen está bloqueado, con su IdOpcionBloqueo); existente no bloqueado → status 'A'. Altas toman status/bloqueo del maestro (`toBranchFormat`). PowerSales recibe el del maestro (A → IsActive 1).
