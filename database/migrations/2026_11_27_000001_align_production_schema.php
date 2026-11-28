@@ -89,12 +89,19 @@ return new class extends Migration
             });
         }
 
-        // 3. Agregar columna email a db_master.clientes_maestro si no existe
+        // 3. Agregar columna email a db_master.clientes_maestro y habilitado a db_master.Articulos si no existen
         try {
             if (Schema::connection('db_master')->hasTable('clientes_maestro')) {
                 if (!Schema::connection('db_master')->hasColumn('clientes_maestro', 'email')) {
                     Schema::connection('db_master')->table('clientes_maestro', function (Blueprint $table) {
                         $table->string('email', 255)->nullable()->after('razon_social');
+                    });
+                }
+            }
+            if (Schema::connection('db_master')->hasTable('Articulos') || Schema::connection('db_master')->hasTable('articulos')) {
+                if (!Schema::connection('db_master')->hasColumn('Articulos', 'habilitado')) {
+                    Schema::connection('db_master')->table('Articulos', function (Blueprint $table) {
+                        $table->boolean('habilitado')->nullable()->default(1);
                     });
                 }
             }
