@@ -20,8 +20,11 @@ return new class extends Migration
         // 2. Agregar a matriz_homologacions (conexión default) si no existe
         if (Schema::hasTable('matriz_homologacions')) {
             Schema::table('matriz_homologacions', function (Blueprint $table) {
+                if (!Schema::hasColumn('matriz_homologacions', 'desc_proveedor')) {
+                    $table->decimal('desc_proveedor', 15, 4)->nullable();
+                }
                 if (!Schema::hasColumn('matriz_homologacions', 'precio_gerente')) {
-                    $table->decimal('precio_gerente', 15, 4)->nullable()->after('desc_proveedor');
+                    $table->decimal('precio_gerente', 15, 4)->nullable();
                 }
             });
         }

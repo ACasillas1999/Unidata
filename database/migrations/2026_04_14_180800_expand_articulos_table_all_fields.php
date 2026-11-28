@@ -10,6 +10,9 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (Schema::connection('db_master')->hasColumn('Articulos', 'clave_proveedor_1')) {
+            return;
+        }
         Schema::connection('db_master')->table('Articulos', function (Blueprint $table) {
             // Logística y General
             $table->smallInteger('area')->nullable()->after('clasificacion');

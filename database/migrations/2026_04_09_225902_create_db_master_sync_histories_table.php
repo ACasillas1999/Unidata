@@ -10,6 +10,9 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (Schema::connection('db_master')->hasTable('Historial') || Schema::connection('db_master')->hasTable('historial')) {
+            return;
+        }
         Schema::connection('db_master')->create('Historial', function (Blueprint $table) {
             $table->id();
             $table->integer('total_articulos');

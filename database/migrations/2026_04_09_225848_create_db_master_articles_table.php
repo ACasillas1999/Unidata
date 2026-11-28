@@ -13,6 +13,9 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (Schema::connection('db_master')->hasTable('Articulos') || Schema::connection('db_master')->hasTable('articulos')) {
+            return;
+        }
         Schema::connection('db_master')->create('Articulos', function (Blueprint $table) {
             $table->id();
             $table->string('clave', 50)->nullable();

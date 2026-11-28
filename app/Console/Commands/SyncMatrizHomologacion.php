@@ -198,14 +198,26 @@ class SyncMatrizHomologacion extends Command
 
                 // Definir qué columnas vamos a actualizar en el upsert
                 $updateColumns = array_unique(array_merge($activeCampos, ['clave', 'descripcion', 'habilitado', $colName]));
+
+                // Filtrar contra las columnas que realmente existen en la tabla articulo de esta sucursal
+                $branchColumnsLower = array_map('strtolower', $connection->getSchemaBuilder()->getColumnListing('articulo'));
                 
-                // Construir el select dinámicamente basado en los campos activos
+                // Construir el select dinámicamente basado en los campos activos que existen en la sucursal
                 $sourceSelect = [];
+                $validUpdateColumns = [];
                 foreach ($updateColumns as $col) {
+                    if ($col === $colName) {
+                        $validUpdateColumns[] = $col;
+                        continue;
+                    }
                     if (isset($fieldMap[$col])) {
-                        $sourceSelect[] = $fieldMap[$col];
+                        if (empty($branchColumnsLower) || in_array(strtolower($fieldMap[$col]), $branchColumnsLower, true)) {
+                            $sourceSelect[] = $fieldMap[$col];
+                            $validUpdateColumns[] = $col;
+                        }
                     }
                 }
+                $updateColumns = $validUpdateColumns;
                 // Asegurar campos base si no estaban
                 $sourceSelect = array_unique(array_merge($sourceSelect, ['Clave_Articulo', 'Habilitado']));
 

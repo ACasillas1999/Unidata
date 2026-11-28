@@ -24,8 +24,6 @@ Homestead.yaml
 Thumbs.db
 check_schema.php
 check_schema_laravel.php
-database/migrations/2026_06_11_000001_create_clientes_campos_sucursal_table.php
-database/migrations/2026_07_07_000001_create_powersales_sync_logs_table.php
 public/exports/homologacion_2026-04-09_005056_job_6.xls
 public/exports/homologacion_2026-04-09_160803_job_6.xls
 public/exports/homologacion_2026-04-09_170352_job_6.xls

@@ -10,6 +10,9 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (Schema::connection('db_master')->hasTable('clientes_maestro')) {
+            return;
+        }
         Schema::connection('db_master')->create('clientes_maestro', function (Blueprint $table) {
             $table->id();
             $table->integer('id_global')->default(0)->index();
