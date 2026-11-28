@@ -692,11 +692,7 @@ class ArticulosController extends Controller
             ]);
 
             // Lanzar proceso de fondo en Windows/XAMPP (mismo patrón que Homologación y Catálogo Maestro)
-            $php     = PHP_BINARY;
-            $artisan = base_path('artisan');
-            $log     = storage_path('logs') . DIRECTORY_SEPARATOR . 'carga_masiva_bg.log';
-            $cmd     = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:carga-masiva ' . (int) $historialId . ' >> "' . $log . '" 2>&1';
-            pclose(popen($cmd, 'r'));
+            \App\Support\BackgroundProcess::artisan('unidata:carga-masiva ' . (int) $historialId, storage_path('logs/carga_masiva_bg.log'));
 
             $request->session()->forget('preview_completed_hash');
 

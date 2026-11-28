@@ -893,13 +893,8 @@ class ClientesController extends Controller
             'updated_at' => time(),
         ], JSON_UNESCAPED_UNICODE));
 
-        // Lanzar proceso de fondo en Windows (start /B) sin bloquear a Apache
-        $php = PHP_BINARY;
-        $artisan = base_path('artisan');
-        $log = storage_path('logs') . DIRECTORY_SEPARATOR . 'sync_clientes_bg.log';
-
-        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:sync-clientes-maestro >> "' . $log . '" 2>&1';
-        pclose(popen($cmd, 'r'));
+        // Lanzar proceso de fondo en Windows sin bloquear el servidor web
+        \App\Support\BackgroundProcess::artisan('unidata:sync-clientes-maestro', storage_path('logs/sync_clientes_bg.log'));
 
         return $this->jsonUtf8Response(['status' => 'started']);
     }

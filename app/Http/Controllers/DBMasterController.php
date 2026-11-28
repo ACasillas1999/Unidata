@@ -473,12 +473,8 @@ class DBMasterController extends Controller
             'updated_at' => time(),
         ], JSON_UNESCAPED_UNICODE));
 
-        // Lanzar proceso de fondo (no muere si cierras la pestaña)
-        $php     = PHP_BINARY;
-        $artisan = base_path('artisan');
-        $log     = storage_path('logs') . DIRECTORY_SEPARATOR . 'sync_dbmaster_bg.log';
-        $cmd     = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:sync-dbmaster >> "' . $log . '" 2>&1';
-        pclose(popen($cmd, 'r'));
+        // Lanzar proceso de fondo (no muere si cierras la pestaña ni bloquea el servidor)
+        \App\Support\BackgroundProcess::artisan('unidata:sync-dbmaster', storage_path('logs/sync_dbmaster_bg.log'));
 
         return response()->json(['status' => 'started']);
     }

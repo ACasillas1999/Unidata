@@ -221,12 +221,8 @@ class HomologacionController extends Controller
         // \u2500\u2500 Lanzar proceso de fondo en Windows/XAMPP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         // strat /B = proceso sin ventana, sin esperar que termine.
         // Apache libera el thread inmediatamente => otros usuarios siguen normales.
-        $php     = PHP_BINARY;
-        $artisan = base_path('artisan');
-        $log     = storage_path('logs') . DIRECTORY_SEPARATOR . 'sync_bg.log';
-
-        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:sync-matriz >> "' . $log . '" 2>&1';
-        pclose(popen($cmd, 'r'));
+        // Lanzar proceso de fondo en Windows/XAMPP sin bloquear el hilo web
+        \App\Support\BackgroundProcess::artisan('unidata:sync-matriz', storage_path('logs/sync_bg.log'));
 
         return response()->json(['status' => 'started']);
     }
@@ -455,12 +451,7 @@ class HomologacionController extends Controller
         file_put_contents($exportsDir . '/' . $jobId . '.json', json_encode($jobData, JSON_UNESCAPED_UNICODE));
 
         // Start background cmd
-        $php = PHP_BINARY;
-        $artisan = base_path('artisan');
-        $log = storage_path('logs/export_bg.log');
-
-        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:export-bg homologacion ' . escapeshellarg($jobId) . ' >> "' . $log . '" 2>&1';
-        pclose(popen($cmd, 'r'));
+        \App\Support\BackgroundProcess::artisan('unidata:export-bg homologacion ' . escapeshellarg($jobId), storage_path('logs/export_bg.log'));
 
         return response()->json([
             'status' => 'started',

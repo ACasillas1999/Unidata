@@ -430,12 +430,7 @@ class EstadisticasController extends Controller
         file_put_contents($exportsDir . '/' . $jobId . '.json', json_encode($jobData, JSON_UNESCAPED_UNICODE));
 
         // Iniciar comando en segundo plano (asíncrono)
-        $php = PHP_BINARY;
-        $artisan = base_path('artisan');
-        $log = storage_path('logs/export_bg.log');
-
-        $cmd = 'start "" /B "' . $php . '" "' . $artisan . '" unidata:export-bg pendientes ' . escapeshellarg($jobId) . ' >> "' . $log . '" 2>&1';
-        pclose(popen($cmd, 'r'));
+        \App\Support\BackgroundProcess::artisan('unidata:export-bg pendientes ' . escapeshellarg($jobId), storage_path('logs/export_bg.log'));
 
         return response()->json([
             'status' => 'started',
