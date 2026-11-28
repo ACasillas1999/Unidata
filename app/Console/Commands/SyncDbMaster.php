@@ -80,6 +80,12 @@ class SyncDbMaster extends Command
                 'sustituto', 'sustituto1', 'sustituto2', 'articulo_conversion', 'conversion', 'peso', 'ubicacion', 'std_pack',
                 'habilitado'
             ])->chunk(1000, function($sourceArticles) use (&$totalInserted, $totalExpected) {
+                if (file_exists(self::statusFile())) {
+                    $st = json_decode((string) @file_get_contents(self::statusFile()), true);
+                    if (($st['status'] ?? '') === 'cancelled') {
+                        return false;
+                    }
+                }
                 $now = now();
                 $chunk = $sourceArticles->toArray();
                 foreach($chunk as &$c) {
